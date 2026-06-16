@@ -48,7 +48,7 @@ Broodforge is an implementation domain built on top of Tessel. The framework is 
 These are the Tessel extensions identified in the proposal:
 
 | Feature | Status |
-|---|---------|
+|---|------|
 | `@date[Label]` field type | Not implemented |
 | `@if(expr) ... @endif` conditional sections | Not implemented |
 | Field metadata schema (`id=`, `required=`, `required_if=`, `visible_if=`, `validate=`, `warning_message=`, `help_text=`, `placeholder=`, `save_to_session=`, `default=`) | Not implemented |
@@ -86,45 +86,47 @@ These are drawn from the broodforge design schema and PAP.
 
 **Content-addressed filenames.** When the system auto-suggests a filename for an export or session archive, it must include a content hash (CID-SHORT) so the filename itself carries integrity information. The format is `<title>_<YYYY-MM-DD_HH-MM>_<CID-SHORT>[.<ext>]`. See §5.7 and `spec/CANONICAL-FILENAMES.md`.
 
+**Integrity is user-visible.** Every compiled Tessel document and Tessel Studio exposes a persistent integrity badge that indicates whether the file's content matches its CID-SHORT. The badge reads the CFC schema version recorded in the file's metadata to select the correct algorithm, ensuring older files remain verifiable after future algorithm upgrades. See §5.8, §5.9, and AD-T-011.
+
 ---
 
 ## 4. Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
+┌───────────────────────────────────────────────────────────────────────┐
 │ Source                                                              │
 │                                                                     │
 │   Author writes Markdown + @directives  (or uses Studio WYSIWYG)   │
 │                         ↓                                           │
 │            .md file  (canonical, git-versioned)                     │
-└─────────────────────┬───────────────────────────────────────────────┘
+└─────────────────────┬────────────────────────────────────────────────┘
                       │
-          ┌───────────▼───────────┐
+          ┌─────────┴─────────┐
           │  Tessel Parser        │
           │  (JS — browser)       │  ← or Python md_to_html.py (equiv)
           │  • Tokenizer          │
           │  • @directive handler │
           │  • Conditional eval   │
           │  • TOC builder        │
-          └───────────┬───────────┘
+          └─────────┬─────────┘
                       │
-          ┌───────────▼───────────┐
+          ┌─────────┴─────────┐
           │  Tessel Schema        │
           │  (JSON AST)           │
           │  • Document tree      │
           │  • Field registry     │
           │  • Conditional graph  │
           │  • Validation rules   │
-          └───────────┬───────────┘
+          └─────────┬─────────┘
                       │
-          ┌───────────▼───────────┐
+          ┌─────────┴─────────┐
           │  Compiler             │
           │  • HTML renderer      │
           │  • CSS/JS bundler     │
           │  • Asset inliner      │
-          └───────────┬───────────┘
+          └─────────┬─────────┘
                       │
-          ┌───────────▼───────────────────────────────────────────┐
+          ┌─────────┴───────────────────────────────────────────────┐
           │  Self-contained Runtime HTML                           │
           │  • Tessel Runtime (inline JS)                         │
           │  • Form rendering + validation                         │
@@ -202,7 +204,7 @@ A field directive may be followed by an optional metadata block:
 Supported metadata keys:
 
 | Key | Description |
-|---|---------|
+|---|------|
 | `id` | Stable identifier for cross-field references |
 | `default` | Default value (also sets initial state) |
 | `required` | Boolean; field must be filled before export |
@@ -279,7 +281,7 @@ tessel-export_2026-06-16_09-00_c4d2e1f0.tessel
 
 **The filename is computed from the content that will be written.** The system builds the content in memory, computes the CID-SHORT, constructs the filename, then writes. If the user modifies content before confirming, the suggestion updates.
 
-**Verification on load:** When a file with a canonical filename is opened, the runtime recomputes the hash and compares. If the hash does not match the filename, a warning is displayed: "Filename hash mismatch — file may have been modified."
+**Verification on load:** When a file with a canonical filename is opened, the runtime recomputes the hash and compares. If the hash does not match the filename, a warning is displayed: “Filename hash mismatch — file may have been modified.”
 
 **Override allowed:** Users may override the suggested filename. When the CID-SHORT component is absent, the runtime notes this on next open.
 
@@ -295,6 +297,60 @@ tessel-export_2026-06-16_09-00_c4d2e1f0.tessel
   "pattern": "^[a-z0-9][a-z0-9_-]*_[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}_[0-9a-f]{8}(\\.[a-zA-Z0-9]+)?$"
 }
 ```
+
+### 5.8 Integrity Verification Badge
+
+Every compiled Tessel document (document viewer) and Tessel Studio exposes a **persistent integrity badge** — a small, always-visible indicator that shows whether the current file's content matches the CID-SHORT embedded in its filename.
+
+**Badge states:**
+
+| State | Indicator | Meaning |
+|-------|-----------|--------|
+| Verified | ✓ (green) | Recomputed hash matches the CID-SHORT in the filename |
+| Mismatch | ⚠ (amber) | Hash does not match — content may have been modified since naming |
+| Not canonical | — (grey) | Filename does not contain a CID-SHORT (not a CFC filename) |
+| Pending | ⏳ | Verification in progress (used for large files or slow fetch) |
+| Unknown version | ? (amber) | `tessel-cfc-version` in file metadata is not recognized |
+
+**Placement:**
+- **Compiled HTML (document viewer):** badge sits in the document toolbar, adjacent to the Export button. Always visible while the document is open.
+- **Tessel Studio:** badge sits in the Studio toolbar, showing the integrity state of the last saved or downloaded compiled artifact.
+
+**Detail panel (on click):**
+
+Clicking the badge opens a small popover showing:
+- Full filename
+- Parsed CID-SHORT (from filename)
+- Recomputed CID-SHORT (from current content)
+- Match status (pass / fail / unknown version)
+- CFC schema version used for verification
+- “Suggest canonical filename” action (if mismatch or filename is not canonical)
+
+**Verification does not block use.** A mismatch is a warning, not a lockout. The document remains fully functional regardless of badge state.
+
+**Hash source for compiled HTML:**
+The compiled `.html` does not embed its own CID-SHORT in its content (this is the self-reference exclusion rule — see `spec/CANONICAL-FILENAMES.md §3.5`). The CID-SHORT lives only in the filename. To verify, the runtime fetches its own bytes:
+- When loaded over HTTP(S): `fetch(location.href)` retrieves the file bytes automatically.
+- When loaded from `file://` (local disk without a server): `fetch()` may be unavailable or blocked. The runtime displays a “Verify this file” button that prompts the user to re-select the file via the File System Access API (`showOpenFilePicker()`). This is a one-time prompt per session.
+
+**Full spec:** `spec/CANONICAL-FILENAMES.md §6` and §7. Implementation: AD-T-011.
+
+### 5.9 CFC Schema Version
+
+The Canonical File Convention algorithm is versioned. The current version is **v1** (SHA-256, 8-char CID-SHORT, LF normalization for text). The version is embedded in every Tessel artifact at creation time so that verifiers can select the correct algorithm even after future upgrades.
+
+**Version embedding by artifact type:**
+
+| Artifact | Field |
+|----------|------|
+| Compiled `.html` | `<meta name="tessel-cfc-version" content="1">` in `<head>` |
+| Session `manifest.json` | `"cfc_version": 1` top-level field |
+| Encrypted package `meta.json` | `"cfc_version": 1` top-level field |
+| ZIP export | `manifest.json` inside the ZIP, `"cfc_version": 1` |
+
+The version field is part of the artifact content and is therefore **included in the CID-SHORT computation** — it is not excluded from hashing.
+
+**Verifier behavior:** If the version field is absent, default to v1. If the version is unrecognized, display an “unknown version” badge state rather than a false pass or false fail. Full algorithm registry: `spec/CANONICAL-FILENAMES.md §7.4`.
 
 ---
 
@@ -312,7 +368,7 @@ tessel-export_2026-06-16_09-00_c4d2e1f0.tessel
 - `spec/tessel-schema.json` — JSON Schema for the Tessel AST (document tree, field descriptors, conditional nodes)
 - `spec/DESIGN-PRINCIPLES.md` — design principles (extracted from this roadmap and broodforge's DESIGN-SCHEMA.md)
 - `spec/COMPATIBILITY.md` — broodforge compatibility matrix: every broodforge directive mapped to its Tessel equivalent
-- `spec/CANONICAL-FILENAMES.md` — machine-readable schema and human-readable spec for the Canonical File Convention (§5.7)
+- `spec/CANONICAL-FILENAMES.md` — machine-readable schema and human-readable spec for the Canonical File Convention (§5.7–§5.9)
 
 **Acceptance:** The spec is sufficient to implement a conformant compiler in any language without reference to source code.
 
@@ -346,7 +402,9 @@ tessel.js
     ├── ExportEngine     — ZIP builder, AES-256-GCM encryption
     ├── ImportEngine     — ZIP reader, session restore
     ├── AttachmentEngine — drag-drop, file picker, attachment list
-    └── NotesEngine      — notes tree, section CRUD, export (MD/HTML)
+    ├── NotesEngine      — notes tree, section CRUD, export (MD/HTML)
+    └── IntegrityEngine  — CFC filename parse, CID-SHORT recomputation,
+                           versioned algorithm selection, badge state management
 ```
 
 **Key constraints:**
@@ -361,12 +419,15 @@ tessel.js
 - Full field metadata schema parsing (`id=`, `required=`, `required_if=`, `visible_if=`, `validate=`, `warning_message=`, `help_text=`, `placeholder=`, `default=`)
 - Validation engine: field highlighting, warning icons, inline messages, auto-clear
 - Export blocked when required-field validation fails (warning shown)
+- Integrity badge in document toolbar (§5.8): CID-SHORT verification on load, versioned algorithm selection per §5.9
+- `<meta name="tessel-cfc-version" content="1">` embedded in compiler output
 
 **Testing:**
 - Golden-file test suite: compile broodforge's existing `.md` docs, diff against known-good `.html` output
 - Unit tests for each parser module
 - Conformance tests for all directive types
 - Edge cases: nested conditionals, cross-field references in validate expressions
+- Integrity badge tests: verify badge state transitions for matching, mismatching, and non-canonical filenames
 
 ---
 
@@ -380,11 +441,11 @@ tessel.js
 ┌────────────────────────────────────────────────────┐
 │ Tessel Studio                          [☾ Dark]    │
 ├────────────────────────────────────────────────────┤
-│  [Open .md ▼]  [Compile]  [Download HTML]          │
+│  [Open .md ▼]  [Compile]  [Download HTML]  [✓]    │
 ├─────────────────────┬──────────────────────────────┤
 │                     │                              │
 │   Markdown Editor   │   Compiled HTML Preview      │
-│   (CodeMirror or    │   (sandboxed iframe)         │
+│   (CodeMirror or    │   (sandboxed iframe)          │
 │    plain textarea)  │                              │
 │                     │                              │
 └─────────────────────┴──────────────────────────────┘
@@ -395,7 +456,8 @@ tessel.js
 - Edit Markdown in left pane (plain textarea; syntax highlighting is Phase 6)
 - Live compile on edit (debounced 500ms) or manual Compile button
 - Preview rendered HTML in sandboxed iframe on right
-- Download compiled `.html`
+- Download compiled `.html` with CFC-compliant auto-suggested filename (§5.7)
+- Integrity badge in Studio toolbar (§5.8): shows verification state of the last downloaded artifact; updates after each download
 - Reopen a previously compiled `.html` to extract and re-edit its embedded source `.md` (round-trip)
 
 **Round-trip design:** The compiler embeds the source `.md` in a `<script type="text/tessel-source">` tag inside the compiled HTML. Studio reads this tag when a `.html` is opened, enabling edit-recompile cycles without keeping the `.md` separately.
@@ -439,7 +501,7 @@ The local path backend writes session packages to a directory the user selects v
         ├── session.json         — field values, parameters, notes tree
         ├── notes.md             — notes export (human-readable)
         ├── attachments/         — attached files
-        └── manifest.json        — doc title, compiler version, CID of source .md
+        └── manifest.json        — doc title, compiler version, CFC schema version, CID of source .md
 ```
 
 The session folder name follows the Canonical File Convention (§5.7): `<YYYY-MM-DD_HH-MM>_<CID-SHORT>` where the hash is computed from the session.json content.
@@ -503,10 +565,10 @@ sessions/<doc-slug>/<YYYY-MM-DD_HH-MM>_<CID-SHORT>/
 ├── session.json        — field values, parameters, notes tree
 ├── notes.md            — notes export (human-readable)
 ├── attachments/        — attached files
-└── manifest.json       — metadata (doc title, compiler version, CID of source .md)
+└── manifest.json       — metadata (doc title, compiler version, cfc_version, CID of source .md)
 ```
 
-**Integration with compiled documents:** The compiled HTML embeds a `<meta name="tessel-doc-slug">` tag. The Repository Manager reads this to scope session operations to the correct document. A "Connect to Repo" button in the compiled HTML toolbar opens the Repository Manager with the document pre-selected.
+**Integration with compiled documents:** The compiled HTML embeds a `<meta name="tessel-doc-slug">` tag. The Repository Manager reads this to scope session operations to the correct document. A “Connect to Repo” button in the compiled HTML toolbar opens the Repository Manager with the document pre-selected.
 
 ---
 
@@ -525,7 +587,7 @@ sessions/<doc-slug>/<YYYY-MM-DD_HH-MM>_<CID-SHORT>/
 ```
 Encrypted package structure:
   payload.enc     — AES-256-GCM ciphertext of the inner ZIP
-  meta.json       — {v, alg, kdf, iter, salt, iv, inner_name}
+  meta.json       — {v, alg, kdf, iter, salt, iv, inner_name, cfc_version}
   decrypt.html    — standalone in-browser decryptor
   decrypt.py      — Python 3 alternative
   README.txt      — instructions
@@ -538,7 +600,7 @@ Encryption:
   AES-256-GCM — iv=12 bytes random
 ```
 
-The `v` field in `meta.json` identifies the KDF used, so future KDF upgrades are backward-compatible.
+The `v` field in `meta.json` identifies the KDF used, so future KDF upgrades are backward-compatible. The `cfc_version` field identifies the CFC schema version used to compute the package's canonical filename (§5.9).
 
 **Passphrase generation:** EFF-style diceware wordlist (same as broodforge's `passphrase_eff.py`), 4-word minimum, format `adj.noun.adj.noun.NN`.
 
@@ -599,7 +661,7 @@ The JavaScript compiler (`tessel.js`) is the canonical implementation. Python (`
 
 Neither the compiler nor the compiled HTML artifact may reference external CDNs, external scripts, or external fonts. Every compiled `.html` is a single file that works offline.
 
-The only permitted "external" content: user-supplied Markdown source files and user-supplied attachments.
+The only permitted “external” content: user-supplied Markdown source files and user-supplied attachments.
 
 ### AD-T-003 — Round-trip source embedding
 
@@ -626,7 +688,7 @@ Exception: `@if` blocks wrapping entire sections may optionally be collapsed-by-
 
 ### AD-T-007 — Export encryption is not optional when credentials are present
 
-If any credential field was filled during a session, the export flow presents the encryption modal. The user may bypass encryption ("export unencrypted"), but cannot accidentally export credentials in plaintext — the default path encrypts. This matches broodforge behavior exactly.
+If any credential field was filled during a session, the export flow presents the encryption modal. The user may bypass encryption (“export unencrypted”), but cannot accidentally export credentials in plaintext — the default path encrypts. This matches broodforge behavior exactly.
 
 ### AD-T-008 — Git backend abstraction
 
@@ -637,7 +699,7 @@ connect(config)          → BackendHandle
 listSessions(docSlug)    → Session[]
 saveSession(docSlug, payload) → CommitRef
 restoreSession(ref)      → SessionPayload
-browseSession(ref)       → SessionPayload (read-only, don't apply)
+browseSession(ref)       → SessionPayload (read-only, don’t apply)
 ```
 
 The compiled HTML only interacts with this interface, never directly with any provider's REST API. This allows future backends (SFTP, S3, local file system via File System Access API) without changing the compiled runtime.
@@ -673,6 +735,33 @@ CID-SHORT = first 8 lowercase hex characters of SHA-256(file bytes), with text f
 
 **Full specification:** `spec/CANONICAL-FILENAMES.md` and [PAP-FileNaming](https://github.com/david-coneff/PAP/blob/main/pap/modules/PAP-FileNaming/PAP-FileNaming.md).
 
+### AD-T-011 — Integrity verification badge in document viewer and Tessel Studio
+
+The compiled Tessel document viewer and Tessel Studio both expose a **persistent integrity badge** as a first-class UI element. Integrity status is surfaced to the user automatically on file load — not buried in a log or requiring a manual check.
+
+**Rationale:** A file whose content has been silently altered after naming (truncation, mid-transfer corruption, accidental edit) should be detectable without requiring the user to run a hash tool. The badge makes this automatic and always visible. It is also a trust signal when sharing compiled documents: the recipient can see at a glance whether the file they received matches its declared identity.
+
+**Badge behavior:**
+- On document load: `IntegrityEngine` parses the CID-SHORT from `document.title` or `location.href` (filename), reads `tessel-cfc-version` from `<meta>`, fetches the file's own bytes, recomputes the hash, and sets the badge state.
+- The badge does not block document use. A mismatch is a warning, not a lockout.
+- Badge is always visible in the toolbar (not behind a settings toggle).
+- Clicking the badge opens a detail panel (filename, parsed CID-SHORT, recomputed CID-SHORT, match status, schema version).
+
+**CFC schema version selection:**
+- The verifier reads `tessel-cfc-version` from `<meta name="tessel-cfc-version">` in the compiled HTML, or from `manifest.json` in session packages.
+- If the version is **recognized**: use the corresponding algorithm from the registry (`spec/CANONICAL-FILENAMES.md §7.4`).
+- If the version is **unknown**: display the “unknown version” badge state rather than a false pass or false fail. Do not guess.
+- If the version field is **absent**: default to v1.
+
+**Fetching own bytes (compiled HTML):**
+- HTTP(S) origin: `fetch(location.href)` — automatic, no user interaction.
+- `file://` origin: offer a “Verify this file” button that uses `showOpenFilePicker()` to let the user re-select the file. One prompt per session; result cached until the page is refreshed.
+- When bytes cannot be fetched (no permission, unsupported API): badge shows “—” (not canonical state) with tooltip explaining why verification is unavailable.
+
+**Compiler output:** The compiler emits `<meta name="tessel-cfc-version" content="1">` in the `<head>` of every compiled HTML file. This tag is part of the file's content and is included in the CID-SHORT computation (it is not excluded from hashing).
+
+**Self-reference note:** The compiled HTML does not embed its own CID-SHORT in its content. The CID-SHORT lives only in the filename. There is therefore no circular dependency when verifying — the runtime simply hashes the file's bytes as-is. See `spec/CANONICAL-FILENAMES.md §3.5` for the full self-reference exclusion rule.
+
 ---
 
 ## 8. File Layout
@@ -687,7 +776,8 @@ tessel/
 │   ├── DESIGN-PRINCIPLES.md      — design principles
 │   ├── COMPATIBILITY.md          — broodforge directive compatibility matrix
 │   └── CANONICAL-FILENAMES.md    — machine-readable schema + human-readable spec
-│                                   for the Canonical File Convention (§5.7, AD-T-010)
+│                                   for the Canonical File Convention (§5.7–§5.9,
+│                                   AD-T-010, AD-T-011)
 ├── compiler/
 │   ├── tessel.js                 — primary JavaScript compiler + runtime bundle
 │   └── tessel.py                 — Python compiler (successor to md_to_html.py)
@@ -712,8 +802,8 @@ tessel/
 | Phase | Deliverable | Depends On | Est. Complexity |
 |---|---|---|---|
 | 0 | Specification (TESSEL-SPEC.md, tessel-schema.json, CANONICAL-FILENAMES.md) | — | Low |
-| 1 | tessel.js compiler + runtime | Phase 0 | High |
-| 2 | tessel-studio.html (compiler mode) | Phase 1 | Medium |
+| 1 | tessel.js compiler + runtime (incl. IntegrityEngine, badge) | Phase 0 | High |
+| 2 | tessel-studio.html (compiler mode + integrity badge) | Phase 1 | Medium |
 | 3 | Validation runtime (required/visible_if/validate) | Phase 1 | Medium |
 | 4 | tessel-repo-manager.html (local path backend + git backends) | Phase 1, 3 | High |
 | 5 | tessel-vault.html | Phase 1 | Low |

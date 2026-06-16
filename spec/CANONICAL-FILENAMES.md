@@ -6,6 +6,11 @@ rationale, UI requirements, and multi-language reference
 implementations, see
 [PAP-FileNaming](https://github.com/david-coneff/PAP/blob/main/pap/modules/PAP-FileNaming/PAP-FileNaming.md).
 
+**CFC Schema Version: 1** — The algorithm defined in this document is
+version 1 of the Canonical File Convention. The version number is
+embedded in Tessel artifacts at creation time (see §7) so that
+verifiers can select the correct algorithm even after future upgrades.
+
 ---
 
 ## 1. Convention
@@ -213,6 +218,36 @@ async function verifyCanonicalFilename(filename, bytes, fileType = "binary") {
   const actual = await cidShort(bytes, fileType);
   return parsed.cid_short === actual;
 }
+
+/**
+ * IntegrityEngine — badge state computation for the document viewer and Studio.
+ *
+ * @param {string}     filename        — filename of the artifact (from location.href or file picker)
+ * @param {Uint8Array} bytes           — raw bytes of the artifact as loaded
+ * @param {number}     cfcVersion      — version read from tessel-cfc-version meta tag or manifest
+ * @param {"text"|"binary"} fileType
+ * @returns {Promise<{state: "verified"|"mismatch"|"not-canonical"|"unknown-version",
+ *                    parsed_cid: string|null,
+ *                    recomputed_cid: string|null,
+ *                    cfc_version: number}>}
+ */
+async function computeBadgeState(filename, bytes, cfcVersion, fileType = "binary") {
+  const parsed = parseCanonicalFilename(filename);
+  if (!parsed) {
+    return { state: "not-canonical", parsed_cid: null, recomputed_cid: null, cfc_version: cfcVersion };
+  }
+  // Version check — only v1 is currently defined
+  if (cfcVersion !== 1) {
+    return { state: "unknown-version", parsed_cid: parsed.cid_short, recomputed_cid: null, cfc_version: cfcVersion };
+  }
+  const recomputed = await cidShort(bytes, fileType);
+  return {
+    state: recomputed === parsed.cid_short ? "verified" : "mismatch",
+    parsed_cid: parsed.cid_short,
+    recomputed_cid: recomputed,
+    cfc_version: cfcVersion,
+  };
+}
 ```
 
 ---
@@ -232,12 +267,70 @@ async function verifyCanonicalFilename(filename, bytes, fileType = "binary") {
 
 ---
 
-## 6. UX Requirements (summary)
+## 6. UX Requirements
 
 1. **Auto-suggest on save.** Compute the hash from the content before writing, construct the filename, present it as the default save name.
 2. **Update on content change.** If the user modifies content after the suggestion appears, recompute and update the suggestion before the save action completes.
 3. **Verify on load.** When opening a file whose name matches the CFC pattern, recompute the hash and compare. Show a verification indicator (✓) on match or a warning on mismatch.
 4. **Override allowed.** The user may rename freely. If the CID-SHORT component is absent on next open, show a one-line advisory.
+5. **Integrity badge — always visible.** The document viewer (compiled HTML toolbar) and Tessel Studio both display a persistent integrity badge. Badge states:
+
+   | State | Indicator | Meaning |
+   |-------|-----------|--------|
+   | Verified | ✓ green | Hash matches CID-SHORT in filename |
+   | Mismatch | ⚠ amber | Hash does not match — content may have changed after naming |
+   | Not canonical | — grey | Filename has no CID-SHORT (not a CFC filename) |
+   | Pending | ⏳ | Verification in progress |
+   | Unknown version | ? amber | `tessel-cfc-version` in metadata is not recognized |
+
+6. **Badge detail panel (on click).** Clicking the badge opens a popover showing: full filename, parsed CID-SHORT, recomputed CID-SHORT, match status, CFC schema version used. Includes a “Suggest canonical filename” action for mismatch or non-canonical files.
+7. **Versioned verification.** The badge reads `tessel-cfc-version` from the file's metadata and selects the correct algorithm (see §7). Files with unknown versions display the “unknown version” state rather than a false pass or false fail.
+8. **File system access for compiled HTML.** When loaded from `file://` (local disk without a server), the runtime offers a “Verify this file” button that uses `showOpenFilePicker()`. When loaded over HTTP(S), `fetch(location.href)` is used automatically. When neither is available, the badge shows “—” with a tooltip explaining why.
+
+---
+
+## 7. CFC Schema Versioning
+
+### 7.1 Version declaration
+
+The CFC algorithm is versioned. This document defines **CFC Schema v1**:
+
+- Hash function: SHA-256
+- CID-SHORT length: 8 lowercase hex characters (first 8 of 64)
+- Text normalization: LF normalization for plain text and Markdown; raw bytes for all other types
+- Filename pattern: `<title>_<YYYY-MM-DD_HH-MM>_<CID-SHORT>[.<ext>]`
+
+Future versions (v2, v3, …) may change the hash function, CID-SHORT length, or normalization rules. The version number is the key that maps a filename's CID-SHORT to the specific algorithm used to produce it.
+
+### 7.2 How the version is embedded in Tessel artifacts
+
+Each artifact type records the CFC schema version at creation time:
+
+| Artifact | Version field |
+|----------|---------------|
+| Compiled `.html` | `<meta name="tessel-cfc-version" content="1">` in `<head>` |
+| Session `manifest.json` | `"cfc_version": 1` top-level field |
+| Encrypted package `meta.json` | `"cfc_version": 1` top-level field |
+| ZIP export | `manifest.json` inside the ZIP, `"cfc_version": 1` |
+
+The version field is part of the artifact content and is **included in the CID-SHORT computation** — it is not excluded from hashing.
+
+### 7.3 Verifier behavior
+
+When the integrity badge verifies a file:
+
+1. Parse the CID-SHORT from the filename (per §3.3).
+2. Read `tessel-cfc-version` from the artifact's metadata.
+3. Look up the algorithm for that version in the registry (§7.4).
+4. **Known version:** recompute using that version's algorithm; compare to parsed CID-SHORT.
+5. **Unknown version:** display the “unknown version” badge state. Do not display a false pass or false fail.
+6. **Version field absent:** default to v1 and proceed.
+
+### 7.4 Algorithm registry
+
+| Version | Hash function | CID-SHORT length | Text normalization | Defined in |
+|---------|--------------|-----------------|-------------------|------------|
+| 1 | SHA-256 | 8 hex chars | LF-normalize plain text and Markdown; raw bytes for all other types | This document |
 
 ---
 
