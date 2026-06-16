@@ -318,17 +318,34 @@ where:
 
 ```
 spec/schemas/cfc/<version-id>/
-├── spec-blob.txt      — normative algorithm description (what is hashed; no version ID embedded)
-├── implementation.js  — normative JS implementation (same as §4 of this document)
+├── spec-blob.txt      — normative algorithm description (no version ID embedded)
+├── implementation.js  — normative JS implementation
 ├── implementation.py  — Python reference implementation
-└── manifest.json      — {"schema_id": "<version-id>", "defined": "<ISO-8601>",
-                          "cfc_version": "<version-id>"}
-                          (for CFC: cfc_version == schema_id — it is self-hashing)
+└── manifest.json      — trust root for the schema package:
+                          {
+                            "schema_id": "<version-id>",
+                            "defined": "<ISO-8601>",
+                            "cfc_version": "<version-id>",
+                            "spec_blob_sha256": "<64-hex>",
+                            "spec_blob_cid_short": "<8-hex>",
+                            "file_hashes": {
+                              "spec-blob.txt":     {"sha256": "<64-hex>", "cid_short": "<8-hex>", "file_type": "text"},
+                              "implementation.js": {"sha256": "<64-hex>", "cid_short": "<8-hex>", "file_type": "binary"},
+                              "implementation.py": {"sha256": "<64-hex>", "cid_short": "<8-hex>", "file_type": "binary"}
+                            }
+                          }
+                          manifest.json records SHA-256 of every other file in the folder.
+                          It does NOT record its own hash (it is the trust root — §3.5).
+                          For CFC: cfc_version == schema_id (self-hashing base layer).
 ```
 
-This folder is sufficient for any verifier to reproduce the algorithm exactly, without reference to the current version of this document. Non-CFC schemas that use CFC for their version ID computation reference the specific CFC version in their own `manifest.json`.
+This folder, anchored by `manifest.json`, is sufficient for any loader to:
+1. Reproduce the algorithm exactly, without reference to the current version of this document.
+2. Verify the integrity of every file in the package before using it (§7.6).
 
-**Self-hashing for v1:** Because v1 is the first CFC version, there is no predecessor algorithm. v1's spec blob is hashed using v1's own algorithm (SHA-256, LF-normalize text). This is not circular — the version ID is not embedded in the blob. For CFC, `manifest.json` sets `cfc_version` to the schema's own ID to indicate self-hashing.
+Non-CFC schemas that use CFC for their version ID computation reference the specific CFC version in their own `manifest.json`.
+
+**Self-hashing for v1:** v1's spec blob is hashed using v1's own algorithm (SHA-256, LF-normalize text). Not circular — the blob does not contain the version ID. `manifest.json` sets `cfc_version` to the schema's own ID to document that this version is self-hashing.
 
 **Current version:** `cfc-v_2026-06-16_20-02_00_49b99195`
 
@@ -337,7 +354,7 @@ This folder is sufficient for any verifier to reproduce the algorithm exactly, w
 - Text normalization: LF normalization for `.md`, `.txt`, `.csv`; raw bytes for all other types
 - Filename pattern: `<title>_<YYYY-MM-DD_HH-MM_SS>_<CID-SHORT>[.<ext>]`
 - Spec blob: `spec/schemas/cfc/cfc-v_2026-06-16_20-02_00_49b99195/spec-blob.txt`
-- Spec blob CID-SHORT: `49b99195` (verifiable: SHA-256(LF-normalize(spec-blob.txt)))
+- Spec blob CID-SHORT: `49b99195`
 - Defined: 2026-06-16 20:02:00 UTC
 
 ### 7.2 How the version is embedded in Tessel artifacts
@@ -353,7 +370,7 @@ Each artifact type records the CFC version ID at creation time:
 
 The version field is part of the artifact content and is **included in the CID-SHORT computation** — it is not excluded from hashing.
 
-### 7.3 Verifier behavior
+### 7.3 Artifact verifier behavior (integrity badge)
 
 When the integrity badge verifies a file:
 
@@ -379,7 +396,7 @@ When a new CFC algorithm version is defined, **all five locations must be update
    - `spec-blob.txt` — normative algorithm description (no version ID embedded)
    - `implementation.js` — normative JS implementation
    - `implementation.py` — Python reference implementation
-   - `manifest.json` — `{"schema_id": "<id>", "defined": "<ISO-8601>", "cfc_version": "<id>"}`
+   - `manifest.json` — complete trust root including `file_hashes` for all other files in the folder
 3. `tools/tessel-integrity-checker.html` — add an entry to `CFC_ALGORITHM_LIBRARY`
 4. `tessel.js` `IntegrityEngine.CFC_ALGORITHM_LIBRARY` — add the same entry
 5. Update any documents that embed the current CFC version ID if they should adopt the new version
@@ -387,6 +404,29 @@ When a new CFC algorithm version is defined, **all five locations must be update
 **Permanence (normative):** Version entries are never removed or modified after the version has been used to produce artifacts. A version entry may be annotated with a deprecation notice, but the `compute()` function must remain present and correct. Any file produced by any version of Tessel must be verifiable by any future version of the integrity checker or `IntegrityEngine`.
 
 **Spec blob integrity.** Each spec blob is independently verifiable: hash `spec/schemas/cfc/<version-id>/spec-blob.txt` using that version's own algorithm (LF-normalized as a `.txt` file), take the first 8 hex chars, and confirm they match the CID-SHORT in the version ID. This is the algorithm proving it can integrity-check its own definition.
+
+### 7.6 Schema Package Integrity Verification (normative loader requirement)
+
+Any Tessel component that loads a versioned schema — an interpreter, renderer, compiler, or runtime — **must verify the integrity of the entire schema folder** before using any file from it. This is a hard requirement, not an optional check.
+
+**Verification procedure (normative):**
+
+1. Locate `manifest.json` in the schema version folder.
+2. Parse `manifest.json`. Confirm `schema_id` matches the folder name (the version ID you intended to load). If not, abort.
+3. Resolve the CFC algorithm version to use for hashing: read `manifest.json["cfc_version"]`; look it up in the CFC_ALGORITHM_LIBRARY. If unrecognized, abort.
+4. For each entry in `manifest.json["file_hashes"]`:
+   a. Read the file from the schema folder.
+   b. Hash it using the CFC algorithm from step 3, applying the `file_type` recorded in the entry (`"text"` = LF-normalize; `"binary"` = raw bytes).
+   c. Compare the full 64-char hex SHA-256 digest to the recorded `sha256`.
+   d. If any file fails: **abort with error**. Do not proceed with the schema.
+5. Verify spec-blob.txt specifically: confirm the first 8 chars of its SHA-256 match the CID-SHORT embedded in the `schema_id`. This anchors the entire package to its version identity.
+6. All files verified. The schema package is intact. Proceed with loading.
+
+**Why manifest.json itself is not hashed:** `manifest.json` is the trust root — it records the hashes of all other files. Hashing it would require a secondary trust anchor. Instead, `manifest.json` is anchored transitively: its `spec_blob_sha256` field must match step 5's verification, which ties the manifest to the version ID. A loader that needs additional assurance that `manifest.json` has not been tampered with can verify it against the git tree hash for the repository.
+
+**What this prevents:** A schema folder that has been silently corrupted — disk error, truncated download, version mismatch between files (e.g., `spec-blob.txt` from v1 but `implementation.js` from v2) — will fail at the boundary of the load operation. The compiler or renderer will never silently apply a broken schema and produce incorrect output.
+
+**Hard fail, not warning:** If verification fails at any step, the loader must surface an error to the user or caller and stop. Proceeding with an unverified schema is not permitted even if the failure appears minor (e.g., a trailing newline difference).
 
 ---
 
