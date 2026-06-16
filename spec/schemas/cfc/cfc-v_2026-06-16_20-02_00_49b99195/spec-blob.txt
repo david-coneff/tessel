@@ -1,0 +1,7 @@
+CFC Algorithm v1 -- Normative Specification
+
+Hash function: SHA-256
+CID-SHORT: first 8 lowercase hex characters of the 64-character hex digest
+Text normalization: UTF-8 with CRLF and CR normalized to LF before hashing
+Text types: .md .txt .csv
+Binary types: all others (raw bytes, no normalization)

@@ -1,0 +1,8 @@
+{
+  "schema_id": "cfc-v_2026-06-16_20-02_00_49b99195",
+  "cfc_version": "cfc-v_2026-06-16_20-02_00_49b99195",
+  "defined": "2026-06-16T20:02:00Z",
+  "description": "Canonical File Convention algorithm v1. Self-hashing: cfc_version equals schema_id because CFC is the base layer and applies its own algorithm to its own spec-blob.txt.",
+  "spec_blob_sha256": "49b991954f8c087a1274b36018802b9b863b284cb36e029c6bad234aa7c99e94",
+  "spec_blob_cid_short": "49b99195"
+}
