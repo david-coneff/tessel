@@ -22,8 +22,7 @@ Broodforge is an implementation domain built on top of Tessel. The framework is 
 - Split-pane layout: document left, session notes right (draggable divider, width persisted)
 - Dark/light theme toggle (localStorage)
 - Sticky toolbar with TOC, nav, attach, export, import, clear buttons
-- Collapsible sections (`--collapsible` flag wraps `h2` sections in `<details>`)
-- Collapsible subsections at every heading level, with +/- child expand controls
+- Collapsible sections (`--collapsible` flag wraps every heading level in `<details>`)
 - Live template parameters: `{{VAR}}` and `{{VAR=default}}` in code blocks
 - Copy button on all code blocks; resolves credentials before copying
 - Persistent note fields: `@field[Label]` (single-line), `@area[Label]` (multi-line)
@@ -35,7 +34,13 @@ Broodforge is an implementation domain built on top of Tessel. The framework is 
 - Filename suggest fields: `@filename[Label|template]`
 - Directory path fields: `@dir[Label|VAR]`
 - Dropdown: `@select[Label|Opt1|Opt2|...]`
-- Auto-generated TOC (collapsible, active-section highlighting)
+- Auto-generated TOC with tiered h2/h3/h4 numbered entries and active-section highlighting
+  - Outer container is `<details id="bf-toc" open>` with collapse-all/expand-all toggle in header
+  - h2 entries with h3 children always get a `<details class="bf-toc-section">` branch toggle
+  - h3 entries get a branch toggle only when they have ≥ 3 h4 children
+  - Branch toggles: bordered `+`/`−` box rendered via CSS `::before`, left-aligned inside a flex summary
+  - `≡ Contents` navbar button opens a dropdown panel cloning the TOC; uses `display:flex` on summary to keep toggle left of title (overrides `display:block` on panel links)
+  - `#bf-toc .bf-toc-l2/l3` specificity required to beat the `#bf-toc ul{padding:0}` reset
 - Session notes tree: recursive collapsible sections, editable titles, per-node textarea, state persisted
 - Export: ZIP package (notes.md + record.json + attachments/), with AES-256-GCM encryption when credentials are present
 - Import: restore session from previously exported ZIP
