@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tessel Integrity Checker</title>
+<style>
+:root {
+  --bg: #1a1a1a;
+  --surface: #242424;
+  --border: #3a3a3a;
+  --text: #e8e8e8;
+  --muted: #888;
+  --green: #4caf6e;
+  --amber: #e0a040;
+  --red: #e05050;
+  --grey: #666;
+  --accent: #5b9bd5;
+  --card-bg: #2a2a2a;
+  --drop-bg: #1e2a1e;
+  --drop-border: #3a5a3a;
+}
+[data-theme=light] {
+  --bg: #f5f5f5;
+  --surface: #ffffff;
+  --border: #ddd;
+  --text: #222;
+  --muted: #777;
+  --green: #2e7d4f;
+  --amber: #b07020;
+  --red: #c03030;
+  --grey: #888;
+  --accent: #2a6aaa;
+  --card-bg: #fafafa;
+  --drop-bg: #f0f8f0;
+  --drop-border: #5a9a5a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+}
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.header h1 { font-size: 16px; font-weight: 600; }
+.header .sub { color: var(--muted); font-size: 12px; flex: 1; }
+.theme-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.main { max-width: 860px; margin: 0 auto; padding: 24px 20px; }
+.drop-zone {
+  border: 2px dashed var(--drop-border);
+  background: var(--drop-bg);
+  border-radius: 10px;
+  padding: 36px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  margin-bottom: 20px;
+}
+.drop-zone.dragover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--drop-bg));
+}
+.drop-zone p { color: var(--muted); margin-top: 8px; font-size: 13px; }
+.drop-zone .icon { font-size: 32px; }
+.pick-btn {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 8px 20px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+#file-input { display: none; }
+.results { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+.result-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.result-card .card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+}
+.result-card .card-header:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.badge-verified { background: color-mix(in srgb, var(--green) 15%, transparent); color: var(--green); }
+.badge-mismatch { background: color-mix(in srgb, var(--amber) 15%, transparent); color: var(--amber); }
+.badge-not-canonical { background: color-mix(in srgb, var(--grey) 15%, transparent); color: var(--grey); }
+.badge-unknown-version { background: color-mix(in srgb, var(--amber) 15%, transparent); color: var(--amber); }
+.badge-pending { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
+.filename { font-family: monospace; font-size: 13px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-toggle { color: var(--muted); font-size: 11px; }
+.card-body { padding: 12px 14px; border-top: 1px solid var(--border); font-size: 12px; }
+.card-body table { border-collapse: collapse; width: 100%; }
+.card-body td { padding: 3px 0; vertical-align: top; }
+.card-body td:first-child { color: var(--muted); white-space: nowrap; padding-right: 16px; width: 140px; }
+.card-body code { font-family: monospace; background: var(--surface); padding: 1px 4px; border-radius: 3px; font-size: 11px; }
+.match-yes { color: var(--green); font-weight: 600; }
+.match-no { color: var(--red); font-weight: 600; }
+.section-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.library-section {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.library-header {
+  background: var(--surface);
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.library-header:hover { background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
+.library-body { padding: 12px 14px; border-top: 1px solid var(--border); font-size: 12px; }
+.version-entry { margin-bottom: 12px; }
+.version-entry:last-child { margin-bottom: 0; }
+.version-id { font-family: monospace; font-size: 12px; color: var(--accent); font-weight: 600; }
+.version-meta { color: var(--muted); margin-top: 2px; }
+.version-spec { font-family: monospace; font-size: 11px; color: var(--muted); margin-top: 1px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>Tessel Integrity Checker</h1>
+    <div class="sub">Verify CFC filenames offline — zero dependencies</div>
+  </div>
+  <button class="theme-btn" onclick="toggleTheme()">&#9680; Theme</button>
+</div>
+<div class="main">
+  <div class="drop-zone" id="drop-zone"
+       ondragover="onDragOver(event)"
+       ondragleave="onDragLeave(event)"
+       ondrop="onDrop(event)">
+    <div class="icon">&#x1F4C1;</div>
+    <p>Drag and drop files here to verify their canonical filenames</p>
+    <p>Checks CID-SHORT against actual file content using the CFC algorithm</p>
+    <button class="pick-btn" onclick="document.getElementById('file-input').click()">Choose Files</button>
+    <input type="file" id="file-input" multiple onchange="onFilePick(event)">
+  </div>
+
+  <div id="results" class="results"></div>
+
+  <div class="section-title">CFC Algorithm Version Library</div>
+  <div class="library-section">
+    <div class="library-header" onclick="toggleLibrary()">
+      <span>Registered Versions (permanent, append-only)</span>
+      <span id="lib-toggle" class="card-toggle">&#9660;</span>
+    </div>
+    <div class="library-body" id="library-body">
+      <!-- populated by renderLibrary() -->
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CFC ALGORITHM VERSION LIBRARY
+// Permanent, append-only. Never remove or modify entries.
+// When a new CFC version is defined, append a new entry here
+// AND update: CANONICAL-FILENAMES.md §7.4, tessel.js IntegrityEngine,
+// spec/schemas/cfc/<new-version-id>/ folder (5-location rule).
+// ============================================================
+const CFC_ALGORITHM_LIBRARY = {
+  "cfc-v_2026-06-16_20-02_00_49b99195": {
+    label: "SHA-256 / 8-char CID-SHORT / LF-normalize .md .txt .csv",
+    defined: "2026-06-16",
+    specRef: "spec/schemas/cfc/cfc-v_2026-06-16_20-02_00_49b99195/spec-blob.txt",
+    specBlobSha256: "49b991954f8c087a1274b36018802b9b863b284cb36e029c6bad234aa7c99e94",
+    specBlobCidShort: "49b99195",
+    async compute(bytes, cfcFileType) {
+      let b = bytes;
+      if (cfcFileType === "text") {
+        const s = new TextDecoder("utf-8").decode(bytes)
+          .replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+        b = new TextEncoder().encode(s);
+      }
+      const digest = await crypto.subtle.digest("SHA-256", b);
+      return Array.from(new Uint8Array(digest))
+        .map(x => x.toString(16).padStart(2, "0"))
+        .join("").slice(0, 8);
+    }
+  },
+  // v2 template (uncomment and fill when defining a new CFC version):
+  // "cfc-v_YYYY-MM-DD_HH-MM_SS_CIDSHORT": {
+  //   label: "...",
+  //   defined: "YYYY-MM-DD",
+  //   specRef: "spec/schemas/cfc/cfc-v_.../spec-blob.txt",
+  //   specBlobSha256: "...",
+  //   specBlobCidShort: "...",
+  //   async compute(bytes, cfcFileType) { ... }
+  // },
+};
+
+const DEFAULT_VERSION = "cfc-v_2026-06-16_20-02_00_49b99195";
+
+// ============================================================
+// FILENAME PARSING
+// Pattern: <title>_YYYY-MM-DD_HH-MM_SS_<8-hex>[.<ext>]
+// ============================================================
+function parseFilename(name) {
+  const m = name.match(
+    /^([a-z0-9][a-z0-9_-]*)_([0-9]{4}-[0-9]{2}-[0-9]{2})_([0-9]{2}-[0-9]{2})_([0-9]{2})_([0-9a-f]{8})(?:\.([a-zA-Z0-9]+))?$/
+  );
+  if (!m) return null;
+  return {
+    title: m[1],
+    timestamp: `${m[2]}_${m[3]}_${m[4]}`,
+    cid_short: m[5],
+    extension: m[6] ?? null,
+  };
+}
+
+// ============================================================
+// VERSION DETECTION
+// HTML files: read tessel-cfc-version meta tag from first 8KB.
+// All others: default to v1.
+// ============================================================
+async function detectVersion(bytes, filename) {
+  const ext = (filename.split(".").pop() || "").toLowerCase();
+  if (ext === "html" || ext === "htm") {
+    const head = new TextDecoder("utf-8", { fatal: false }).decode(bytes.slice(0, 8192));
+    const m =
+      head.match(/<meta[^>]+name=["']tessel-cfc-version["'][^>]+content=["']([^"']+)["']/i) ||
+      head.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']tessel-cfc-version["']/i);
+    if (m) return { version: m[1].trim(), source: "meta tag" };
+  }
+  return { version: DEFAULT_VERSION, source: "default (v1)" };
+}
+
+// ============================================================
+// FILE TYPE DETECTION (for LF normalization decision)
+// ============================================================
+function detectFileType(ext) {
+  if (!ext) return "binary";
+  if (["md", "txt", "csv"].includes(ext.toLowerCase())) return "text";
+  return "binary";
+}
+
+// ============================================================
+// CORE VERIFICATION
+// ============================================================
+async function verifyFile(file) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const name = file.name;
+  const parsed = parseFilename(name);
+
+  if (!parsed) {
+    return { state: "not-canonical", filename: name, parsed: null,
+             versionId: null, versionSource: null, recomputed: null };
+  }
+
+  const { version: versionId, source: versionSource } = await detectVersion(bytes, name);
+  const algo = CFC_ALGORITHM_LIBRARY[versionId];
+
+  if (!algo) {
+    return { state: "unknown-version", filename: name, parsed,
+             versionId, versionSource, recomputed: null };
+  }
+
+  const fileType = detectFileType(parsed.extension);
+  const recomputed = await algo.compute(bytes, fileType);
+  const state = recomputed === parsed.cid_short ? "verified" : "mismatch";
+
+  return { state, filename: name, parsed, versionId, versionSource, recomputed, fileType };
+}
+
+// ============================================================
+// UI
+// ============================================================
+const LABELS = {
+  verified:       { text: "✓ Verified",       cls: "badge-verified" },
+  mismatch:       { text: "⚠ Mismatch",       cls: "badge-mismatch" },
+  "not-canonical":{ text: "— Not Canonical",  cls: "badge-not-canonical" },
+  "unknown-version":{ text: "? Unknown Version", cls: "badge-unknown-version" },
+  pending:        { text: "⏳ Pending",        cls: "badge-pending" },
+};
+
+let cardCount = 0;
+
+function createCard(result) {
+  const id = ++cardCount;
+  const lbl = LABELS[result.state] || LABELS.pending;
+  const card = document.createElement("div");
+  card.className = "result-card";
+
+  const detailRows = buildDetailRows(result);
+
+  card.innerHTML = `
+    <div class="card-header" onclick="toggleCard(${id})">
+      <span class="badge ${lbl.cls}">${lbl.text}</span>
+      <span class="filename" title="${esc(result.filename)}">${esc(result.filename)}</span>
+      <span class="card-toggle" id="toggle-${id}">&#9660;</span>
+    </div>
+    <div class="card-body" id="body-${id}" style="display:none">
+      <table>${detailRows}</table>
+    </div>`;
+  return card;
+}
+
+function buildDetailRows(r) {
+  const rows = [];
+  const row = (k, v) => rows.push(`<tr><td>${k}</td><td>${v}</td></tr>`);
+
+  row("File", `<code>${esc(r.filename)}</code>`);
+
+  if (r.state === "not-canonical") {
+    row("Result", "Filename does not match the CFC pattern. No CID-SHORT to verify.");
+    return rows.join("");
+  }
+
+  row("Title", `<code>${esc(r.parsed.title)}</code>`);
+  row("Timestamp", `<code>${esc(r.parsed.timestamp)}</code>`);
+  row("CID-SHORT (filename)", `<code>${esc(r.parsed.cid_short)}</code>`);
+  row("Extension", `<code>${r.parsed.extension ?? "(none)"}</code>`);
+
+  if (r.state === "unknown-version") {
+    row("CFC Version", `<code>${esc(r.versionId)}</code> <span class="match-no">(not in library)</span>`);
+    row("Version source", esc(r.versionSource));
+    row("Result", '<span class="match-no">Cannot verify — algorithm for this version is not registered.</span>');
+    return rows.join("");
+  }
+
+  row("CID-SHORT (recomputed)", `<code>${esc(r.recomputed)}</code>`);
+  row("File type", `<code>${esc(r.fileType)}</code> ${r.fileType === "text" ? "(LF-normalized before hashing)" : "(raw bytes)"}`);
+  row("CFC version", `<code>${esc(r.versionId)}</code>`);
+  row("Version source", esc(r.versionSource));
+
+  if (r.state === "verified") {
+    row("Match", '<span class="match-yes">✓ CID-SHORT matches — content is intact</span>');
+  } else {
+    row("Match", `<span class="match-no">✗ Mismatch — content has changed since this filename was assigned</span><br><small>Expected <code>${esc(r.parsed.cid_short)}</code>, got <code>${esc(r.recomputed)}</code></small>`);
+  }
+
+  return rows.join("");
+}
+
+function esc(s) {
+  return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function toggleCard(id) {
+  const body = document.getElementById(`body-${id}`);
+  const tog = document.getElementById(`toggle-${id}`);
+  const open = body.style.display === "";
+  body.style.display = open ? "none" : "";
+  tog.innerHTML = open ? "&#9660;" : "&#9650;";
+}
+
+async function processFiles(files) {
+  const container = document.getElementById("results");
+  for (const file of files) {
+    // Add pending card immediately
+    const pending = document.createElement("div");
+    pending.className = "result-card";
+    pending.innerHTML = `<div class="card-header"><span class="badge badge-pending">⏳ Pending</span><span class="filename">${esc(file.name)}</span></div>`;
+    container.prepend(pending);
+
+    try {
+      const result = await verifyFile(file);
+      const card = createCard(result);
+      container.replaceChild(card, pending);
+    } catch (err) {
+      pending.innerHTML = `<div class="card-header"><span class="badge badge-mismatch">⚠ Error</span><span class="filename">${esc(file.name)}</span></div><div class="card-body">${esc(String(err))}</div>`;
+    }
+  }
+}
+
+// ============================================================
+// DRAG AND DROP
+// ============================================================
+function onDragOver(e) {
+  e.preventDefault();
+  document.getElementById("drop-zone").classList.add("dragover");
+}
+function onDragLeave(e) {
+  document.getElementById("drop-zone").classList.remove("dragover");
+}
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById("drop-zone").classList.remove("dragover");
+  processFiles([...e.dataTransfer.files]);
+}
+function onFilePick(e) {
+  processFiles([...e.target.files]);
+  e.target.value = "";
+}
+
+// ============================================================
+// THEME
+// ============================================================
+function toggleTheme() {
+  const html = document.documentElement;
+  html.dataset.theme = html.dataset.theme === "light" ? "" : "light";
+  try { localStorage.setItem("tessel-ic-theme", html.dataset.theme); } catch(_) {}
+}
+try {
+  const t = localStorage.getItem("tessel-ic-theme");
+  if (t) document.documentElement.dataset.theme = t;
+} catch(_) {}
+
+// ============================================================
+// LIBRARY PANEL
+// ============================================================
+function toggleLibrary() {
+  const body = document.getElementById("library-body");
+  const tog = document.getElementById("lib-toggle");
+  const open = body.style.display === "";
+  body.style.display = open ? "none" : "";
+  tog.innerHTML = open ? "&#9660;" : "&#9650;";
+}
+
+function renderLibrary() {
+  const body = document.getElementById("library-body");
+  const entries = Object.entries(CFC_ALGORITHM_LIBRARY);
+  body.innerHTML = entries.map(([id, v]) => `
+    <div class="version-entry">
+      <div class="version-id">${esc(id)}</div>
+      <div class="version-meta">${esc(v.label)} &mdash; defined ${esc(v.defined)}</div>
+      <div class="version-spec">spec: ${esc(v.specRef)}</div>
+      <div class="version-spec">spec-blob SHA-256: <code>${esc(v.specBlobSha256)}</code></div>
+    </div>`).join("");
+}
+
+renderLibrary();
+</script>
+</body>
+</html>
