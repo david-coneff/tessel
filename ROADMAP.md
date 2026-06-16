@@ -1,6 +1,6 @@
 # Tessel — Implementation Roadmap
 
-Last updated: 2026-06-15
+Last updated: 2026-06-16
 
 ---
 
@@ -48,7 +48,7 @@ Broodforge is an implementation domain built on top of Tessel. The framework is 
 These are the Tessel extensions identified in the proposal:
 
 | Feature | Status |
-|---|---|
+|---|---------|
 | `@date[Label]` field type | Not implemented |
 | `@if(expr) ... @endif` conditional sections | Not implemented |
 | Field metadata schema (`id=`, `required=`, `required_if=`, `visible_if=`, `validate=`, `warning_message=`, `help_text=`, `placeholder=`, `save_to_session=`, `default=`) | Not implemented |
@@ -81,6 +81,10 @@ These are drawn from the broodforge design schema and PAP.
 **Python is an alternate path, not a prerequisite.** The primary compiler is JavaScript, running in the browser. Python (`md_to_html.py`) remains as an equivalent alternative for systems with Python available. Both must produce identical output.
 
 **Studio is a convenience layer.** The visual editor is built on top of the compiler, not the other way around. The compiler is the foundation.
+
+**Local-first with cloud sync.** Local path save is the primary, zero-dependency backend for session persistence. A user-configured local folder is the default; cloud backends (GitHub, GitLab, Forgejo) are complementary. A session saved to the local path must work even when the network is unavailable. See AD-T-009 and Phase 4.
+
+**Content-addressed filenames.** When the system auto-suggests a filename for an export or session archive, it must include a content hash (CID-SHORT) so the filename itself carries integrity information. The format is `<title>_<YYYY-MM-DD_HH-MM>_<CID-SHORT>[.<ext>]`. See §5.7 and `spec/CANONICAL-FILENAMES.md`.
 
 ---
 
@@ -198,7 +202,7 @@ A field directive may be followed by an optional metadata block:
 Supported metadata keys:
 
 | Key | Description |
-|---|---|
+|---|---------|
 | `id` | Stable identifier for cross-field references |
 | `default` | Default value (also sets initial state) |
 | `required` | Boolean; field must be filled before export |
@@ -250,6 +254,48 @@ Visual feedback:
 - Auto-clear when corrected
 - Export blocked until all required fields pass
 
+### 5.7 Canonical File Naming
+
+When Tessel suggests a filename for any saved artifact — a session archive, export package, or compiled document — the suggested name must follow the Canonical File Convention (CFC):
+
+```
+<title>_<YYYY-MM-DD_HH-MM>_<CID-SHORT>[.<ext>]
+```
+
+where:
+- `<title>` — the document slug (snake_case or kebab-case, lowercase, no spaces)
+- `<YYYY-MM-DD_HH-MM>` — UTC timestamp to the minute
+- `<CID-SHORT>` — first 8 lowercase hex characters of SHA-256(file contents)
+- `[.<ext>]` — appropriate file extension (`.zip`, `.tessel`, `.html`, etc.)
+
+**Examples:**
+
+```
+proxmox-bootstrap_2026-06-16_14-30_a3f89b21.zip
+tessel-export_2026-06-16_09-00_c4d2e1f0.tessel
+```
+
+**Hash computation (text files):** Normalize line endings to LF before hashing. All other types (ZIP, binary): hash raw bytes.
+
+**The filename is computed from the content that will be written.** The system builds the content in memory, computes the CID-SHORT, constructs the filename, then writes. If the user modifies content before confirming, the suggestion updates.
+
+**Verification on load:** When a file with a canonical filename is opened, the runtime recomputes the hash and compares. If the hash does not match the filename, a warning is displayed: "Filename hash mismatch — file may have been modified."
+
+**Override allowed:** Users may override the suggested filename. When the CID-SHORT component is absent, the runtime notes this on next open.
+
+**Machine-readable schema and full specification:** `spec/CANONICAL-FILENAMES.md` (see §8). The CFC is defined as a universal PAP principle in [PAP-FileNaming](https://github.com/david-coneff/PAP/blob/main/pap/modules/PAP-FileNaming/PAP-FileNaming.md).
+
+**JSON Schema (filename validation regex):**
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tessel-canonical-filename",
+  "type": "string",
+  "pattern": "^[a-z0-9][a-z0-9_-]*_[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}_[0-9a-f]{8}(\\.[a-zA-Z0-9]+)?$"
+}
+```
+
 ---
 
 ## 6. Phased Implementation Plan
@@ -266,6 +312,7 @@ Visual feedback:
 - `spec/tessel-schema.json` — JSON Schema for the Tessel AST (document tree, field descriptors, conditional nodes)
 - `spec/DESIGN-PRINCIPLES.md` — design principles (extracted from this roadmap and broodforge's DESIGN-SCHEMA.md)
 - `spec/COMPATIBILITY.md` — broodforge compatibility matrix: every broodforge directive mapped to its Tessel equivalent
+- `spec/CANONICAL-FILENAMES.md` — machine-readable schema and human-readable spec for the Canonical File Convention (§5.7)
 
 **Acceptance:** The spec is sufficient to implement a conformant compiler in any language without reference to source code.
 
@@ -372,15 +419,62 @@ tessel.js
 
 ### Phase 4 — Repository Manager (`tessel-repo-manager.html`)
 
-**Goal:** A standalone HTML tool for configuring a git backend and providing Save/Restore/Browse session operations to compiled Tessel documents.
+**Goal:** A standalone HTML tool for configuring save backends and providing Save/Restore/Browse session operations to compiled Tessel documents. The **local path backend** is the primary backend and requires no credentials or network access. Cloud git backends are complementary.
 
-**Supported backends:**
-- GitHub (REST API v3)
-- GitLab (REST API v4)
-- Forgejo / Gitea (compatible REST API)
-- Local provider (future: Service Worker + Origin Private File System)
+**Supported backends (in priority order):**
 
-**Credential storage:**
+1. **Local Path** (default) — saves session packages to a user-configured folder on the local machine, using the File System Access API (directory picker or Origin Private File System). No credentials required. Works offline. This is the recommended starting backend.
+2. **GitHub** (REST API v3)
+3. **GitLab** (REST API v4)
+4. **Forgejo / Gitea** (compatible REST API)
+
+**Local Path Backend (Phase 4 — primary):**
+
+The local path backend writes session packages to a directory the user selects via `showDirectoryPicker()` (File System Access API). This directory persists across browser sessions when the user grants standing permission.
+
+```
+<local-folder>/
+└── <doc-slug>/
+    └── <YYYY-MM-DD_HH-MM>_<CID-SHORT>/
+        ├── session.json         — field values, parameters, notes tree
+        ├── notes.md             — notes export (human-readable)
+        ├── attachments/         — attached files
+        └── manifest.json        — doc title, compiler version, CID of source .md
+```
+
+The session folder name follows the Canonical File Convention (§5.7): `<YYYY-MM-DD_HH-MM>_<CID-SHORT>` where the hash is computed from the session.json content.
+
+**Default folder configuration:** The Repository Manager stores the chosen local folder handle in IndexedDB so the user is not prompted for the directory on every save — only on first setup or if permission lapses.
+
+**Session operations (local and cloud):**
+
+```
+Save Session
+  → collect current document state (localStorage key namespace)
+  → serialize to session.json
+  → compute CID-SHORT of session.json content
+  → write to <local-folder>/<doc-slug>/<timestamp>_<CID-SHORT>/
+  → (if cloud backend configured) commit to git repo under same path
+  → display save path and CID-SHORT
+
+Restore Session
+  → list available session directories for current document
+  → user selects entry
+  → read session.json
+  → apply to current document (equivalent to ZIP import)
+
+Browse Sessions
+  → paginated list of all sessions for current document
+  → shows: timestamp, CID-SHORT, operator note, field count, attachment count
+  → open any session for inspection without applying it
+
+Export as ZIP
+  → package current session as ZIP
+  → suggest filename: <doc-slug>_<timestamp>_<CID-SHORT>.zip  (§5.7)
+  → encrypt if credentials present (Vault — Phase 5)
+```
+
+**Credential storage (cloud backends only):**
 
 ```
 Personal Access Token (PAT)
@@ -402,31 +496,10 @@ The user may configure a workspace password (and optionally TOTP) to protect the
 - Password + TOTP (TOTP secret stored separately, encrypted under password)
 - No protection (PAT stored plaintext in IndexedDB — suitable for single-user machines)
 
-**Session operations:**
+**Session package format (applies to both local and git backends):**
 
 ```
-Save Session
-  → collect current document state (localStorage key namespace)
-  → serialize to session.json
-  → commit to git repo under sessions/<doc-slug>/<timestamp>/session.json
-  → display commit hash and timestamp
-
-Restore Session
-  → list available session commits for current document
-  → user selects entry
-  → fetch session.json from git
-  → apply to current document (equivalent to ZIP import)
-
-Browse Sessions
-  → paginated list of all sessions for current document
-  → shows: timestamp, operator note, field count, attachment count
-  → open any session for inspection without applying it
-```
-
-**Session package format (git-stored):**
-
-```
-sessions/<doc-slug>/<YYYY-MM-DD_HH-MM-SS>/
+sessions/<doc-slug>/<YYYY-MM-DD_HH-MM>_<CID-SHORT>/
 ├── session.json        — field values, parameters, notes tree
 ├── notes.md            — notes export (human-readable)
 ├── attachments/        — attached files
@@ -569,24 +642,59 @@ browseSession(ref)       → SessionPayload (read-only, don't apply)
 
 The compiled HTML only interacts with this interface, never directly with any provider's REST API. This allows future backends (SFTP, S3, local file system via File System Access API) without changing the compiled runtime.
 
+### AD-T-009 — Local path as the default save backend
+
+The local file system (via File System Access API `showDirectoryPicker()`) is the **default** save backend — not a future or optional feature. This satisfies the PAP-Resilience Offline Resilience Principle: the system must be able to read and write session state when disconnected from the network.
+
+**Rationale:** Git backends require authentication, a network connection, and a configured remote. Local path requires none of these. A new user should be able to save their first session immediately, with zero configuration except choosing a folder.
+
+**Implementation notes:**
+- Folder handle stored in IndexedDB under the Tessel origin — survives page refresh, does not require re-picking the directory while permission is active
+- On browsers where File System Access API is unavailable, fall back to a `<a download>` ZIP export (the same mechanism already used for export packages)
+- Standing permission is requested once and remembered; if the browser drops the permission, the user is re-prompted
+
+**Session folder naming:** sessions are written under `<doc-slug>/<YYYY-MM-DD_HH-MM>_<CID-SHORT>/` where CID-SHORT is the hash of `session.json` (AD-T-010).
+
+### AD-T-010 — Content-addressed auto-suggested filenames (Canonical File Convention)
+
+Any filename suggested by the Tessel runtime or tools for a user-facing save action follows the Canonical File Convention (§5.7):
+
+```
+<title>_<YYYY-MM-DD_HH-MM>_<CID-SHORT>[.<ext>]
+```
+
+CID-SHORT = first 8 lowercase hex characters of SHA-256(file bytes), with text files normalized to LF before hashing.
+
+**Rationale:** Timestamps alone are not sufficient identifiers — two saves in the same minute produce the same timestamp. The content hash makes each filename unique and also functions as an integrity verifier after the fact. If a file is corrupted or truncated, the hash in the filename no longer matches.
+
+**Scope:** Applied to all user-facing save suggestions: session archive folders (local backend), ZIP export filenames, encrypted package filenames, compiled `.html` download names when a document is saved from Studio.
+
+**Not applied to:** Living documents whose names are stable human identifiers (`README.md`, `ROADMAP.md`, `spec/TESSEL-SPEC.md`). Those files are intentionally mutable; a hash-in-name would change every save.
+
+**Full specification:** `spec/CANONICAL-FILENAMES.md` and [PAP-FileNaming](https://github.com/david-coneff/PAP/blob/main/pap/modules/PAP-FileNaming/PAP-FileNaming.md).
+
 ---
 
 ## 8. File Layout
 
 ```
 tessel/
+├── assets/
+│   └── tessel-icon.svg           — project icon (einstein / hat monotile)
 ├── spec/
 │   ├── TESSEL-SPEC.md            — Tessel Markdown Specification
 │   ├── tessel-schema.json        — JSON Schema for the Tessel AST
 │   ├── DESIGN-PRINCIPLES.md      — design principles
-│   └── COMPATIBILITY.md          — broodforge directive compatibility matrix
+│   ├── COMPATIBILITY.md          — broodforge directive compatibility matrix
+│   └── CANONICAL-FILENAMES.md    — machine-readable schema + human-readable spec
+│                                   for the Canonical File Convention (§5.7, AD-T-010)
 ├── compiler/
 │   ├── tessel.js                 — primary JavaScript compiler + runtime bundle
 │   └── tessel.py                 — Python compiler (successor to md_to_html.py)
 ├── studio/
 │   └── tessel-studio.html        — standalone Studio app
 ├── tools/
-│   ├── tessel-repo-manager.html  — git session management
+│   ├── tessel-repo-manager.html  — session management (local path + git backends)
 │   └── tessel-vault.html         — export encryption/decryption
 ├── tests/
 │   ├── golden/                   — golden .md→.html pairs for conformance
@@ -603,11 +711,11 @@ tessel/
 
 | Phase | Deliverable | Depends On | Est. Complexity |
 |---|---|---|---|
-| 0 | Specification (TESSEL-SPEC.md, tessel-schema.json) | — | Low |
+| 0 | Specification (TESSEL-SPEC.md, tessel-schema.json, CANONICAL-FILENAMES.md) | — | Low |
 | 1 | tessel.js compiler + runtime | Phase 0 | High |
 | 2 | tessel-studio.html (compiler mode) | Phase 1 | Medium |
 | 3 | Validation runtime (required/visible_if/validate) | Phase 1 | Medium |
-| 4 | tessel-repo-manager.html + git session backend | Phase 1, 3 | High |
+| 4 | tessel-repo-manager.html (local path backend + git backends) | Phase 1, 3 | High |
 | 5 | tessel-vault.html | Phase 1 | Low |
 | 6 | Tessel Studio full (WYSIWYG, form designer) | Phase 2, 3 | Very High |
 | 7 | Broodforge migration to tessel.js | Phase 1, 3 | Medium |
