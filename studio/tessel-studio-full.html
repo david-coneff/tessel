@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tessel Studio (Full)</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #1a1b1e; --surface: #24262b; --border: #3a3c42; --text: #d4d4d4;
+  --muted: #7a7d87; --accent: #5b8af0; --green: #4caf50; --red: #e05555;
+  --gold: #d4a847; --yellow: #f0c040; --surface2: #2d2f35;
+}
+body.light { --bg:#f0f0f2; --surface:#fff; --border:#d0d2d8; --text:#1a1b1e; --surface2:#e8e9ec; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-size:13px; background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+/* Header */
+header { background:var(--surface); border-bottom:1px solid var(--border); padding:0 12px; height:44px; display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.logo { font-weight:700; font-size:14px; color:var(--gold); }
+.logo span { font-weight:300; color:var(--muted); font-size:12px; margin-left:4px; }
+.sep { width:1px; height:20px; background:var(--border); }
+.spacer { flex:1; }
+button { background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:4px; padding:4px 10px; font-size:11px; cursor:pointer; white-space:nowrap; }
+button:hover { border-color:var(--accent); }
+button.active { background:var(--accent); border-color:#3d6dd4; color:#fff; }
+button:disabled { opacity:.4; cursor:default; }
+select { background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:4px; padding:4px 8px; font-size:11px; }
+/* Body layout */
+.body { flex:1; display:flex; overflow:hidden; }
+/* Left panel (palette + outline) */
+.left-panel { width:220px; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; overflow:hidden; transition:width .15s; }
+.left-panel.collapsed { width:0; overflow:hidden; }
+.panel-tabs { display:flex; border-bottom:1px solid var(--border); }
+.panel-tab { flex:1; padding:7px 4px; font-size:11px; font-weight:600; text-align:center; cursor:pointer; color:var(--muted); border-bottom:2px solid transparent; }
+.panel-tab.active { color:var(--text); border-bottom-color:var(--accent); }
+.panel-body { flex:1; overflow-y:auto; }
+/* Field palette */
+.palette-section { padding:8px; }
+.palette-section h4 { font-size:10px; font-weight:700; text-transform:uppercase; color:var(--muted); letter-spacing:.5px; margin-bottom:6px; }
+.field-card { background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:6px 8px; margin-bottom:4px; cursor:pointer; display:flex; align-items:center; gap:8px; }
+.field-card:hover { border-color:var(--accent); background:rgba(91,138,240,.06); }
+.field-card .fc-icon { font-size:15px; flex-shrink:0; }
+.field-card .fc-info { flex:1; min-width:0; }
+.field-card .fc-name { font-size:11px; font-weight:600; }
+.field-card .fc-desc { font-size:10px; color:var(--muted); margin-top:1px; }
+/* Section outline */
+.outline-item { padding:5px 10px; font-size:11px; cursor:pointer; border-left:2px solid transparent; }
+.outline-item:hover { background:var(--surface2); border-left-color:var(--accent); }
+.outline-item.h1 { font-weight:700; }
+.outline-item.h2 { padding-left:16px; color:var(--muted); }
+.outline-item.h3 { padding-left:24px; color:var(--muted); font-size:10px; }
+/* Editor area */
+.editor-area { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.editor-main { flex:1; display:flex; overflow:hidden; }
+.editor-pane { flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden; }
+.pane-label { background:var(--surface); border-bottom:1px solid var(--border); padding:4px 10px; font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; display:flex; align-items:center; gap:6px; }
+.pane-label .pill { background:var(--accent); color:#fff; border-radius:3px; padding:1px 5px; font-size:9px; display:none; }
+.pane-label .pill.show { display:inline; }
+textarea#editor { flex:1; background:var(--bg); border:none; outline:none; color:var(--text); font-family:'Cascadia Code','Fira Code',monospace; font-size:12px; line-height:1.7; padding:14px; resize:none; tab-size:2; }
+.drag-bar { width:5px; background:var(--border); cursor:col-resize; flex-shrink:0; }
+.drag-bar:hover { background:var(--accent); }
+iframe#preview { flex:1; border:none; }
+/* Properties strip */
+.props-strip { background:var(--surface); border-top:1px solid var(--border); padding:6px 12px; font-size:11px; display:flex; align-items:center; gap:10px; flex-shrink:0; min-height:32px; overflow:hidden; }
+.props-strip .ps-label { color:var(--muted); font-weight:600; white-space:nowrap; }
+.props-strip input { background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:3px; padding:2px 6px; font-size:11px; width:140px; }
+.props-strip input:focus { outline:none; border-color:var(--accent); }
+.props-strip select { font-size:11px; padding:2px 6px; }
+.ps-field { display:flex; align-items:center; gap:5px; }
+/* Batch panel */
+.batch-panel { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; align-items:center; justify-content:center; }
+.batch-panel.show { display:flex; }
+.batch-box { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:24px; width:500px; max-width:90vw; display:flex; flex-direction:column; gap:12px; }
+.batch-box h3 { font-size:13px; font-weight:700; }
+.batch-list { background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:8px; min-height:80px; max-height:200px; overflow-y:auto; font-size:11px; line-height:1.8; }
+.batch-item { display:flex; justify-content:space-between; }
+.batch-item .bi-name { color:var(--text); font-family:monospace; }
+.batch-item .bi-status { font-size:10px; }
+.bi-ok  { color:var(--green); }
+.bi-err { color:var(--red); }
+.bi-wait { color:var(--muted); }
+.batch-drop { border:2px dashed var(--border); border-radius:5px; padding:20px; text-align:center; color:var(--muted); font-size:12px; cursor:pointer; }
+.batch-drop:hover,.batch-drop.over { border-color:var(--accent); color:var(--text); }
+.status-bar { font-size:10px; color:var(--muted); padding:2px 12px; background:var(--surface); border-top:1px solid var(--border); flex-shrink:0; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">Tessel Studio <span>Full</span></span>
+  <div class="sep"></div>
+  <button id="btn-palette" class="active" title="Field palette + outline">⊞ Palette</button>
+  <button id="btn-open-md">Open .md</button>
+  <button id="btn-open-html">Open .html</button>
+  <input type="file" id="pick-md"   accept=".md"   style="display:none">
+  <input type="file" id="pick-html" accept=".html" style="display:none">
+  <select id="insert-field" title="Insert field at cursor">
+    <option value="">⊕ Insert field…</option>
+    <option value="field">@field — text input</option>
+    <option value="area">@area — multi-line</option>
+    <option value="date">@date — date picker</option>
+    <option value="credential">@credential — masked</option>
+    <option value="totp">@totp — TOTP secret</option>
+    <option value="select">@select — dropdown</option>
+    <option value="radio">@radio — radio group</option>
+    <option value="check">@check — checkboxes</option>
+    <option value="table">@table — data table</option>
+    <option value="parse">@parse — regex capture</option>
+    <option value="filename">@filename — filename builder</option>
+    <option value="dir">@dir — directory path</option>
+  </select>
+  <div class="sep"></div>
+  <button id="btn-compile" title="Ctrl+Enter">Compile</button>
+  <button id="btn-download">↓ .html</button>
+  <button id="btn-batch">⊟ Batch</button>
+  <div class="spacer"></div>
+  <button id="btn-theme">☀</button>
+</header>
+
+<div class="body">
+
+  <!-- ---- LEFT PANEL ---- -->
+  <div class="left-panel" id="left-panel">
+    <div class="panel-tabs">
+      <div class="panel-tab active" data-panel="palette">Fields</div>
+      <div class="panel-tab" data-panel="outline">Outline</div>
+    </div>
+    <div class="panel-body" id="panel-palette">
+      <!-- generated by JS -->
+    </div>
+    <div class="panel-body" id="panel-outline" style="display:none">
+      <!-- generated by JS -->
+    </div>
+  </div>
+
+  <!-- ---- EDITOR + PREVIEW ---- -->
+  <div class="editor-area">
+    <div class="editor-main">
+      <div class="editor-pane">
+        <div class="pane-label">
+          Markdown
+          <span class="pill" id="dirty-pill">unsaved</span>
+        </div>
+        <textarea id="editor" spellcheck="false" placeholder="# Document title
+
+@field[Field Label]{
+    id=my_field
+    required=true
+    help_text=Enter a value
+}
+
+## Section
+
+Content here…"></textarea>
+      </div>
+      <div class="drag-bar" id="drag-bar"></div>
+      <div class="editor-pane">
+        <div class="pane-label">Preview</div>
+        <iframe id="preview" sandbox="allow-scripts allow-same-origin allow-forms allow-modals"></iframe>
+      </div>
+    </div>
+    <div class="props-strip" id="props-strip">
+      <span class="ps-label">—</span>
+    </div>
+    <div class="status-bar" id="status-bar">Ready</div>
+  </div>
+</div>
+
+<!-- BATCH PANEL -->
+<div class="batch-panel" id="batch-panel">
+  <div class="batch-box">
+    <h3>⊟ Batch Compile</h3>
+    <div class="batch-drop" id="batch-drop">Drop .md files here to compile all</div>
+    <input type="file" id="batch-pick" accept=".md" multiple style="display:none">
+    <div class="batch-list" id="batch-list"><span style="color:var(--muted)">No files yet</span></div>
+    <div style="display:flex;gap:8px">
+      <button id="btn-batch-pick">Browse files…</button>
+      <button class="active" id="btn-batch-run" disabled>⚙ Compile All</button>
+      <button id="btn-batch-close" style="margin-left:auto">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="../dist/tessel.bundle.js"></script>
+<script>
+(function(){
+'use strict';
+
+// ---- state ----
+var _source = '';
+var _compiled = '';
+var _filename = 'document';
+var _compileTimer = null;
+var _batchFiles = [];
+
+// ---- field templates ----
+var FIELD_DEFS = [
+  { type:'field',      icon:'✏️',  name:'Text field',    desc:'Single-line input',
+    tpl:function(id){ return '@field[Label]{\n    id='+id+'\n    placeholder=Enter value\n}'; } },
+  { type:'area',       icon:'📝',  name:'Text area',     desc:'Multi-line input',
+    tpl:function(id){ return '@area[Label]{\n    id='+id+'\n}'; } },
+  { type:'date',       icon:'📅',  name:'Date',          desc:'Date picker',
+    tpl:function(id){ return '@date[Label]{\n    id='+id+'\n    default=today\n}'; } },
+  { type:'credential', icon:'🔑',  name:'Credential',    desc:'Masked secret field',
+    tpl:function(id){ return '@credential[Label|'+id.toUpperCase()+']{\n    id='+id+'\n}'; } },
+  { type:'totp',       icon:'🔐',  name:'TOTP',          desc:'Time-based OTP secret',
+    tpl:function(id){ return '@totp[Label|'+id.toUpperCase()+']{\n    id='+id+'\n}'; } },
+  { type:'select',     icon:'▾',   name:'Dropdown',      desc:'Single-select options',
+    tpl:function(id){ return '@select[Label|Option 1|Option 2|Option 3]{\n    id='+id+'\n}'; } },
+  { type:'radio',      icon:'◉',   name:'Radio',         desc:'Choose one option',
+    tpl:function(id){ return '@radio[Label|Option 1|Option 2]{\n    id='+id+'\n}'; } },
+  { type:'check',      icon:'☑',   name:'Checkboxes',    desc:'Choose multiple',
+    tpl:function(id){ return '@check[Label|Option 1|Option 2]{\n    id='+id+'\n}'; } },
+  { type:'table',      icon:'⊞',   name:'Table',         desc:'Tabular data entry',
+    tpl:function(id){ return '@table[Label|Column 1|Column 2]{\n    id='+id+'\n}'; } },
+  { type:'parse',      icon:'⟬⟭',  name:'Parse capture', desc:'Regex field extractor',
+    tpl:function(id){ return '@parse[Label|(.+)|'+id+']{\n    id='+id+'\n}'; } },
+  { type:'filename',   icon:'📄',  name:'Filename',      desc:'Filename template builder',
+    tpl:function(id){ return '@filename[Label|{{'+id.toUpperCase()+'}}]{\n    id='+id+'\n}'; } },
+  { type:'dir',        icon:'📁',  name:'Directory',     desc:'Directory path input',
+    tpl:function(id){ return '@dir[Label|'+id.toUpperCase()+']{\n    id='+id+'\n}'; } },
+];
+
+// ---- slugify for generated IDs ----
+function slugify(s){ return (s||'field').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,32)||'field'; }
+function uniqueId(base){
+  var n=1, id=base;
+  while(document.getElementById('_palid_'+id)){ id=base+'_'+n; n++; }
+  return id;
+}
+
+// ---- build palette ----
+(function buildPalette(){
+  var container=document.getElementById('panel-palette');
+  var sections={
+    'Input fields':['field','area','date'],
+    'Secrets':['credential','totp'],
+    'Choice':['select','radio','check'],
+    'Advanced':['table','parse','filename','dir'],
+  };
+  Object.keys(sections).forEach(function(grp){
+    var sec=document.createElement('div'); sec.className='palette-section';
+    var h=document.createElement('h4'); h.textContent=grp; sec.appendChild(h);
+    sections[grp].forEach(function(type){
+      var def=FIELD_DEFS.find(function(d){return d.type===type;});
+      if(!def)return;
+      var card=document.createElement('div'); card.className='field-card'; card.title='Click to insert';
+      card.innerHTML='<span class="fc-icon">'+def.icon+'</span><div class="fc-info"><div class="fc-name">'+def.name+'</div><div class="fc-desc">'+def.desc+'</div></div>';
+      card.addEventListener('click',function(){ insertField(def); });
+      sec.appendChild(card);
+    });
+    container.appendChild(sec);
+  });
+})();
+
+function insertField(def){
+  var ed=document.getElementById('editor');
+  var id=slugify(def.name);
+  var tpl='\n'+def.tpl(id)+'\n';
+  var start=ed.selectionStart, end=ed.selectionEnd;
+  // Insert at cursor, on its own line
+  var before=ed.value.slice(0,start);
+  if(before.length && !before.endsWith('\n')) tpl='\n'+tpl;
+  var after=ed.value.slice(end);
+  ed.value=before+tpl+after;
+  var pos=before.length+tpl.length;
+  ed.setSelectionRange(pos,pos);
+  ed.focus();
+  onEdit();
+}
+
+// ---- insert-field select ----
+document.getElementById('insert-field').addEventListener('change',function(){
+  var v=this.value; if(!v)return;
+  var def=FIELD_DEFS.find(function(d){return d.type===v;});
+  if(def) insertField(def);
+  this.value='';
+});
+
+// ---- theme ----
+(function(){
+  var btn=document.getElementById('btn-theme');
+  if(localStorage.getItem('tsf:theme')==='light'){document.body.classList.add('light');btn.textContent='☾';}
+  btn.addEventListener('click',function(){
+    var l=document.body.classList.toggle('light');
+    btn.textContent=l?'☾':'☀';
+    localStorage.setItem('tsf:theme',l?'light':'dark');
+  });
+})();
+
+// ---- palette toggle ----
+document.getElementById('btn-palette').addEventListener('click',function(){
+  var panel=document.getElementById('left-panel');
+  panel.classList.toggle('collapsed');
+  this.classList.toggle('active',!panel.classList.contains('collapsed'));
+});
+
+// ---- panel tabs ----
+document.querySelectorAll('.panel-tab').forEach(function(tab){
+  tab.addEventListener('click',function(){
+    document.querySelectorAll('.panel-tab').forEach(function(t){t.classList.remove('active');});
+    tab.classList.add('active');
+    document.getElementById('panel-palette').style.display=tab.dataset.panel==='palette'?'':'none';
+    document.getElementById('panel-outline').style.display=tab.dataset.panel==='outline'?'':'none';
+  });
+});
+
+// ---- compile ----
+function compile(){
+  var src=document.getElementById('editor').value;
+  if(!src.trim()) return;
+  try{
+    _compiled=Tessel.compile(src);
+    var fr=document.getElementById('preview');
+    fr.srcdoc=_compiled;
+    updateOutline(src);
+    setStatus('Compiled — '+Math.round(_compiled.length/1024)+' KB');
+    document.getElementById('dirty-pill').classList.remove('show');
+  }catch(e){
+    setStatus('Compile error: '+e.message, true);
+  }
+}
+
+function setStatus(msg,err){
+  var bar=document.getElementById('status-bar');
+  bar.textContent=msg;
+  bar.style.color=err?'var(--red)':'var(--muted)';
+}
+
+document.getElementById('btn-compile').addEventListener('click',compile);
+document.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();compile();}});
+
+// ---- auto-compile ----
+function onEdit(){
+  document.getElementById('dirty-pill').classList.add('show');
+  clearTimeout(_compileTimer);
+  _compileTimer=setTimeout(compile,500);
+  updatePropsStrip();
+  // save draft
+  try{localStorage.setItem('tsf:draft',document.getElementById('editor').value);}catch(e){}
+}
+document.getElementById('editor').addEventListener('input',onEdit);
+document.getElementById('editor').addEventListener('keydown',function(e){
+  if(e.key==='Tab'){e.preventDefault();var s=this.selectionStart,end=this.selectionEnd;this.value=this.value.slice(0,s)+'  '+this.value.slice(end);this.selectionStart=this.selectionEnd=s+2;}
+});
+
+// ---- outline ----
+function updateOutline(src){
+  var container=document.getElementById('panel-outline');
+  container.innerHTML='';
+  var lines=src.split('\n');
+  lines.forEach(function(line,i){
+    var m=line.match(/^(#{1,3}) (.+)/);
+    if(!m)return;
+    var lvl=m[1].length, text=m[2].replace(/[*_`]/g,'').trim();
+    var div=document.createElement('div');
+    div.className='outline-item h'+lvl;
+    div.textContent=text;
+    div.addEventListener('click',function(){ scrollEditorToLine(i); });
+    container.appendChild(div);
+  });
+  if(!container.children.length){
+    container.innerHTML='<div style="padding:12px;font-size:11px;color:var(--muted)">No headings found</div>';
+  }
+}
+
+function scrollEditorToLine(lineNum){
+  var ed=document.getElementById('editor');
+  var lines=ed.value.split('\n');
+  var pos=lines.slice(0,lineNum).reduce(function(a,l){return a+l.length+1;},0);
+  ed.focus();
+  ed.setSelectionRange(pos,pos+lines[lineNum].length);
+  // Scroll editor to that position
+  var lineHeight=ed.scrollHeight/lines.length;
+  ed.scrollTop=Math.max(0,lineNum*lineHeight - ed.clientHeight/2);
+}
+
+// ---- field properties strip ----
+function updatePropsStrip(){
+  var ed=document.getElementById('editor');
+  var pos=ed.selectionStart;
+  var text=ed.value;
+  // Find the line at cursor
+  var lineStart=text.lastIndexOf('\n',pos-1)+1;
+  var lineEnd=text.indexOf('\n',pos); if(lineEnd<0)lineEnd=text.length;
+  var line=text.slice(lineStart,lineEnd);
+  var strip=document.getElementById('props-strip');
+
+  // Check if cursor is inside a @field block
+  var fieldMatch=line.match(/^@(\w+)\[([^\]]*)\]/);
+  if(fieldMatch){
+    var type=fieldMatch[1], label=fieldMatch[2].split('|')[0];
+    strip.innerHTML='';
+    addProp(strip,'Type','<span style="color:var(--accent);font-weight:700">@'+type+'</span>');
+    addPropInput(strip,'Label',label,function(v){ patchFieldAttr(lineStart,'label',v,fieldMatch[0]); });
+    // Check for metadata block
+    var afterLine=text.slice(lineEnd);
+    var metaMatch=afterLine.match(/^\n\{([\s\S]*?)\n\}/);
+    if(metaMatch){
+      var meta=parseMetaBlock(metaMatch[1]);
+      if(meta.id!==undefined) addPropInput(strip,'ID',meta.id||'',function(v){ patchMeta(lineEnd,metaMatch[0],'id',v); });
+      if(meta.required!==undefined) addPropInput(strip,'Required',meta.required||'',function(v){ patchMeta(lineEnd,metaMatch[0],'required',v); });
+      if(meta.visible_if!==undefined) addPropInput(strip,'Visible if',meta.visible_if||'',function(v){ patchMeta(lineEnd,metaMatch[0],'visible_if',v); });
+    }
+    addProp(strip,'','<span style="color:var(--muted);font-size:10px">Line '+(text.slice(0,lineStart).split('\n').length)+'</span>');
+    return;
+  }
+
+  var headMatch=line.match(/^(#{1,6}) (.+)/);
+  if(headMatch){
+    strip.innerHTML='<span class="ps-label">H'+headMatch[1].length+'</span><span style="color:var(--text)">'+headMatch[2].replace(/[<>]/g,'')+'</span>';
+    return;
+  }
+
+  strip.innerHTML='<span class="ps-label">Ln '+(text.slice(0,lineStart).split('\n').length)+'</span><span style="color:var(--muted)">'+Math.round(text.length/1024*10)/10+' KB</span>';
+}
+
+function addProp(strip,label,html){
+  var div=document.createElement('div'); div.className='ps-field';
+  if(label) div.innerHTML='<span class="ps-label">'+label+'</span>';
+  var span=document.createElement('span'); span.innerHTML=html; div.appendChild(span);
+  strip.appendChild(div);
+}
+function addPropInput(strip,label,val,onChange){
+  var div=document.createElement('div'); div.className='ps-field';
+  div.innerHTML='<span class="ps-label">'+label+'</span>';
+  var inp=document.createElement('input'); inp.type='text'; inp.value=val;
+  inp.addEventListener('change',function(){onChange(inp.value);});
+  div.appendChild(inp); strip.appendChild(div);
+}
+function parseMetaBlock(block){
+  var out={};
+  block.split('\n').forEach(function(l){
+    var m=l.trim().match(/^(\w+)\s*=\s*(.*)$/);
+    if(m) out[m[1]]=m[2].trim();
+  });
+  return out;
+}
+function patchFieldAttr(lineStart,attr,val,origDirective){
+  // Replace the directive label
+  var ed=document.getElementById('editor');
+  var text=ed.value;
+  var lineEnd=text.indexOf('\n',lineStart); if(lineEnd<0)lineEnd=text.length;
+  var line=text.slice(lineStart,lineEnd);
+  var newLine=line.replace(/^(@\w+\[)[^\]]*(\])/, function(_,a,b){ return a+val+b; });
+  ed.value=text.slice(0,lineStart)+newLine+text.slice(lineEnd);
+  onEdit();
+}
+function patchMeta(lineEnd,origMeta,key,val){
+  var ed=document.getElementById('editor');
+  var text=ed.value;
+  var newMeta=origMeta.replace(new RegExp('(^|\n)\\s*'+key+'\\s*=\\s*.*'),function(m,pre){ return (pre||'')+key+'='+val; });
+  if(newMeta===origMeta){
+    // key not found — append before closing }
+    newMeta=origMeta.replace('\n}','\n    '+key+'='+val+'\n}');
+  }
+  ed.value=text.slice(0,lineEnd)+newMeta+text.slice(lineEnd+origMeta.length);
+  onEdit();
+}
+
+// Track cursor movement for props strip
+document.getElementById('editor').addEventListener('keyup',updatePropsStrip);
+document.getElementById('editor').addEventListener('click',updatePropsStrip);
+
+// ---- open files ----
+document.getElementById('btn-open-md').addEventListener('click',function(){document.getElementById('pick-md').click();});
+document.getElementById('btn-open-html').addEventListener('click',function(){document.getElementById('pick-html').click();});
+
+document.getElementById('pick-md').addEventListener('change',function(){
+  var f=this.files[0]; if(!f)return;
+  _filename=f.name.replace(/\.md$/i,'');
+  var rd=new FileReader(); rd.onload=function(e){
+    document.getElementById('editor').value=e.target.result;
+    onEdit();
+  }; rd.readAsText(f); this.value='';
+});
+
+document.getElementById('pick-html').addEventListener('change',function(){
+  var f=this.files[0]; if(!f)return;
+  _filename=f.name.replace(/\.html$/i,'');
+  var rd=new FileReader(); rd.onload=function(e){
+    var html=e.target.result;
+    var m=html.match(/<script[^>]+type="text\/tessel-source"[^>]*data-encoding="base64"[^>]*>([\s\S]*?)<\/script>/i)
+           ||html.match(/<script[^>]+data-encoding="base64"[^>]+type="text\/tessel-source"[^>]*>([\s\S]*?)<\/script>/i);
+    if(m){
+      try{
+        var b64=m[1].trim();
+        var bytes=Uint8Array.from(atob(b64),function(c){return c.charCodeAt(0);});
+        var src=new TextDecoder('utf-8').decode(bytes);
+        document.getElementById('editor').value=src;
+        onEdit(); setStatus('Round-trip: source extracted from .html');
+      }catch(ex){setStatus('Round-trip failed: '+ex.message,true);}
+    } else { setStatus('No tessel source found in this HTML.',true); }
+  }; rd.readAsText(f); this.value='';
+});
+
+// ---- download ----
+document.getElementById('btn-download').addEventListener('click',function(){
+  if(!_compiled){compile();}
+  if(!_compiled)return;
+  var blob=new Blob([_compiled],{type:'text/html'});
+  var url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=_filename+'.html';document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(url);},1200);
+});
+
+// ---- drag resize ----
+(function(){
+  var bar=document.getElementById('drag-bar');
+  var dragging=false, startX=0, startW=0;
+  var edPane=bar.previousElementSibling;
+  bar.addEventListener('mousedown',function(e){dragging=true;startX=e.clientX;startW=edPane.offsetWidth;e.preventDefault();});
+  document.addEventListener('mousemove',function(e){if(!dragging)return;var w=startW+(e.clientX-startX);edPane.style.flex='none';edPane.style.width=Math.max(150,w)+'px';});
+  document.addEventListener('mouseup',function(){dragging=false;});
+})();
+
+// ---- batch compile ----
+document.getElementById('btn-batch').addEventListener('click',function(){document.getElementById('batch-panel').classList.add('show');});
+document.getElementById('btn-batch-close').addEventListener('click',function(){document.getElementById('batch-panel').classList.remove('show');});
+document.getElementById('btn-batch-pick').addEventListener('click',function(){document.getElementById('batch-pick').click();});
+
+document.getElementById('batch-drop').addEventListener('dragover',function(e){e.preventDefault();this.classList.add('over');});
+document.getElementById('batch-drop').addEventListener('dragleave',function(){this.classList.remove('over');});
+document.getElementById('batch-drop').addEventListener('drop',function(e){
+  e.preventDefault();this.classList.remove('over');
+  handleBatchFiles(Array.from(e.dataTransfer.files).filter(function(f){return f.name.endsWith('.md');}));
+});
+document.getElementById('batch-pick').addEventListener('change',function(){
+  handleBatchFiles(Array.from(this.files)); this.value='';
+});
+
+function handleBatchFiles(files){
+  _batchFiles=files;
+  var list=document.getElementById('batch-list');
+  list.innerHTML='';
+  files.forEach(function(f){
+    var div=document.createElement('div'); div.className='batch-item'; div.id='bi-'+f.name;
+    div.innerHTML='<span class="bi-name">'+f.name+'</span><span class="bi-status bi-wait">pending</span>';
+    list.appendChild(div);
+  });
+  document.getElementById('btn-batch-run').disabled=!files.length;
+}
+
+document.getElementById('btn-batch-run').addEventListener('click',async function(){
+  if(!_batchFiles.length)return;
+  this.disabled=true;
+  for(var i=0;i<_batchFiles.length;i++){
+    var f=_batchFiles[i];
+    var row=document.getElementById('bi-'+f.name);
+    var st=row&&row.querySelector('.bi-status');
+    if(st) st.textContent='compiling…';
+    try{
+      var src=await f.text();
+      var html=Tessel.compile(src);
+      var blob=new Blob([html],{type:'text/html'});
+      var url=URL.createObjectURL(blob),a=document.createElement('a');
+      a.href=url;a.download=f.name.replace(/\.md$/i,'.html');document.body.appendChild(a);a.click();document.body.removeChild(a);
+      setTimeout(function(){URL.revokeObjectURL(url);},1200);
+      if(st){st.textContent='✓ '+Math.round(html.length/1024)+' KB';st.className='bi-status bi-ok';}
+    }catch(e){
+      if(st){st.textContent='✗ '+e.message.slice(0,40);st.className='bi-status bi-err';}
+    }
+    await new Promise(function(r){setTimeout(r,80);});
+  }
+  document.getElementById('btn-batch-run').disabled=false;
+});
+
+// ---- restore draft ----
+(function(){
+  var draft=localStorage.getItem('tsf:draft');
+  if(draft){ document.getElementById('editor').value=draft; compile(); }
+})();
+
+updatePropsStrip();
+
+})();
+</script>
+</body>
+</html>

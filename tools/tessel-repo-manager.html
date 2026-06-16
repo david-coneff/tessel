@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tessel Repo Manager</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #1a1b1e; --surface: #24262b; --border: #3a3c42; --text: #d4d4d4;
+  --muted: #7a7d87; --accent: #5b8af0; --green: #4caf50; --red: #e05555;
+  --gold: #d4a847; --yellow: #f0c040;
+}
+body.light { --bg:#f0f0f2; --surface:#fff; --border:#d0d2d8; --text:#1a1b1e; }
+body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-size:13px; background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; }
+header { background:var(--surface); border-bottom:1px solid var(--border); padding:0 20px; height:48px; display:flex; align-items:center; gap:12px; }
+.logo { font-weight:700; font-size:15px; color:var(--gold); letter-spacing:.5px; }
+.sub  { color:var(--muted); font-size:12px; }
+.spacer { flex:1; }
+.lock-badge { font-size:11px; background:var(--border); border-radius:3px; padding:2px 8px; }
+.lock-badge.open { color:var(--green); }
+.lock-badge.closed { color:var(--red); }
+button { background:var(--surface); border:1px solid var(--border); color:var(--text); border-radius:4px; padding:5px 12px; font-size:12px; cursor:pointer; }
+button:hover { background:var(--border); border-color:var(--accent); }
+button.primary { background:var(--accent); border-color:#3d6dd4; color:#fff; }
+button.primary:hover { background:#3d6dd4; }
+button.danger  { background:var(--red); border-color:#c04040; color:#fff; }
+button.danger:hover  { background:#c04040; }
+button:disabled { opacity:.4; cursor:default; }
+input[type=text],input[type=password],input[type=url],select,textarea {
+  background:var(--bg); border:1px solid var(--border); color:var(--text);
+  border-radius:4px; padding:6px 10px; font-size:12px; width:100%;
+  font-family:inherit;
+}
+input:focus,select:focus,textarea:focus { outline:none; border-color:var(--accent); }
+textarea { resize:vertical; font-family:'Cascadia Code','Fira Code',monospace; }
+.tabs { display:flex; border-bottom:1px solid var(--border); background:var(--surface); padding:0 20px; }
+.tab { padding:12px 18px; font-size:12px; font-weight:600; cursor:pointer; border-bottom:2px solid transparent; color:var(--muted); }
+.tab.active { border-bottom-color:var(--accent); color:var(--text); }
+.pane { display:none; padding:24px 20px; flex:1; overflow-y:auto; }
+.pane.active { display:block; }
+.section { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:14px; margin-bottom:16px; }
+.section h3 { font-size:13px; font-weight:700; }
+.field { display:flex; flex-direction:column; gap:5px; }
+label.lbl { font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+.row { display:flex; gap:8px; }
+.row input,.row select { flex:1; }
+.status { font-size:12px; padding:8px 12px; border-radius:4px; background:var(--bg); border:1px solid var(--border); display:none; line-height:1.6; white-space:pre-wrap; word-break:break-all; }
+.status.ok  { border-color:var(--green); color:var(--green); display:block; }
+.status.err { border-color:var(--red);   color:var(--red);   display:block; }
+.status.inf { border-color:var(--accent); color:var(--text);  display:block; }
+.session-list { display:flex; flex-direction:column; gap:6px; }
+.session-item { background:var(--bg); border:1px solid var(--border); border-radius:5px; padding:10px 12px; display:flex; align-items:center; gap:10px; }
+.session-item .meta { flex:1; font-size:12px; }
+.session-item .ts { font-weight:600; font-family:monospace; }
+.session-item .msg { color:var(--muted); margin-top:2px; }
+.help { font-size:11px; color:var(--muted); line-height:1.5; }
+.unlock-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:100; align-items:center; justify-content:center; }
+.unlock-overlay.show { display:flex; }
+.unlock-box { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:28px; max-width:380px; width:100%; display:flex; flex-direction:column; gap:14px; }
+.unlock-box h3 { font-size:14px; color:var(--gold); }
+.pill { display:inline-block; font-size:10px; background:var(--border); border-radius:2px; padding:1px 6px; margin-left:6px; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">🗄 Tessel Repo Manager</span>
+  <span class="sub">Git-backed session storage</span>
+  <div class="spacer"></div>
+  <span class="lock-badge closed" id="lock-badge">🔒 Locked</span>
+  <button id="btn-lock">Lock</button>
+  <button id="btn-theme">☀ Light</button>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="sessions">Sessions</div>
+  <div class="tab" data-tab="setup">Setup</div>
+  <div class="tab" data-tab="about">About</div>
+</div>
+
+<!-- ========== SESSIONS PANE ========== -->
+<div class="pane active" id="pane-sessions">
+
+  <div class="section">
+    <h3>Document</h3>
+    <div class="field">
+      <label class="lbl">Document slug</label>
+      <div class="row">
+        <input type="text" id="doc-slug" placeholder="e.g. proxmox-bootstrap">
+        <button id="btn-list">List Sessions</button>
+      </div>
+    </div>
+    <div class="status" id="list-status"></div>
+    <div class="session-list" id="session-list"></div>
+  </div>
+
+  <div class="section">
+    <h3>Save Session</h3>
+    <p class="help">Export a session package (.zip) from the compiled document, then upload it here to commit it to git.</p>
+    <div class="field">
+      <label class="lbl">Session ZIP (from document Export)</label>
+      <div class="row">
+        <input type="file" id="save-file-pick" accept=".zip" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:5px 8px;color:var(--text);font-size:12px;flex:1">
+        <button class="primary" id="btn-save">↑ Save to Git</button>
+      </div>
+    </div>
+    <div class="field">
+      <label class="lbl">Commit message (optional)</label>
+      <input type="text" id="save-msg" placeholder="Session note…">
+    </div>
+    <div class="status" id="save-status"></div>
+  </div>
+
+  <div class="section">
+    <h3>Restore Session</h3>
+    <p class="help">Select a session from the list above and click Restore. The session.zip will download — import it in your compiled document.</p>
+    <div class="row">
+      <input type="text" id="restore-ref" placeholder="Paste commit SHA or select from list" style="font-family:monospace">
+      <button class="primary" id="btn-restore">↓ Restore</button>
+    </div>
+    <div class="status" id="restore-status"></div>
+  </div>
+</div>
+
+<!-- ========== SETUP PANE ========== -->
+<div class="pane" id="pane-setup">
+  <div class="section">
+    <h3>Git Provider</h3>
+    <div class="field">
+      <label class="lbl">Provider</label>
+      <select id="cfg-provider">
+        <option value="github">GitHub</option>
+        <option value="forgejo">Forgejo / Gitea</option>
+        <option value="gitlab">GitLab</option>
+      </select>
+    </div>
+    <div class="field" id="cfg-baseurl-row" style="display:none">
+      <label class="lbl">Base URL</label>
+      <input type="url" id="cfg-baseurl" placeholder="https://git.example.com">
+    </div>
+    <div class="field">
+      <label class="lbl">Repository <span class="pill">owner/repo</span></label>
+      <input type="text" id="cfg-repo" placeholder="myorg/myrepo">
+    </div>
+    <div class="field">
+      <label class="lbl">Branch</label>
+      <input type="text" id="cfg-branch" value="main" placeholder="main">
+    </div>
+    <div class="field">
+      <label class="lbl">Sessions path prefix</label>
+      <input type="text" id="cfg-prefix" value="sessions" placeholder="sessions">
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Personal Access Token</h3>
+    <p class="help">The PAT is encrypted with AES-256-GCM before storage in IndexedDB. It is never sent anywhere except your configured provider's API.</p>
+    <div class="field">
+      <label class="lbl">Workspace passphrase</label>
+      <div class="row">
+        <input type="password" id="cfg-passphrase" placeholder="Passphrase to protect the stored token" autocomplete="off">
+        <button id="cfg-show-pass">👁</button>
+      </div>
+    </div>
+    <div class="field">
+      <label class="lbl">Personal Access Token</label>
+      <div class="row">
+        <input type="password" id="cfg-pat" placeholder="ghp_…  /  glpat-…  /  forgejo token" autocomplete="off">
+        <button id="cfg-show-pat">👁</button>
+      </div>
+    </div>
+    <div class="row">
+      <button class="primary" id="btn-save-cfg">Save Configuration</button>
+      <button class="danger" id="btn-clear-cfg">Clear</button>
+    </div>
+    <div class="status" id="cfg-status"></div>
+  </div>
+</div>
+
+<!-- ========== ABOUT PANE ========== -->
+<div class="pane" id="pane-about">
+  <div class="section">
+    <h3>Tessel Repo Manager</h3>
+    <p class="help" style="max-width:560px;line-height:1.8">
+      This tool provides git-backed session persistence for compiled Tessel documents.
+      Sessions are stored under <code>sessions/&lt;doc-slug&gt;/&lt;timestamp&gt;/</code> in your repository.
+      <br><br>
+      <strong>Session package format:</strong><br>
+      <code>session.json</code> — field values + parameter values + notes tree<br>
+      <code>notes.md</code> — notes export (human-readable Markdown)<br>
+      <code>attachments/</code> — attached files<br>
+      <code>manifest.json</code> — metadata (doc title, compiler version, timestamp)
+      <br><br>
+      <strong>Credential security:</strong><br>
+      Your PAT is stored encrypted in this browser's IndexedDB.
+      Key derivation: PBKDF2-SHA256 (210,000 iterations).
+      Encryption: AES-256-GCM with a random 16-byte salt and 12-byte IV.
+      The raw PAT never touches localStorage or sessionStorage.
+      <br><br>
+      <strong>Required PAT scopes:</strong><br>
+      GitHub / Forgejo: <code>repo</code> (contents read+write)<br>
+      GitLab: <code>api</code>
+    </p>
+  </div>
+</div>
+
+<!-- ========== UNLOCK OVERLAY ========== -->
+<div class="unlock-overlay" id="unlock-overlay">
+  <div class="unlock-box">
+    <h3>🔒 Workspace Locked</h3>
+    <p class="help">Enter your workspace passphrase to decrypt the stored token.</p>
+    <div class="field">
+      <label class="lbl">Passphrase</label>
+      <input type="password" id="unlock-phrase" placeholder="Workspace passphrase" autocomplete="off">
+    </div>
+    <div class="row">
+      <button class="primary" id="btn-unlock">Unlock</button>
+    </div>
+    <div class="status" id="unlock-status"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+// ---- state ----
+var _pat = null;      // decrypted PAT, in memory only
+var _cfg = null;      // { provider, baseurl, repo, branch, prefix }
+
+// ---- theme ----
+(function(){
+  var btn = document.getElementById('btn-theme');
+  if (localStorage.getItem('trm:theme') === 'light') { document.body.classList.add('light'); btn.textContent = '☾ Dark'; }
+  btn.addEventListener('click', function(){
+    var l = document.body.classList.toggle('light');
+    btn.textContent = l ? '☾ Dark' : '☀ Light';
+    localStorage.setItem('trm:theme', l ? 'light' : 'dark');
+  });
+})();
+
+// ---- tab routing ----
+document.querySelectorAll('.tab').forEach(function(tab){
+  tab.addEventListener('click', function(){
+    document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+    document.querySelectorAll('.pane').forEach(function(p){ p.classList.remove('active'); });
+    tab.classList.add('active');
+    document.getElementById('pane-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ---- IndexedDB helpers ----
+function openDb(){
+  return new Promise(function(res, rej){
+    var rq = indexedDB.open('tessel-repo-manager', 1);
+    rq.onupgradeneeded = function(e){ e.target.result.createObjectStore('config', {keyPath:'k'}); };
+    rq.onsuccess  = function(e){ res(e.target.result); };
+    rq.onerror    = function(e){ rej(e.target.error); };
+  });
+}
+function dbGet(key){ return openDb().then(function(db){ return new Promise(function(res,rej){ var rq=db.transaction('config').objectStore('config').get(key); rq.onsuccess=function(e){res(e.target.result);}; rq.onerror=function(e){rej(e.target.error);}; }); }); }
+function dbPut(obj){ return openDb().then(function(db){ return new Promise(function(res,rej){ var tx=db.transaction('config','readwrite'); var rq=tx.objectStore('config').put(obj); tx.oncomplete=function(){res();}; tx.onerror=function(e){rej(e.target.error);}; }); }); }
+function dbDel(key){ return openDb().then(function(db){ return new Promise(function(res,rej){ var tx=db.transaction('config','readwrite'); tx.objectStore('config').delete(key); tx.oncomplete=res; tx.onerror=function(e){rej(e.target.error);}; }); }); }
+
+// ---- crypto ----
+function u8ToB64(u){ return btoa(Array.from(u).map(function(b){return String.fromCharCode(b);}).join('')); }
+function b64ToU8(s){ var b=atob(s),a=new Uint8Array(b.length); for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i); return a; }
+function str2u8(s){ return new TextEncoder().encode(s); }
+function u82str(u){ return new TextDecoder().decode(u); }
+
+async function deriveKey(passphrase, salt){
+  var km = await crypto.subtle.importKey('raw', str2u8(passphrase), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt:salt,iterations:210000,hash:'SHA-256'}, km, {name:'AES-GCM',length:256}, false, ['encrypt','decrypt']);
+}
+
+async function encryptPAT(pat, passphrase){
+  var salt = crypto.getRandomValues(new Uint8Array(16));
+  var iv   = crypto.getRandomValues(new Uint8Array(12));
+  var key  = await deriveKey(passphrase, salt);
+  var ct   = await crypto.subtle.encrypt({name:'AES-GCM',iv:iv}, key, str2u8(pat));
+  return { salt:u8ToB64(salt), iv:u8ToB64(iv), ct:u8ToB64(new Uint8Array(ct)) };
+}
+
+async function decryptPAT(enc, passphrase){
+  var salt=b64ToU8(enc.salt), iv=b64ToU8(enc.iv), ct=b64ToU8(enc.ct);
+  var key = await deriveKey(passphrase, salt);
+  var pt  = await crypto.subtle.decrypt({name:'AES-GCM',iv:iv}, key, ct);
+  return u82str(new Uint8Array(pt));
+}
+
+// ---- ZIP builder (minimal — for session package) ----
+function crc32(b){ var t=crc32._t||(crc32._t=function(){var a=new Uint32Array(256);for(var i=0;i<256;i++){var c=i;for(var j=0;j<8;j++)c=c&1?(0xEDB88320^(c>>>1)):c>>>1;a[i]=c;}return a;}()),c=0xFFFFFFFF;for(var i=0;i<b.length;i++)c=(c>>>8)^t[(c^b[i])&0xFF];return(c^0xFFFFFFFF)>>>0; }
+function buildZip(files){
+  var lp=[],cd=[],off=0;
+  files.forEach(function(f){
+    var n=str2u8(f.name),d=typeof f.data==='string'?str2u8(f.data):f.data;
+    var crc=crc32(d),lh=new Uint8Array(30+n.length),dv=new DataView(lh.buffer);
+    dv.setUint32(0,0x04034b50,true);dv.setUint16(4,20,true);dv.setUint32(14,crc,true);
+    dv.setUint32(18,d.length,true);dv.setUint32(22,d.length,true);dv.setUint16(26,n.length,true);
+    lh.set(n,30);
+    var ch=new Uint8Array(46+n.length),cv=new DataView(ch.buffer);
+    cv.setUint32(0,0x02014b50,true);cv.setUint16(4,20,true);cv.setUint16(6,20,true);
+    cv.setUint32(16,crc,true);cv.setUint32(20,d.length,true);cv.setUint32(24,d.length,true);
+    cv.setUint16(28,n.length,true);cv.setUint32(42,off,true);ch.set(n,46);
+    cd.push(ch);lp.push(lh,d);off+=lh.length+d.length;
+  });
+  var cdSz=cd.reduce(function(a,b){return a+b.length;},0),eo=new Uint8Array(22),ev=new DataView(eo.buffer);
+  ev.setUint32(0,0x06054b50,true);ev.setUint16(8,files.length,true);ev.setUint16(10,files.length,true);ev.setUint32(12,cdSz,true);ev.setUint32(16,off,true);
+  var parts=lp.concat(cd,[eo]),tot=parts.reduce(function(a,b){return a+b.length;},0),out=new Uint8Array(tot),pos=0;
+  parts.forEach(function(p){out.set(p,pos);pos+=p.length;});return out;
+}
+
+// ---- ZIP parser ----
+function parseZip(ab){
+  var u8=new Uint8Array(ab),dv=new DataView(ab),files={},i=0;
+  while(i<u8.length-3){
+    if(dv.getUint32(i,true)===0x04034b50){
+      var fn=dv.getUint16(i+26,true),ex=dv.getUint16(i+28,true),sz=dv.getUint32(i+18,true);
+      var nm=u82str(u8.slice(i+30,i+30+fn)),off=i+30+fn+ex;
+      files[nm]=u8.slice(off,off+sz);i=off+sz;
+    } else i++;
+  }
+  return Object.keys(files).length?files:null;
+}
+
+// ---- provider API ----
+function apiBase(cfg){
+  if(cfg.provider==='github')  return 'https://api.github.com';
+  if(cfg.provider==='gitlab')  return (cfg.baseurl||'https://gitlab.com').replace(/\/$/,'') + '/api/v4';
+  return (cfg.baseurl||'').replace(/\/$/,'') + '/api/v1';  // forgejo
+}
+
+async function apiGet(url, pat){
+  var r = await fetch(url, { headers:{ 'Authorization':'token '+pat, 'Accept':'application/json' }});
+  if(!r.ok) throw new Error(r.status+' '+r.statusText+' — '+url);
+  return r.json();
+}
+
+async function apiGetRaw(url, pat){
+  var r = await fetch(url, { headers:{ 'Authorization':'token '+pat, 'Accept':'application/octet-stream' }});
+  if(!r.ok) throw new Error(r.status+' '+r.statusText);
+  return r.arrayBuffer();
+}
+
+// List sessions for a doc slug (reads git tree for sessions/<slug>/)
+async function listSessions(cfg, pat, slug){
+  var base = apiBase(cfg), repo = cfg.repo, branch = cfg.branch||'main';
+  var prefix = (cfg.prefix||'sessions') + '/' + slug;
+  if(cfg.provider === 'gitlab'){
+    var pid = encodeURIComponent(repo);
+    var url = base+'/projects/'+pid+'/repository/tree?path='+encodeURIComponent(prefix)+'&ref='+branch+'&per_page=100';
+    var items = await apiGet(url, pat);
+    return (items||[]).filter(function(i){return i.type==='tree';}).map(function(i){
+      return { ref: i.id, ts: i.name, path: prefix+'/'+i.name };
+    });
+  }
+  // GitHub / Forgejo
+  var url = base+'/repos/'+repo+'/git/trees/'+branch+'?recursive=1';
+  var tree = await apiGet(url, pat);
+  var entries = (tree.tree||[]).filter(function(e){ return e.path.startsWith(prefix+'/') && e.type==='tree' && e.path.split('/').length === prefix.split('/').length+1; });
+  return entries.map(function(e){ return { ref: e.sha, ts: e.path.split('/').pop(), path: e.path }; }).sort(function(a,b){ return b.ts.localeCompare(a.ts); });
+}
+
+// Fetch a session package from git, return as ZIP bytes
+async function fetchSession(cfg, pat, sessionPath){
+  var base = apiBase(cfg), repo = cfg.repo, branch = cfg.branch||'main';
+  var filePath = sessionPath + '/session.zip';
+  if(cfg.provider === 'gitlab'){
+    var pid = encodeURIComponent(repo);
+    var url = base+'/projects/'+pid+'/repository/files/'+encodeURIComponent(filePath)+'/raw?ref='+branch;
+    return apiGetRaw(url, pat);
+  }
+  // GitHub / Forgejo — get file content (base64 encoded)
+  var url = base+'/repos/'+repo+'/contents/'+filePath+'?ref='+branch;
+  var info = await apiGet(url, pat);
+  return b64ToU8(info.content.replace(/\s/g,'')).buffer;
+}
+
+// Commit a session ZIP to git
+async function saveSession(cfg, pat, slug, zipBytes, message){
+  var base = apiBase(cfg), repo = cfg.repo, branch = cfg.branch||'main';
+  var ts = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+  var prefix = (cfg.prefix||'sessions') + '/' + slug + '/' + ts;
+  var content = u8ToB64(new Uint8Array(zipBytes));
+  var msg = message || ('Session ' + ts);
+
+  if(cfg.provider === 'gitlab'){
+    var pid = encodeURIComponent(repo);
+    var filePath = prefix + '/session.zip';
+    var url = base+'/projects/'+pid+'/repository/files/'+encodeURIComponent(filePath);
+    var body = {branch:branch, content:content, encoding:'base64', commit_message:msg};
+    var r = await fetch(url, {method:'POST', headers:{'Authorization':'Bearer '+pat,'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    if(!r.ok) throw new Error((await r.text()));
+    return {ts:ts, path:prefix};
+  }
+
+  // Check if file exists (to decide PUT vs create)
+  var filePath = prefix + '/session.zip';
+  var url = base+'/repos/'+repo+'/contents/'+filePath;
+  var body = {message:msg, content:content, branch:branch};
+  var r = await fetch(url, {method:'PUT', headers:{'Authorization':'token '+pat,'Content-Type':'application/json','Accept':'application/json'}, body:JSON.stringify(body)});
+  if(!r.ok) throw new Error((await r.text()));
+  var resp = await r.json();
+  return {ts:ts, sha: (resp.commit&&resp.commit.sha)||'', path:prefix};
+}
+
+// ---- UI helpers ----
+function setStatus(id, msg, cls){ var el=document.getElementById(id); el.textContent=msg; el.className='status '+(cls||''); }
+function setLock(open){ document.getElementById('lock-badge').textContent = open ? '🔓 Unlocked' : '🔒 Locked'; document.getElementById('lock-badge').className = 'lock-badge '+(open?'open':'closed'); }
+
+// ---- config load/save ----
+async function loadConfig(){
+  var rec = await dbGet('config');
+  if(!rec) return null;
+  _cfg = rec.cfg;
+  document.getElementById('cfg-provider').value = _cfg.provider||'github';
+  document.getElementById('cfg-baseurl').value  = _cfg.baseurl||'';
+  document.getElementById('cfg-repo').value     = _cfg.repo||'';
+  document.getElementById('cfg-branch').value   = _cfg.branch||'main';
+  document.getElementById('cfg-prefix').value   = _cfg.prefix||'sessions';
+  toggleBaseUrl();
+  return rec;
+}
+
+function toggleBaseUrl(){
+  var p = document.getElementById('cfg-provider').value;
+  document.getElementById('cfg-baseurl-row').style.display = (p==='github') ? 'none' : '';
+}
+document.getElementById('cfg-provider').addEventListener('change', toggleBaseUrl);
+
+// ---- save config ----
+document.getElementById('btn-save-cfg').addEventListener('click', async function(){
+  var pass = document.getElementById('cfg-passphrase').value.trim();
+  var pat  = document.getElementById('cfg-pat').value.trim();
+  if(!pass) { setStatus('cfg-status','Enter a workspace passphrase.','err'); return; }
+  if(!pat)  { setStatus('cfg-status','Enter a Personal Access Token.','err'); return; }
+  var repo = document.getElementById('cfg-repo').value.trim();
+  if(!repo) { setStatus('cfg-status','Enter the repository (owner/repo).','err'); return; }
+  setStatus('cfg-status','Encrypting token…','inf');
+  try {
+    var enc = await encryptPAT(pat, pass);
+    _cfg = {
+      provider: document.getElementById('cfg-provider').value,
+      baseurl:  document.getElementById('cfg-baseurl').value.trim(),
+      repo:     repo,
+      branch:   document.getElementById('cfg-branch').value.trim()||'main',
+      prefix:   document.getElementById('cfg-prefix').value.trim()||'sessions',
+    };
+    await dbPut({k:'config', cfg:_cfg, enc:enc});
+    _pat = pat;
+    setLock(true);
+    setStatus('cfg-status','Configuration saved. Token encrypted in IndexedDB.','ok');
+  } catch(e) { setStatus('cfg-status','Error: '+e.message,'err'); }
+});
+
+document.getElementById('btn-clear-cfg').addEventListener('click', async function(){
+  if(!confirm('Clear all stored configuration?')) return;
+  await dbDel('config'); _pat=null; _cfg=null; setLock(false);
+  setStatus('cfg-status','Configuration cleared.','ok');
+});
+
+// ---- show/hide toggles ----
+function toggleVis(inputId){ var i=document.getElementById(inputId); i.type=i.type==='password'?'text':'password'; }
+document.getElementById('cfg-show-pass').addEventListener('click', function(){ toggleVis('cfg-passphrase'); });
+document.getElementById('cfg-show-pat').addEventListener('click',  function(){ toggleVis('cfg-pat'); });
+
+// ---- unlock ----
+document.getElementById('btn-lock').addEventListener('click', function(){ _pat=null; setLock(false); });
+
+document.getElementById('btn-unlock').addEventListener('click', async function(){
+  var pass = document.getElementById('unlock-phrase').value.trim();
+  if(!pass){ setStatus('unlock-status','Enter passphrase.','err'); return; }
+  setStatus('unlock-status','Decrypting…','inf');
+  try {
+    var rec = await dbGet('config');
+    if(!rec) { setStatus('unlock-status','No configuration stored.','err'); return; }
+    _pat = await decryptPAT(rec.enc, pass);
+    _cfg = rec.cfg;
+    setLock(true);
+    document.getElementById('unlock-overlay').classList.remove('show');
+    setStatus('unlock-status','','');
+    document.getElementById('unlock-phrase').value = '';
+  } catch(e) { setStatus('unlock-status','Wrong passphrase or corrupted storage.','err'); }
+});
+
+document.getElementById('unlock-phrase').addEventListener('keydown', function(e){ if(e.key==='Enter') document.getElementById('btn-unlock').click(); });
+
+// ---- require unlock ----
+async function requireUnlock(){
+  if(_pat) return true;
+  var rec = await dbGet('config');
+  if(!rec){ alert('No configuration saved. Go to Setup to configure a git backend.'); return false; }
+  _cfg = rec.cfg;
+  document.getElementById('unlock-overlay').classList.add('show');
+  document.getElementById('unlock-phrase').focus();
+  return false;
+}
+
+// ---- list sessions ----
+document.getElementById('btn-list').addEventListener('click', async function(){
+  if(!await requireUnlock()) return;
+  var slug = document.getElementById('doc-slug').value.trim();
+  if(!slug){ setStatus('list-status','Enter a document slug.','err'); return; }
+  setStatus('list-status','Fetching sessions…','inf');
+  document.getElementById('session-list').innerHTML='';
+  try {
+    var sessions = await listSessions(_cfg, _pat, slug);
+    if(!sessions.length){ setStatus('list-status','No sessions found for "'+slug+'".','inf'); return; }
+    setStatus('list-status',sessions.length+' session(s) found.','ok');
+    var container = document.getElementById('session-list');
+    sessions.forEach(function(s){
+      var div = document.createElement('div'); div.className='session-item';
+      div.innerHTML='<div class="meta"><div class="ts">'+s.ts+'</div><div class="msg">'+s.path+'</div></div>';
+      var btn = document.createElement('button'); btn.textContent='Select';
+      btn.addEventListener('click', function(){ document.getElementById('restore-ref').value=s.path; });
+      div.appendChild(btn); container.appendChild(div);
+    });
+  } catch(e){ setStatus('list-status','Error: '+e.message,'err'); }
+});
+
+// ---- save session ----
+document.getElementById('btn-save').addEventListener('click', async function(){
+  if(!await requireUnlock()) return;
+  var slug = document.getElementById('doc-slug').value.trim();
+  if(!slug){ setStatus('save-status','Enter a document slug.','err'); return; }
+  var file = document.getElementById('save-file-pick').files[0];
+  if(!file){ setStatus('save-status','Select a session ZIP to upload.','err'); return; }
+  setStatus('save-status','Uploading…','inf');
+  try {
+    var ab = await file.arrayBuffer();
+    var msg = document.getElementById('save-msg').value.trim();
+    var result = await saveSession(_cfg, _pat, slug, ab, msg);
+    setStatus('save-status','Saved: '+result.path+'\nTimestamp: '+result.ts+(result.sha?'\nCommit: '+result.sha:''),'ok');
+  } catch(e){ setStatus('save-status','Error: '+e.message,'err'); }
+});
+
+// ---- restore session ----
+document.getElementById('btn-restore').addEventListener('click', async function(){
+  if(!await requireUnlock()) return;
+  var ref = document.getElementById('restore-ref').value.trim();
+  if(!ref){ setStatus('restore-status','Enter a session path or select from the list.','err'); return; }
+  setStatus('restore-status','Fetching session…','inf');
+  try {
+    var ab = await fetchSession(_cfg, _pat, ref);
+    var name = ref.split('/').pop() + '_session.zip';
+    var url = URL.createObjectURL(new Blob([ab],{type:'application/zip'}));
+    var a = document.createElement('a'); a.href=url; a.download=name;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(url);},1200);
+    setStatus('restore-status','Downloaded: '+name+'\nImport this ZIP in the compiled document to restore the session.','ok');
+  } catch(e){ setStatus('restore-status','Error: '+e.message,'err'); }
+});
+
+// ---- init ----
+(async function(){
+  var rec = await loadConfig();
+  if(rec && rec.enc){
+    // Has encrypted config — show unlock overlay
+    document.getElementById('unlock-overlay').classList.add('show');
+    setTimeout(function(){ document.getElementById('unlock-phrase').focus(); }, 100);
+  }
+  toggleBaseUrl();
+})();
+
+})();
+</script>
+</body>
+</html>

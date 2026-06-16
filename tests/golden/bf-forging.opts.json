@@ -1,0 +1,7 @@
+{
+  "title": "FORGING \u2014 Hatchery Build",
+  "flags": [
+    "--playbook",
+    "--collapsible"
+  ]
+}

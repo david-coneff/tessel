@@ -83,12 +83,33 @@ function diffObjects(a, b, label) {
   return errors;
 }
 
+// ---- per-test opts sidecar ----
+// If <name>.opts.json exists alongside the .md, compile via tessel-cli.js with those flags
+// instead of Tessel.compile() directly.  Format: { "title": "...", "flags": ["--collapsible"] }
+var CLI_PATH = path.join(ROOT, 'tools', 'tessel-cli.js');
+
+function compileWithCli(mdPath, optsPath) {
+  var opts = JSON.parse(readFile(optsPath));
+  var args = ['node', CLI_PATH];
+  if (opts.title)  args.push('--title', opts.title);
+  if (Array.isArray(opts.flags)) args = args.concat(opts.flags);
+  var tmp = require('os').tmpdir() + '/tessel-golden-' + Date.now() + '.html';
+  args.push(mdPath, tmp);
+  var res = require('child_process').spawnSync(args[0], args.slice(1), { encoding: 'utf8' });
+  if (res.status !== 0) throw new Error(res.stderr || res.stdout || 'CLI error');
+  var html = readFile(tmp);
+  fs.unlinkSync(tmp);
+  return html;
+}
+
 // ---- test runner ----
 function runTest(mdPath, htmlPath, name) {
+  var optsPath = mdPath.replace(/\.md$/, '.opts.json');
   var md = readFile(mdPath);
   var html;
-  try { html = Tessel.compile(md); }
-  catch (e) { return { pass: false, error: 'Compile error: ' + e.message }; }
+  try {
+    html = fs.existsSync(optsPath) ? compileWithCli(mdPath, optsPath) : Tessel.compile(md);
+  } catch (e) { return { pass: false, error: 'Compile error: ' + e.message }; }
 
   if (UPDATE || !fs.existsSync(htmlPath)) {
     writeFile(htmlPath, html);
