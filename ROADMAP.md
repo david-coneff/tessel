@@ -90,6 +90,8 @@ These are drawn from the broodforge design schema and PAP.
 
 **Schema dependency verification.** Before any Tessel interpreter, renderer, or compiler loads a versioned schema from a schema folder, it must verify the integrity of **the entire schema package** — every file in the folder — against the SHA-256 hashes recorded in `manifest.json`. This is not merely checking a version number: it is a full content hash verification of all files before any of them are used. If any file fails verification, the load is aborted with an error — not a warning. This prevents silent corruption of compiled outputs or session data that would result from using a partially corrupted or mismatched schema package. See AD-T-014 and `spec/CANONICAL-FILENAMES.md §7.6`.
 
+**Versioned executable packages.** Executables, scripts, and schema implementations are versioned as coarse-grained packages (one per sub-project) using the same content-addressed folder structure as schemas. A `package-manifest.json` records the SHA-256 of every file and the declared schema/package dependencies. The packaging tooling (`tools/tessel-package.py`) is infrastructure and is excluded from this graph — it does not version itself. Dependency cascade updates are advisory: the tooling identifies what would need updating, but a human must review and confirm before any changes are applied. See AD-T-015.
+
 ---
 
 ## 4. Architecture
@@ -146,6 +148,7 @@ tessel-studio.html            — authoring environment (editor + compiler + pre
 tessel-repo-manager.html      — git backend configuration and session browse/restore
 tessel-vault.html             — encrypt/decrypt export packages
 tessel-integrity-checker.html — standalone CFC integrity checker (§5.10, AD-T-012)
+tessel-package.py             — schema and executable package versioning tooling (AD-T-015)
 ```
 
 ---
@@ -345,8 +348,9 @@ The `CFC_ALGORITHM_LIBRARY` is a permanent, append-only registry in two synchron
 - `spec/schemas/cfc/cfc-v_2026-06-16_20-02_00_49b99195/` — CFC v1 schema package:
   - `spec-blob.txt`, `implementation.js`, `implementation.py`, `manifest.json` (with `file_hashes`)
 - `tools/tessel-integrity-checker.html` — standalone CFC verifier (§5.10, AD-T-012)
+- `tools/tessel-package.py` — schema and executable package versioning tooling (AD-T-015)
 
-**Status:** `spec/CANONICAL-FILENAMES.md`, `spec/schemas/cfc/cfc-v_2026-06-16_20-02_00_49b99195/`, and `tools/tessel-integrity-checker.html` are complete. Remaining spec files are pending.
+**Status:** `spec/CANONICAL-FILENAMES.md`, `spec/schemas/cfc/cfc-v_2026-06-16_20-02_00_49b99195/`, `tools/tessel-integrity-checker.html`, and `tools/tessel-package.py` are complete. Remaining spec files are pending.
 
 ---
 
@@ -538,6 +542,50 @@ Any Tessel component that loads a versioned schema must verify the **entire sche
 
 **This is a universal PAP design principle.** It applies to any PAP-based project that uses schema versioning (AD-T-013). Interpreters, renderers, and compilers in PAP, broodforge, and tessel should all implement this check when loading schema dependencies.
 
+### AD-T-015 — Versioned executable packages and dependency cascade tooling
+
+Executables and scripts are versioned as **coarse-grained packages** (one per sub-project, e.g., one broodforge package) using the same content-addressed folder structure as schemas (AD-T-013). Any file change in a package produces a new version of the whole package.
+
+**Package folder layout:**
+
+```
+executables/<name>/<name>-v_<YYYY-MM-DD_HH-MM_SS>_<CID-SHORT>/
+├── <script-a>.py
+├── <script-b>.js
+└── package-manifest.json
+    {
+      "package_id":           "<name>-v_<YYYY-MM-DD_HH-MM_SS>_<CID-SHORT>",
+      "cfc_version":          "<cfc-version-id>",
+      "defined":              "<ISO-8601>",
+      "aggregate_method":     "sha256(canonical JSON: sorted [{file, sha256}] for all non-manifest files)",
+      "aggregate_cid_short":  "<8-hex>",
+      "file_hashes":          { "<filename>": {"sha256": "<64-hex>", "cid_short": "<8-hex>", "file_type": "text|binary"} },
+      "dependencies":         { "schemas": ["<version-id>", ...], "packages": ["<version-id>", ...] }
+    }
+```
+
+**Aggregate CID-SHORT derivation:** SHA-256 of canonical JSON `[{"file": f, "sha256": h}]` sorted by filename, for all non-manifest files. This is deterministic and reproducible. `package-manifest.json` itself is excluded (it is the trust root, analogous to `manifest.json` in schemas).
+
+**Dependency graph:** Each package declares its schema and package dependencies in `package-manifest.json["dependencies"]`. The dependency graph is a DAG; cycles are rejected by the tooling. CFC is the root layer. The tooling (`tools/tessel-package.py`) builds the reverse dependency index by scanning declared dependencies across all versioned folders.
+
+**Advisory cascade (not automatic):** When a schema or package is updated, `tessel-package.py cascade <old-id> <new-id>` identifies all dependents and presents them for human review. No cascade update is applied without explicit confirmation. This constraint is especially important for behavioral changes (script content changes, not just version reference updates), where auto-updating could silently alter the behavior of dependents.
+
+**Tooling self-exclusion:** `tools/tessel-package.py` is infrastructure. It is not versioned as a schema or executable package and is not a node in the dependency graph it manages. If the manifest schema itself changes (new fields, new hash method), the script is updated manually. This is a rare, deliberate event; the script is intentionally mechanistic and low-churn.
+
+**Compiled artifact gap:** Compiled HTML artifacts embed schema and package version IDs but are not nodes in the dependency graph — they cannot be auto-updated, only recompiled from source. `cascade` flags compiled artifacts that reference old version IDs so the operator knows which documents need a recompile pass.
+
+**Storage:** Versioned folders contain full copies of files. Git’s object store deduplicates content, so unchanged files across package versions are stored once in the git object database regardless of how many versioned folders reference them. Working-tree cost is proportional to the number of versions materialized, but the repository itself remains lean.
+
+**Tooling interface:** `tools/tessel-package.py`
+
+```
+package <draft-dir> <name>          — create versioned executable package from draft folder
+schema-package <draft-dir> <name>   — create versioned schema package from draft folder
+verify <versioned-dir>              — verify all file hashes + aggregate against manifest (hard-fail)
+deps <version-id>                   — show all files that reference this version ID
+cascade <old-id> <new-id>          — advisory: show what would need updating (no writes)
+```
+
 ---
 
 ## 8. File Layout
@@ -559,6 +607,11 @@ tessel/
 │               ├── implementation.js  — SHA-256(raw):     a97899e1...
 │               ├── implementation.py  — SHA-256(raw):     93f11cda...
 │               └── manifest.json      — trust root; file_hashes for all above
+├── executables/               — versioned executable packages (AD-T-015)
+│   └── <name>/
+│       └── <name>-v_<timestamp>_<cid>/
+│           ├── <script-files>
+│           └── package-manifest.json
 ├── compiler/
 │   ├── tessel.js
 │   └── tessel.py
@@ -566,6 +619,7 @@ tessel/
 │   └── tessel-studio.html
 ├── tools/
 │   ├── tessel-integrity-checker.html — standalone CFC verifier (§5.10, AD-T-012)
+│   ├── tessel-package.py             — schema + executable package versioning tooling (AD-T-015)
 │   ├── tessel-repo-manager.html
 │   └── tessel-vault.html
 ├── tests/
@@ -583,7 +637,7 @@ tessel/
 
 | Phase | Deliverable | Depends On | Est. Complexity |
 |---|---|---|---|
-| 0 | Specification (TESSEL-SPEC.md, CANONICAL-FILENAMES.md, spec/schemas/cfc/ package with file_hashes, tools/tessel-integrity-checker.html) | — | Low |
+| 0 | Specification (TESSEL-SPEC.md, CANONICAL-FILENAMES.md, spec/schemas/cfc/ package with file_hashes, tools/tessel-integrity-checker.html, tools/tessel-package.py) | — | Low |
 | 1 | tessel.js (IntegrityEngine with full schema package verification per AD-T-014) | Phase 0 | High |
 | 2 | tessel-studio.html (compiler mode + integrity badge) | Phase 1 | Medium |
 | 3 | Validation runtime | Phase 1 | Medium |
