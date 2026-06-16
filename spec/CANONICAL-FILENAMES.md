@@ -43,7 +43,7 @@ CID-SHORT = CID[0:8]  (first 8 lowercase hex chars)
 **Canonical bytes by file type:**
 
 | Type | Canonical bytes |
-|------|------------------|
+|------|-----------------|
 | Plain text / Markdown | Raw UTF-8 with `\r\n` and `\r` normalized to `\n` |
 | JSON | Raw UTF-8 as-stored (no re-serialization) |
 | ZIP / archive | Raw bytes of the archive |
@@ -106,6 +106,34 @@ CID-SHORT = CID[0:8]  (first 8 lowercase hex chars)
   }
 }
 ```
+
+---
+
+## 3.5 Self-Reference Exclusion Rule
+
+File content must not embed its own canonical filename or CID-SHORT. The
+canonical filename is external metadata — identity assigned from outside,
+not from within. When this rule is followed (the common case), no special
+handling is needed.
+
+**If a format genuinely needs a self-referential field** (e.g. a
+`manifest.json` that records its own canonical path, or a `session.json`
+with a `canonical_name` field):
+
+1. Set the self-referential field(s) to the placeholder string:
+   `__CID_PENDING__`
+2. Compute the CID-SHORT of the content with the placeholder in place
+   (per §2)
+3. Replace `__CID_PENDING__` with the actual CID-SHORT
+4. Write the file
+
+**Verification** of self-referential files: re-substitute the placeholder
+before re-hashing. The verifier must know which fields are self-referential;
+conformant implementations document this.
+
+**Placeholder string** (normative): `__CID_PENDING__`
+
+Full rationale and reference implementations: PAP-FileNaming §2.4.
 
 ---
 
