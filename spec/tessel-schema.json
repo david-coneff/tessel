@@ -1,0 +1,462 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tessel.dev/schema/0.1/tessel-schema.json",
+  "title": "Tessel AST",
+  "description": "JSON Schema for the Tessel document Abstract Syntax Tree. The compiler parses Markdown + directives into this structure, then renders HTML from it.",
+  "version": "0.1",
+
+  "$defs": {
+
+    "FieldMetadata": {
+      "type": "object",
+      "description": "Optional metadata block attached to a field directive.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "description": "Stable ID for cross-field references in expressions. Defaults to label-derived slug."
+        },
+        "default": {
+          "type": "string",
+          "description": "Default value. 'today' resolves to current ISO date for @date fields."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Field must be non-empty before export."
+        },
+        "required_if": {
+          "type": "string",
+          "description": "Expression; field is required when truthy."
+        },
+        "visible_if": {
+          "type": "string",
+          "description": "Expression; field is hidden when falsy."
+        },
+        "validate": {
+          "type": "string",
+          "description": "Expression; must be truthy for the field to be valid."
+        },
+        "warning_message": {
+          "type": "string",
+          "description": "Shown when validate evaluates falsy."
+        },
+        "help_text": {
+          "type": "string",
+          "description": "Hint text always shown below the field."
+        },
+        "placeholder": {
+          "type": "string",
+          "description": "Input placeholder text."
+        },
+        "save_to_session": {
+          "type": "boolean",
+          "description": "When true, triggers git session auto-save on change (Phase 4)."
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "TemplateParam": {
+      "type": "object",
+      "description": "A template parameter registration. Collected from {{VAR=default}}, @field[Label|VAR=default], and @credential[Label|VAR].",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "description": "Variable name as it appears in {{VAR}} placeholders."
+        },
+        "default": {
+          "type": "string",
+          "description": "Default value. Empty string when not specified."
+        },
+        "is_credential": {
+          "type": "boolean",
+          "description": "True when registered via @credential. Value goes to sessionStorage, masked in code blocks."
+        }
+      },
+      "required": ["name", "default"],
+      "additionalProperties": false
+    },
+
+    "Heading": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "heading" },
+        "level": { "type": "integer", "minimum": 1, "maximum": 6 },
+        "id": { "type": "string", "description": "Slug derived from heading text, used as HTML anchor." },
+        "text": { "type": "string", "description": "Raw heading text (before inline parsing)." },
+        "number": { "type": "string", "description": "Section number (e.g. '2.1.3') — set during compilation when collapsible=true." }
+      },
+      "required": ["type", "level", "id", "text"],
+      "additionalProperties": false
+    },
+
+    "Paragraph": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "paragraph" },
+        "content": { "type": "string", "description": "Paragraph text (may contain inline markdown)." }
+      },
+      "required": ["type", "content"],
+      "additionalProperties": false
+    },
+
+    "CodeBlock": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "code_block" },
+        "language": { "type": "string", "description": "Language tag (e.g. 'bash', 'yaml'). Empty string if none." },
+        "content": { "type": "string", "description": "Raw code content." },
+        "copyable": { "type": "boolean", "description": "True for bash/sh/shell/console/cmd/powershell." },
+        "has_template_vars": { "type": "boolean", "description": "True when content contains {{VAR}} references." }
+      },
+      "required": ["type", "language", "content", "copyable", "has_template_vars"],
+      "additionalProperties": false
+    },
+
+    "MarkdownTable": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "table" },
+        "headers": { "type": "array", "items": { "type": "string" } },
+        "rows": {
+          "type": "array",
+          "items": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "required": ["type", "headers", "rows"],
+      "additionalProperties": false
+    },
+
+    "BlockQuote": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "blockquote" },
+        "content": { "type": "string" }
+      },
+      "required": ["type", "content"],
+      "additionalProperties": false
+    },
+
+    "List": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "list" },
+        "ordered": { "type": "boolean" },
+        "items": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["type", "ordered", "items"],
+      "additionalProperties": false
+    },
+
+    "HorizontalRule": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "horizontal_rule" }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+
+    "TextField": {
+      "type": "object",
+      "description": "@field — single-line text input",
+      "properties": {
+        "type": { "const": "field_text" },
+        "label": { "type": "string" },
+        "slug": { "type": "string", "description": "Label-derived persistence key." },
+        "var_name": { "type": ["string", "null"], "description": "Template parameter name if |VAR provided." },
+        "var_default": { "type": "string", "description": "Default value for the template parameter." },
+        "auto_validate": { "type": ["string", "null"], "enum": ["ip4", "domain", null] },
+        "metadata": { "$ref": "#/$defs/FieldMetadata" }
+      },
+      "required": ["type", "label", "slug"],
+      "additionalProperties": false
+    },
+
+    "AreaField": {
+      "type": "object",
+      "description": "@area — multi-line textarea",
+      "properties": {
+        "type": { "const": "field_area" },
+        "label": { "type": "string" },
+        "slug": { "type": "string" },
+        "metadata": { "$ref": "#/$defs/FieldMetadata" }
+      },
+      "required": ["type", "label", "slug"],
+      "additionalProperties": false
+    },
+
+    "DateField": {
+      "type": "object",
+      "description": "@date — date picker (new in Tessel)",
+      "properties": {
+        "type": { "const": "field_date" },
+        "label": { "type": "string" },
+        "slug": { "type": "string" },
+        "metadata": { "$ref": "#/$defs/FieldMetadata" }
+      },
+      "required": ["type", "label", "slug"],
+      "additionalProperties": false
+    },
+
+    "CredentialField": {
+      "type": "object",
+      "description": "@credential — password + optional TOTP",
+      "properties": {
+        "type": { "const": "field_credential" },
+        "label": { "type": "string" },
+        "slug": { "type": "string", "description": "Credential slug (derived from VAR if provided, else label)." },
+        "var_name": { "type": ["string", "null"], "description": "If provided, value is injected into {{VAR}} code block placeholders." },
+        "metadata": { "$ref": "#/$defs/FieldMetadata" }
+      },
+      "required": ["type", "label", "slug"],
+      "additionalProperties": false
+    },
+
+    "TotpField": {
+      "type": "object",
+      "description": "@totp — standalone TOTP secret field",
+      "properties": {
+        "type": { "const": "field_totp" },
+        "label": { "type": "string" },
+        "slug": { "type": "string" },
+        "metadata": { "$ref": "#/$defs/FieldMetadata" }
+      },
+      "required": ["type", "label", "slug"],
+      "additionalProperties": false
+    },
+
+    "ChoiceOption": {
+      "type": "object",
+      "properties": {
+        "value": { "type": "string" },
+        "slug": { "type": "string", "description": "Option-derived slug (32 char max)." }
+      },
+      "required": ["value", "slug"],
+      "additionalProperties": false
+    },
+
+    "RadioField": {
+      "type": "object",
+      "description": "@radio — radio button group",
+      "properties": {
+        "type": { "const": "field_radio" },
+        "label": { "type": "string" },
+        "slug": { "type": "string" },
+        "options": { "type": "array", "items": { "$ref": "#/$defs/ChoiceOption" }, "minItems": 1 },
+        "metadata": { "$ref": "#/$defs/FieldMetadata" }
+      },
+      "required": ["type", "label", "slug", "options"],
+      "additionalProperties": false
+    },
+
+    "CheckField": {
+      "type": "object",
+      "description": "@check / @checkbox — checkbox group",
+      "properties": {
+        "type": { "const": "field_check" },
+        "label": { "type": "string" },
+        "slug": { "type": "string" },
+        "options": { "type": "array", "items": { "$ref": "#/$defs/ChoiceOption" }, "minItems": 1 },
+        "metadata": { "$ref": "#/$defs/FieldMetadata" }
+      },
+      "required": ["type", "label", "slug", "options"],
+      "additionalProperties": false
+    },
+
+    "SelectField": {
+      "type": "object",
+      "description": "@select — dropdown",
+      "properties": {
+        "type": { "const": "field_select" },
+        "label": { "type": "string" },
+        "slug": { "type": "string" },
+        "options": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "metadata": { "$ref": "#/$defs/FieldMetadata" }
+      },
+      "required": ["type", "label", "slug", "options"],
+      "additionalProperties": false
+    },
+
+    "TableColumn": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "slug": { "type": "string" }
+      },
+      "required": ["name", "slug"],
+      "additionalProperties": false
+    },
+
+    "TableField": {
+      "type": "object",
+      "description": "@table — editable tabular input",
+      "properties": {
+        "type": { "const": "field_table" },
+        "label": { "type": "string" },
+        "slug": { "type": "string" },
+        "columns": { "type": "array", "items": { "$ref": "#/$defs/TableColumn" }, "minItems": 1 },
+        "preset_rows": { "type": "array", "items": { "type": "string" }, "description": "Labels for pre-populated rows." },
+        "metadata": { "$ref": "#/$defs/FieldMetadata" }
+      },
+      "required": ["type", "label", "slug", "columns"],
+      "additionalProperties": false
+    },
+
+    "ParseField": {
+      "type": "object",
+      "description": "@parse — terminal output extractor",
+      "properties": {
+        "type": { "const": "field_parse" },
+        "label": { "type": "string" },
+        "slug": { "type": "string" },
+        "regex": { "type": "string", "description": "JavaScript-compatible regex; first capture group used." },
+        "target_slug": { "type": "string", "description": "Slug of the target field to populate." },
+        "metadata": { "$ref": "#/$defs/FieldMetadata" }
+      },
+      "required": ["type", "label", "slug", "regex", "target_slug"],
+      "additionalProperties": false
+    },
+
+    "FilenameField": {
+      "type": "object",
+      "description": "@filename — filename suggestion with template",
+      "properties": {
+        "type": { "const": "field_filename" },
+        "label": { "type": "string" },
+        "slug": { "type": "string" },
+        "template": { "type": "string", "description": "Filename template, may contain {{VAR}} references." },
+        "metadata": { "$ref": "#/$defs/FieldMetadata" }
+      },
+      "required": ["type", "label", "slug", "template"],
+      "additionalProperties": false
+    },
+
+    "DirField": {
+      "type": "object",
+      "description": "@dir — directory path input",
+      "properties": {
+        "type": { "const": "field_dir" },
+        "label": { "type": "string" },
+        "slug": { "type": "string" },
+        "var_name": { "type": ["string", "null"], "description": "Bidirectionally synced template parameter." },
+        "var_default": { "type": "string" },
+        "metadata": { "$ref": "#/$defs/FieldMetadata" }
+      },
+      "required": ["type", "label", "slug"],
+      "additionalProperties": false
+    },
+
+    "ConditionalBlock": {
+      "type": "object",
+      "description": "@if(expr) ... @endif block",
+      "properties": {
+        "type": { "const": "conditional" },
+        "expression": { "type": "string", "description": "Raw expression string." },
+        "blocks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Block" },
+          "description": "Content compiled unconditionally; visibility controlled at runtime."
+        }
+      },
+      "required": ["type", "expression", "blocks"],
+      "additionalProperties": false
+    },
+
+    "Block": {
+      "oneOf": [
+        { "$ref": "#/$defs/Heading" },
+        { "$ref": "#/$defs/Paragraph" },
+        { "$ref": "#/$defs/CodeBlock" },
+        { "$ref": "#/$defs/MarkdownTable" },
+        { "$ref": "#/$defs/BlockQuote" },
+        { "$ref": "#/$defs/List" },
+        { "$ref": "#/$defs/HorizontalRule" },
+        { "$ref": "#/$defs/TextField" },
+        { "$ref": "#/$defs/AreaField" },
+        { "$ref": "#/$defs/DateField" },
+        { "$ref": "#/$defs/CredentialField" },
+        { "$ref": "#/$defs/TotpField" },
+        { "$ref": "#/$defs/RadioField" },
+        { "$ref": "#/$defs/CheckField" },
+        { "$ref": "#/$defs/SelectField" },
+        { "$ref": "#/$defs/TableField" },
+        { "$ref": "#/$defs/ParseField" },
+        { "$ref": "#/$defs/FilenameField" },
+        { "$ref": "#/$defs/DirField" },
+        { "$ref": "#/$defs/ConditionalBlock" }
+      ]
+    },
+
+    "FrontMatter": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "collapsible": { "type": "boolean", "default": false },
+        "walkthrough": { "type": "boolean", "description": "When absent, auto-detected from field presence." },
+        "nav_manifest": { "type": "string", "description": "Path to doc-manifest.json." },
+        "doc_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$", "description": "Stable document identifier for session scoping." }
+      },
+      "additionalProperties": false
+    },
+
+    "TocEntry": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "level": { "type": "integer", "minimum": 2, "maximum": 4 },
+        "number": { "type": "string" }
+      },
+      "required": ["id", "text", "level", "number"],
+      "additionalProperties": false
+    }
+  },
+
+  "type": "object",
+  "description": "Top-level Tessel document AST, as produced by TesselParser.",
+  "properties": {
+    "front_matter": {
+      "$ref": "#/$defs/FrontMatter",
+      "description": "Parsed front-matter. Empty object when no front-matter present."
+    },
+    "title": {
+      "type": "string",
+      "description": "Resolved document title (front-matter > CLI arg > filename)."
+    },
+    "doc_id": {
+      "type": "string",
+      "description": "Resolved document ID (front-matter doc_id > title-derived slug)."
+    },
+    "is_walkthrough": {
+      "type": "boolean",
+      "description": "True when the document contains fields or walkthrough=true."
+    },
+    "collapsible": {
+      "type": "boolean",
+      "description": "True when collapsible sections are enabled."
+    },
+    "template_params": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/TemplateParam" },
+      "description": "All template parameters in registration order. No duplicates."
+    },
+    "toc": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/TocEntry" },
+      "description": "TOC entries in document order (h2, h3, h4). Populated during compilation when collapsible=true."
+    },
+    "blocks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Block" },
+      "description": "Top-level document blocks in source order."
+    },
+    "source_md": {
+      "type": "string",
+      "description": "Original Markdown source (including front-matter). Embedded in compiled HTML for round-trip editing."
+    }
+  },
+  "required": ["title", "doc_id", "is_walkthrough", "collapsible", "template_params", "toc", "blocks"],
+  "additionalProperties": false
+}
