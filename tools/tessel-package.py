@@ -25,10 +25,11 @@ Commands:
   cascade <old-id> <new-id>             Advisory: show what would need updating if old-id
                                          is superseded by new-id. Makes no changes.
 
-  prune [--keep N] [--dry-run]          Repo-wide cleanup. Scans all versioned folders in
-                                         spec/schemas/ and executables/, sorts versions within
-                                         each name by defined timestamp, retains last N
-                                         (default 2, min 1). Skips any version still in a
+  prune [--keep N] [--dry-run]          Repo-wide cleanup. Must be invoked explicitly by the
+                                         operator — never runs automatically. Scans all versioned
+                                         folders in spec/schemas/ and executables/, sorts versions
+                                         within each name by defined timestamp, retains last N
+                                         (default 5, min 1). Skips any version still in a
                                          dependency chain. --dry-run shows what would be
                                          removed without removing it.
 
@@ -38,8 +39,9 @@ Usage:
   python tools/tessel-package.py verify executables/broodforge/broodforge-v_2026-06-16_14-30_00_f3a9b2c1
   python tools/tessel-package.py deps cfc-v_2026-06-16_20-02_00_49b99195
   python tools/tessel-package.py cascade cfc-v_2026-06-16_20-02_00_49b99195 cfc-v_NEW
-  python tools/tessel-package.py prune --keep 1
-  python tools/tessel-package.py prune --keep 2 --dry-run
+  python tools/tessel-package.py prune              # keep last 5 versions per name
+  python tools/tessel-package.py prune --keep 1    # keep only the latest
+  python tools/tessel-package.py prune --dry-run   # preview without removing
 """
 
 import hashlib
@@ -55,6 +57,7 @@ CFC_VERSION      = "cfc-v_2026-06-16_20-02_00_49b99195"
 PACKAGE_MANIFEST = "package-manifest.json"
 SCHEMA_MANIFEST  = "manifest.json"
 CURRENT_FILE     = "current.txt"
+DEFAULT_KEEP     = 5  # operator-configurable; never changed automatically
 
 # Extensions treated as text (LF-normalize before hashing, per CFC v1)
 TEXT_EXTENSIONS = {".md", ".txt", ".csv", ".py", ".js", ".json", ".html", ".sh"}
@@ -141,8 +144,6 @@ def collect_protected_versions(repo_root: Path) -> set:
     transitively referenced by the current version of any schema or package.
     """
     protected: set = set()
-
-    # Gather all current.txt files across versioned roots
     current_txts = []
     for subtree, _ in VERSIONED_ROOTS:
         base = repo_root / subtree
@@ -351,8 +352,9 @@ def read_defined(manifest_path: Path) -> str:
 
 def cmd_prune(keep: int, dry_run: bool, repo_root: Path) -> None:
     """
-    Repo-wide cleanup across spec/schemas/ and executables/.
-    Retains the `keep` most recent versions per name (sorted by defined timestamp).
+    Operator-invoked repo-wide cleanup. Never runs automatically.
+    Scans spec/schemas/ and executables/, retains the `keep` most recent
+    versions per name (by defined timestamp), removes the rest.
     Versions still in any active dependency chain are skipped with a warning.
     """
     if keep < 1:
@@ -375,7 +377,6 @@ def cmd_prune(keep: int, dry_run: bool, repo_root: Path) -> None:
         if not base.exists():
             continue
 
-        # Group versioned dirs by their parent name folder
         names: dict = {}
         for child in sorted(base.iterdir()):
             if not child.is_dir():
@@ -388,7 +389,6 @@ def cmd_prune(keep: int, dry_run: bool, repo_root: Path) -> None:
                 names[child.name] = versions
 
         for name, version_dirs in sorted(names.items()):
-            # Sort oldest-first by defined timestamp
             version_dirs.sort(key=lambda d: read_defined(d / manifest_name))
 
             to_keep   = version_dirs[-keep:]
@@ -512,7 +512,7 @@ def main():
         cmd_deps(sys.argv[2], repo_root)
 
     elif cmd == "prune":
-        keep    = 2
+        keep    = DEFAULT_KEEP  # 5
         dry_run = False
         args    = sys.argv[2:]
         i = 0
