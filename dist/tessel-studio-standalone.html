@@ -4878,13 +4878,13 @@ var TesselFields = (function() {
     var tv = tvAttrs(meta);
     return [
       '<div class="cred-field totp-field notefield" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
-      '  <label>' + label + reqMark(meta) + '</label>',
+      '  <label for="cred-totp-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <div id="cred-totp-section-' + id + '" class="cred-section">',
       '    <input type="password" class="note-input cred-totp-input" id="cred-totp-' + id + '"',
       '      data-cred="' + id + '" ' + tv,
       '      placeholder="TOTP secret (base32)" autocomplete="one-time-code">',
       '    <div class="cred-btns">',
-      '      <button type="button" class="cred-toggle" data-for="' + id + '" title="Show / hide secret">👁</button>',
+      '      <button type="button" class="cred-toggle" data-for="' + id + '" aria-label="Show or hide TOTP secret" title="Show / hide secret">👁</button>',
       '      <button type="button" class="bf-suggest-btn" data-suggest="totp-secret" data-for="' + id + '" title="Generate TOTP secret">✦ Generate</button>',
       '      <select class="bf-suggest-select" data-suggest-for="' + id + '">',
       '        <option value="totp-20">160-bit (SHA-1, common)</option>',
@@ -4892,12 +4892,21 @@ var TesselFields = (function() {
       '      </select>',
       '    </div>',
       '  </div>',
-      '  <div class="totp-qr-wrap">',
-      '    <canvas id="totp-qr-' + id + '" data-totp-qr="' + id + '"',
-      '      data-issuer="' + esc(meta.issuer || node.label || '') + '"',
-      '      data-account="' + esc(meta.account || '') + '"></canvas>',
-      '    <span class="totp-qr-label">Scan to add in authenticator app</span>',
-      '  </div>',
+      (_pdfua
+        ? '  <figure class="totp-qr-wrap" role="figure" aria-label="' + label + ' QR code">'
+          + '\n    <canvas id="totp-qr-' + id + '" data-totp-qr="' + id + '"'
+          + '\n      role="img" aria-label="' + label + ' TOTP QR code — scan to add in authenticator app"'
+          + '\n      data-issuer="' + esc(meta.issuer || node.label || '') + '"'
+          + '\n      data-account="' + esc(meta.account || '') + '"></canvas>'
+          + '\n    <figcaption class="totp-qr-label">Scan to add in authenticator app</figcaption>'
+          + '\n  </figure>'
+        : '  <div class="totp-qr-wrap">'
+          + '\n    <canvas id="totp-qr-' + id + '" data-totp-qr="' + id + '"'
+          + '\n      role="img" aria-label="' + label + ' TOTP QR code — scan to add in authenticator app"'
+          + '\n      data-issuer="' + esc(meta.issuer || node.label || '') + '"'
+          + '\n      data-account="' + esc(meta.account || '') + '"></canvas>'
+          + '\n    <span class="totp-qr-label" aria-hidden="true">Scan to add in authenticator app</span>'
+          + '\n  </div>'),
       fieldFooter(meta),
       '</div>'
     ].join('\n');
@@ -5094,57 +5103,58 @@ var TesselFields = (function() {
     var tv = tvAttrs(meta);
     return [
       '<div class="notefield sig-field" data-sig-id="' + id + '" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
-      '  <label>' + label + reqMark(meta) + '</label>',
-      '  <div class="sig-tabs">',
-      '    <button type="button" class="sig-tab active" data-mode="type">Type</button>',
-      '    <button type="button" class="sig-tab" data-mode="draw">Draw</button>',
-      '    <button type="button" class="sig-tab" data-mode="crypto">Cryptographic</button>',
+      '  <label for="sig-type-' + id + '" id="siglbl-' + id + '">' + label + reqMark(meta) + '</label>',
+      '  <div class="sig-tabs" role="tablist" aria-label="' + label + ' signature mode">',
+      '    <button type="button" class="sig-tab active" data-mode="type" role="tab" aria-selected="true" aria-controls="sig-panel-type-' + id + '">Type</button>',
+      '    <button type="button" class="sig-tab" data-mode="draw" role="tab" aria-selected="false" aria-controls="sig-panel-draw-' + id + '">Draw</button>',
+      '    <button type="button" class="sig-tab" data-mode="crypto" role="tab" aria-selected="false" aria-controls="sig-panel-crypto-' + id + '">Cryptographic</button>',
       '  </div>',
       '  <!-- type mode -->',
-      '  <div class="sig-panel" data-panel="type">',
+      '  <div class="sig-panel" data-panel="type" id="sig-panel-type-' + id + '" role="tabpanel" aria-labelledby="siglbl-' + id + '">',
       '    <input type="text" class="sig-type-input" id="sig-type-' + id + '"',
-      '      data-note="sig-type-' + id + '" ' + tv,
+      '      aria-labelledby="siglbl-' + id + '" data-note="sig-type-' + id + '" ' + tv,
       '      placeholder="Sign here…" autocomplete="off">',
-      '    <div class="sig-type-preview" id="sig-preview-' + id + '"></div>',
+      '    <div class="sig-type-preview" id="sig-preview-' + id + '" aria-hidden="true"></div>',
       '  </div>',
       '  <!-- draw mode -->',
-      '  <div class="sig-panel" data-panel="draw" style="display:none">',
+      '  <div class="sig-panel" data-panel="draw" id="sig-panel-draw-' + id + '" role="tabpanel" aria-label="Draw signature" style="display:none">',
       '    <div class="sig-canvas-wrap">',
-      '      <canvas class="sig-canvas" id="sig-canvas-' + id + '" width="900" height="200"></canvas>',
+      '      <canvas class="sig-canvas" id="sig-canvas-' + id + '" width="900" height="200"',
+      '        role="img" aria-label="' + label + ' — draw your signature here" tabindex="0"></canvas>',
       '    </div>',
       '    <div class="sig-canvas-controls">',
-      '      <button type="button" class="sig-clear-btn" data-for="' + id + '">Clear</button>',
-      '      <span class="sig-canvas-hint">Draw with mouse or finger</span>',
+      '      <button type="button" class="sig-clear-btn" data-for="' + id + '" aria-label="Clear drawn signature">Clear</button>',
+      '      <span class="sig-canvas-hint" aria-live="polite">Draw with mouse or finger</span>',
       '    </div>',
       '    <input type="hidden" id="sig-draw-' + id + '" data-note="sig-draw-' + id + '">',
       '  </div>',
       '  <!-- crypto mode -->',
-      '  <div class="sig-panel" data-panel="crypto" style="display:none">',
+      '  <div class="sig-panel" data-panel="crypto" id="sig-panel-crypto-' + id + '" role="tabpanel" aria-label="Cryptographic signature" style="display:none">',
       '    <div class="sig-crypto">',
       '      <div class="sig-meta-grid">',
       '        <div>',
-      '          <span class="sig-meta-label">Signer name</span>',
+      '          <label for="sig-name-' + id + '" class="sig-meta-label">Signer name</label>',
       '          <input type="text" class="note-input sig-meta-name" id="sig-name-' + id + '"',
       '            placeholder="Full name…" autocomplete="name">',
       '        </div>',
       '        <div>',
-      '          <span class="sig-meta-label">Location</span>',
+      '          <label for="sig-location-' + id + '" class="sig-meta-label">Location</label>',
       '          <input type="text" class="note-input" id="sig-location-' + id + '"',
       '            placeholder="City, Country…">',
       '        </div>',
       '        <div class="sig-meta-full">',
-      '          <span class="sig-meta-label">Reason</span>',
+      '          <label for="sig-reason-' + id + '" class="sig-meta-label">Reason</label>',
       '          <input type="text" class="note-input" id="sig-reason-' + id + '"',
       '            placeholder="I approve this document…">',
       '        </div>',
       '      </div>',
       '      <div class="sig-actions">',
-      '        <button type="button" class="sig-sign-btn" data-for="' + id + '">✎ Sign Document</button>',
+      '        <button type="button" class="sig-sign-btn" data-for="' + id + '" aria-describedby="sig-status-' + id + '">✎ Sign Document</button>',
       '        <button type="button" class="sig-verify-btn" data-for="' + id + '">✓ Verify</button>',
-      '        <button type="button" class="sig-import-btn" data-for="' + id + '">↑ Import Key</button>',
-      '        <input type="file" id="sig-import-file-' + id + '" accept=".json,.pem" style="display:none">',
+      '        <button type="button" class="sig-import-btn" data-for="' + id + '" aria-label="Import signing key file">↑ Import Key</button>',
+      '        <input type="file" id="sig-import-file-' + id + '" accept=".json,.pem" style="display:none" aria-label="Select key file to import">',
       '      </div>',
-      '      <div class="sig-status" id="sig-status-' + id + '" style="display:none"></div>',
+      '      <div class="sig-status" id="sig-status-' + id + '" role="status" aria-live="polite" style="display:none"></div>',
       '      <input type="hidden" id="sig-crypto-' + id + '" data-note="sig-crypto-' + id + '">',
       '      <a class="sig-download" id="sig-dl-' + id + '" style="display:none" download="signature.json">↓ Download Signature File</a>',
       '      <p class="sig-pdf-note">The downloaded .json signature file is compatible with Adobe PDF AcroForm signature fields. Import a completed Tessel document into a PDF workflow to auto-fill and sign the corresponding fields.</p>',
@@ -5219,7 +5229,7 @@ var TesselFields = (function() {
       '<div class="computed-field notefield"' + (meta.visible_if ? ' data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
       '  <label id="clbl-' + id + '">' + label + '</label>',
       '  <div class="computed-display" id="note-' + id + '-display"',
-      '    ' + (_wcag ? 'role="status" aria-labelledby="clbl-' + id + '"' : ''),
+      '    ' + (_pdfua ? 'role="note" aria-labelledby="clbl-' + id + '"' : _wcag ? 'role="status" aria-labelledby="clbl-' + id + '"' : ''),
       '    data-placeholder="' + placeholder + '"></div>',
       '  <input type="hidden" id="note-' + id + '" data-note="' + id + '"',
       '    data-computed-expr="' + expr + '" ' + tv + '>',
@@ -7084,6 +7094,13 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         }
       });
 
+      // 11. Color contrast — flag if custom palette was applied (can't compute contrast without rendering)
+      var customColors = doc.querySelector('style#bf-doc-defaults');
+      if (customColors && customColors.textContent.indexOf('--accent:') >= 0) {
+        addIssue('info', 'Custom accent color — verify contrast', 'A custom accent color is applied. Automated contrast checking requires rendering; manually verify all accent-colored text meets the 4.5:1 minimum ratio against its background (WCAG 1.4.3 / SC 1.4.11).');
+        infos++;
+      }
+
       // WCAG 2.2-specific checks (new criteria beyond 2.1)
       if (activeStd === 'wcag22') {
         // 2.4.11 Focus Not Obscured (Minimum) — check for sticky/fixed elements that could hide focus
@@ -7193,7 +7210,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         }
 
         // P8: Print CSS present (injected by PDF/UA mode)
-        if (!html.includes('bf-pdfua-print') && !lastHtml.includes('bf-pdfua-print')) {
+        if (!lastHtml.includes('bf-pdfua-print')) {
           addIssue('warn', 'PDF/UA — Print stylesheet not found', 'PDF/UA mode injects @media print CSS for proper pagination and margins. Re-compile with PDF/UA-1 or PDF/UA-2 selected to apply it.');
           warns++;
         }
