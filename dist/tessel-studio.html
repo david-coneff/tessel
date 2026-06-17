@@ -138,10 +138,7 @@ body {
   color: var(--text); font-size: 11px; padding: 3px 5px; font-family: inherit; cursor: pointer;
 }
 .rb-select:focus { outline: none; border-color: var(--accent); }
-#rb-filename {
-  font-size: 11px; color: var(--muted); max-width: 180px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 6px;
-}
+/* #rb-filename merged into #filename-display */
 /* Format tab: color pickers inline */
 .rb-color-wrap { display: flex; align-items: center; gap: 4px; }
 .rb-color-wrap label { font-size: 10px; color: var(--muted); }
@@ -297,12 +294,13 @@ button.primary:hover { background: var(--accent2); }
 button:disabled { opacity: .4; cursor: default; }
 
 #filename-display {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted);
   max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  padding: 0 6px;
 }
 
 /* ---- Split pane ---- */
@@ -843,7 +841,7 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
       </div>
 
       <div class="rb-group">
-        <span id="filename-display" id="rb-filename">No file open</span>
+        <span id="filename-display">No file open</span>
       </div>
     </div>
 
@@ -6529,8 +6527,8 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
 
   // ---- status helpers ----
   function setStatus(msg, cls) {
-    statusText.textContent = msg;
-    statusInd.className = cls || '';
+    if (statusText) statusText.textContent = msg;
+    if (statusInd) statusInd.className = cls || '';
   }
 
   // ---- compile ----
@@ -6661,7 +6659,9 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     filenameDisp.title = file.name;
     var reader = new FileReader();
     reader.onload = function(e) {
-      editor.value = e.target.result;
+      var text = e.target.result;
+      if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); // strip UTF-8 BOM
+      editor.value = text;
       updateEditorMeta();
       btnCompile.disabled = false;
       setStatus('Opened ' + file.name, '');
@@ -6766,6 +6766,11 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       e.preventDefault();
       var redo = e.key === 'y' || e.key === 'Y' || (e.shiftKey && (e.key === 'z' || e.key === 'Z'));
       document.dispatchEvent(new CustomEvent('tessel-history-nav', { detail: { redo: redo } }));
+    }
+    // Ctrl+S → save draft to localStorage
+    if ((e.ctrlKey || e.metaKey) && e.key === 's' && !e.shiftKey && !e.altKey) {
+      e.preventDefault();
+      try { localStorage.setItem('tessel-studio:draft', editor.value); setStatus('Draft saved', ''); } catch(ex) {}
     }
     // Tab → insert 2 spaces
     if (e.key === 'Tab') {
@@ -8584,11 +8589,21 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       if (e.key === 'Escape') { closeFind(); e.preventDefault(); }
     });
 
-    // Ctrl+F / Cmd+F
+    // Ctrl+F / Cmd+F  and  global Ctrl+S
     document.addEventListener('keydown', function(e) {
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault();
         openFind();
+      }
+      // Ctrl+S in visual block editor mode — trigger the save-draft button
+      if ((e.ctrlKey || e.metaKey) && e.key === 's' && !e.shiftKey && !e.altKey) {
+        var wsMode = document.getElementById('ws-mode');
+        if (wsMode && wsMode.classList.contains('active')) {
+          e.preventDefault();
+          var saveDraftBtn = document.getElementById('ws-btn-save-draft');
+          if (saveDraftBtn) saveDraftBtn.click();
+        }
+        // markdown mode Ctrl+S is handled by the editor keydown listener
       }
     });
   })();
@@ -8955,6 +8970,12 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         var def = WS_FIELD_TYPES[b.fieldType] || {};
         if (b.fieldType === 'table' && b.columns && b.columns.length) {
           lines.push('@table ' + (b.label||'Label') + ': ' + b.columns.join(', '));
+        } else if (b.fieldType === 'parse' && b.regex) {
+          lines.push('@parse ' + (b.label||'Label') + ': /' + b.regex + '/');
+        } else if (b.fieldType === 'computed' && b.expr) {
+          lines.push('@computed ' + (b.label||'Label') + ': ' + b.expr);
+        } else if (b.fieldType === 'filename' && b.template) {
+          lines.push('@filename ' + (b.label||'Label') + ': ' + b.template);
         } else if (def.hasOptions && b.options && b.options.length) {
           lines.push('@' + b.fieldType + ' ' + (b.label||'Label') + ': ' + b.options.join(', '));
         } else {
@@ -8997,11 +9018,21 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       };
       if (fieldMap[n.type]) {
         var opts = (n.options||[]).map(function(o){ return typeof o === 'string' ? o : (o.label||''); });
-        var cols = (n.columns||[]).map(function(c){ return typeof c === 'string' ? c : (c.name||''); });
+        var cols = (n.columns||[]).map(function(c) {
+          if (typeof c === 'string') return c;
+          var s = c.name || '';
+          if (c.type && c.type !== 'text') s += ' | ' + c.type;
+          if (c.opts && c.opts.length) s += ':' + c.opts.join('/');
+          return s;
+        });
         var m = n.meta || {};
-        return { type:'field', fieldType:fieldMap[n.type], label:n.label||'', options:opts, columns:cols,
+        var blk = { type:'field', fieldType:fieldMap[n.type], label:n.label||'', options:opts, columns:cols,
           meta:{ id:m.id||n.id, required:m.required, required_if:m.required_if,
                  visible_if:m.visible_if, validate:m.validate, warning_message:m.warning_message }, id:wsUid() };
+        if (n.regex    !== undefined) blk.regex    = n.regex;
+        if (n.expr     !== undefined) blk.expr     = n.expr;
+        if (n.template !== undefined) blk.template = n.template;
+        return blk;
       }
       return null;
     }
