@@ -2377,7 +2377,7 @@ var TESSEL_CSS = `
   #btn-design-mode.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
   @media print{@page{margin:2cm}#bf-main{padding:12px}#bf-notes-pane,#bf-drag,#bf-settings-panel,#bf-pag-strip,
     .bf-pag-overlay{display:none!important}
-    #bf-pag-btn,#bf-print-btn,#bf-theme-btn,.copy-btn{display:none}
+    #bf-toolbar,#bf-pag-btn,#bf-print-btn,#bf-theme-btn,.copy-btn{display:none}
     .bf-sub-controls,.bf-edit-btn,.bf-edit-controls{display:none}
     .param-input,.note-input,.note-area,#bf-session-notes{border:1px solid #999}}
   /* ---- @image field ---- */
@@ -2617,7 +2617,9 @@ var TESSEL_RUNTIME_JS = String.raw`
             ctx.scale(ratio,ratio);
             // restore
             if(dataUrl !== 'data:,'){
-              var img = new Image(); img.onload=function(){ctx.drawImage(img,0,0);};img.src=dataUrl;
+              var img = new Image();
+              img.onload=function(){ctx.drawImage(img,0,0,Math.round(rect.width),Math.round(rect.height));};
+              img.src=dataUrl;
             }
           }
         }
@@ -2625,8 +2627,14 @@ var TESSEL_RUNTIME_JS = String.raw`
         try{ var sd=localStorage.getItem('bf:sig:'+id+':draw'); if(sd){ var img=new Image(); img.onload=function(){
           // Skip resizeCanvas if panel is hidden (getBoundingClientRect returns 0,0 and would zero the canvas)
           var panel=canvas.closest('.sig-panel');
-          if(panel&&panel.style.display==='none'){ctx.drawImage(img,0,0,canvas.width/(window.devicePixelRatio||1),canvas.height/(window.devicePixelRatio||1));}
-          else{resizeCanvas();ctx.drawImage(img,0,0,canvas.width/(window.devicePixelRatio||1),canvas.height/(window.devicePixelRatio||1));}
+          if(panel&&panel.style.display==='none'){
+            var cssW=canvas.width/(window.devicePixelRatio||1),cssH=canvas.height/(window.devicePixelRatio||1);
+            ctx.drawImage(img,0,0,cssW,cssH);
+          } else {
+            resizeCanvas();
+            var r2=canvas.getBoundingClientRect();
+            ctx.drawImage(img,0,0,Math.round(r2.width),Math.round(r2.height));
+          }
         };img.src=sd; if(drawHid)drawHid.value=sd; } }catch(e){}
         function saveDrawing(){
           var url=canvas.toDataURL('image/png');
@@ -3300,7 +3308,7 @@ var TESSEL_RUNTIME_JS = String.raw`
         try{var rx=new RegExp(rxStr,'m');var m=ta.value.match(rx);if(m)matched=m[1]!==undefined?m[1]:m[0];}catch(e){}
         lastMatch=matched; valueEl.textContent=matched||'(no match found)';
         resultDiv.style.display='';
-        if(applyBtn)applyBtn.style.display=matched?'':'none';
+        if(applyBtn)applyBtn.style.display=(matched&&target)?'':'none';
       });
       if(applyBtn){
         applyBtn.addEventListener('click',function(){
@@ -3706,7 +3714,7 @@ var TESSEL_RUNTIME_JS = String.raw`
         if(inp.dataset.var) params[inp.dataset.var]=inp.value;
       });
       var notes=[];
-      document.querySelectorAll('.note-input,.note-area').forEach(function(inp){
+      document.querySelectorAll('.note-input,.note-area,input[type=hidden][data-note]:not([data-computed-expr])').forEach(function(inp){
         var slug=inp.dataset.note||inp.id||'';if(!slug)return;
         var _wrap=inp.closest('.notefield');
         var label=(_wrap&&(_wrap.querySelector('legend')?.textContent?.trim()||_wrap.querySelector('label')?.textContent?.trim()))||slug;
@@ -5231,7 +5239,10 @@ TesselParser.prototype.parse = function(source) {
           continue;
         }
         if (dir === 'endsection') {
-          if (sectionStack.length && sectionStack[sectionStack.length - 1].type === 'section')
+          // pop any open subsections, then pop the enclosing section
+          while (sectionStack.length && sectionStack[sectionStack.length - 1].type !== 'section')
+            sectionStack.pop();
+          if (sectionStack.length)
             sectionStack.pop();
           continue;
         }
@@ -5493,6 +5504,9 @@ TesselParser.prototype.parse = function(source) {
   }
   var allHeadings = collectHeadings(blocks);
   var toc = buildToc(allHeadings);
+
+  // Clear any unclosed sections/subsections so their content isn't stranded
+  sectionStack.length = 0;
 
   // Derive doc title from front-matter or first h1
   var title = frontMatter.title || '';
@@ -7268,6 +7282,8 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         borderContrast: parseInt(borderContrastEl ? borderContrastEl.value : 100, 10),
         a11yStd:        a11yStdEl ? a11yStdEl.value : 'wcag21'
       });
+      scheduleCompile();
+      setStatus('Settings saved', '');
     }
 
     if (padSlider) padSlider.addEventListener('input', function() {
@@ -7842,15 +7858,8 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       // Re-apply settings that have live effect without full reload
       applyPrefs(getPrefs());
       loadCheckboxes(getPrefs());
-      // Re-apply studio theme
-      try {
-        var themeRaw = localStorage.getItem('tessel-studio:theme');
-        if (themeRaw) {
-          var themeVars = JSON.parse(themeRaw);
-          var root = document.documentElement;
-          Object.keys(themeVars).forEach(function(k) { root.style.setProperty(k, themeVars[k]); });
-        }
-      } catch(e) {}
+      // Re-apply studio theme via the canonical function (STH_KEY → getSth() → applyStudioTheme)
+      try { if (typeof applyStudioTheme === 'function' && typeof getSth === 'function') applyStudioTheme(getSth()); } catch(e) {}
       // Re-apply light/dark class
       try {
         var isLight = localStorage.getItem('tessel-studio:theme-mode') === 'light';
