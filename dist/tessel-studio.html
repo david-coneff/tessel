@@ -4396,8 +4396,15 @@ var TESSEL_RUNTIME_JS = String.raw`
       try{var s=localStorage.getItem(ns+'note:'+id);if(s)setImg(s);}catch(e){}
       inp.addEventListener('change',function(){
         var f=this.files&&this.files[0];if(!f)return;
+        if(f.size>5*1024*1024){alert('Image is too large (max 5 MB). Please choose a smaller file.');inp.value='';return;}
         var r=new FileReader();
-        r.onload=function(ev){setImg(ev.target.result);};
+        r.onload=function(ev){
+          setImg(ev.target.result);
+          // Warn if localStorage failed (quota exceeded)
+          var stored;
+          try{stored=localStorage.getItem(ns+'note:'+id);}catch(e){}
+          if(ev.target.result&&!stored)console.warn('[Tessel] Image stored in memory only — localStorage quota exceeded.');
+        };
         r.readAsDataURL(f);
       });
       if(clearBtn)clearBtn.addEventListener('click',function(){inp.value='';setImg('');});
@@ -4416,7 +4423,24 @@ var TESSEL_RUNTIME_JS = String.raw`
         try{localStorage.setItem(ns+'note:'+id,html);}catch(e){}
         if(hidden){tesselValidate(hidden);tesselVisibility();}
       }
-      try{var s=localStorage.getItem(ns+'note:'+id);if(s)editor.innerHTML=s;}catch(e){}
+      function rtSanitize(html){
+        var tmp=document.createElement('div');
+        tmp.innerHTML=html;
+        tmp.querySelectorAll('script,style,iframe,object,embed,form').forEach(function(el){el.remove();});
+        tmp.querySelectorAll('[onclick],[onerror],[onload],[onmouseover]').forEach(function(el){
+          ['onclick','onerror','onload','onmouseover','onfocus','onblur'].forEach(function(a){el.removeAttribute(a);});
+        });
+        tmp.querySelectorAll('a[href]').forEach(function(a){
+          if(!/^(https?:\/\/|mailto:|#)/i.test(a.getAttribute('href')))a.removeAttribute('href');
+        });
+        return tmp.innerHTML;
+      }
+      try{var s=localStorage.getItem(ns+'note:'+id);if(s)editor.innerHTML=rtSanitize(s);}catch(e){}
+      editor.addEventListener('paste',function(e){
+        e.preventDefault();
+        var plain=(e.clipboardData||window.clipboardData).getData('text/plain');
+        document.execCommand('insertText',false,plain);
+      });
       editor.addEventListener('input',save);
       editor.addEventListener('blur',save);
       if(toolbar){
@@ -4427,7 +4451,7 @@ var TESSEL_RUNTIME_JS = String.raw`
           var cmd=btn.dataset.rtCmd;
           if(cmd==='createLink'){
             var url=window.prompt('Enter URL:');
-            if(url) document.execCommand('createLink',false,url);
+            if(url&&/^(https?:\/\/|mailto:|#)/i.test(url.trim()))document.execCommand('createLink',false,url.trim());
           } else {
             document.execCommand(cmd,false,null);
           }
