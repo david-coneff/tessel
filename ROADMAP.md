@@ -639,7 +639,7 @@ tessel/
 │                                    ImportEngine, AttachmentEngine, NotesEngine, IntegrityEngine)
 ├── dist/                          ✓ complete
 │   ├── tessel.bundle.js           — rolled-up single-file compiler bundle
-│   ├── tessel-studio-standalone.html
+│   ├── tessel-studio.html
 │   └── tessel-studio-full-standalone.html
 ├── studio/                        ✓ complete (Phase 2 / Phase 6 in progress)
 │   ├── tessel-studio.html         — compiler-mode Studio (Phase 2)
