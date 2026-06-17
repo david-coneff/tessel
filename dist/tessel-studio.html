@@ -3201,6 +3201,14 @@ var TESSEL_RUNTIME_JS = String.raw`
       // eval required_if
       if(!required && requiredIf) required = evalExpr(requiredIf);
 
+      // skip validation on hidden fields
+      if(fieldWrap && fieldWrap.style.display === 'none') {
+        el.classList.remove('tv-invalid');
+        el.removeAttribute('aria-invalid');
+        if(fieldWrap){var ws=fieldWrap.querySelector('.tv-warn-msg');if(ws){ws.textContent='';ws.style.display='none';}}
+        return;
+      }
+
       var err = '';
       if(required && isEmpty){ err = warnMsg||'This field is required.'; }
       else if(validateExpr && !isEmpty){ if(!evalExpr(validateExpr)) err = warnMsg||'Validation failed.'; }
@@ -6665,6 +6673,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       updateEditorMeta();
       btnCompile.disabled = false;
       setStatus('Opened ' + file.name, '');
+      document.dispatchEvent(new CustomEvent('tessel-file-open'));
       compile();
     };
     reader.readAsText(file);
@@ -6675,17 +6684,29 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     var reader = new FileReader();
     reader.onload = function(e) {
       var html = e.target.result;
-      // Look for <script type="text/tessel-source" data-encoding="base64">
-      var m = html.match(/<script[^>]+type="text\/tessel-source"[^>]*data-encoding="base64"[^>]*>([\s\S]*?)<\/script>/i);
-      if (!m) {
-        m = html.match(/<script[^>]+type="text\/tessel-source"[^>]*>([\s\S]*?)<\/script>/i);
-      }
-      if (!m || !m[1].trim()) {
+      // Look for <script type="text/tessel-source" ...> — attribute order may vary
+      var tsMatch = html.match(/<script\b([^>]*\btype="text\/tessel-source"[^>]*)>([\s\S]*?)<\/script>/i);
+      var tsAttrs   = tsMatch ? tsMatch[1] : '';
+      var tsContent = tsMatch ? tsMatch[2] : '';
+      var isBase64  = /data-encoding="base64"/i.test(tsAttrs);
+      if (!tsMatch || !tsContent.trim()) {
         setStatus('No embedded Tessel source found in this HTML file.', 'err');
         return;
       }
       try {
-        var b64 = m[1].trim();
+        var b64 = isBase64 ? tsContent.trim() : null;
+        if (!b64) {
+          // Plain-text source (older format) — treat content as raw markdown
+          currentFilename = file.name.replace(/\.html?$/, '.md');
+          filenameDisp.textContent = currentFilename + ' (from HTML)';
+          editor.value = tsContent.trim();
+          updateEditorMeta();
+          btnCompile.disabled = false;
+          setStatus('Source extracted from ' + file.name, 'ok');
+          document.dispatchEvent(new CustomEvent('tessel-file-open'));
+          compile();
+          return;
+        }
         var decoded = decodeB64Utf8(b64);
         currentFilename = file.name.replace(/\.html?$/, '.md');
         filenameDisp.textContent = currentFilename + ' (from HTML)';
@@ -6693,6 +6714,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         updateEditorMeta();
         btnCompile.disabled = false;
         setStatus('Source extracted from ' + file.name, 'ok');
+        document.dispatchEvent(new CustomEvent('tessel-file-open'));
         compile();
       } catch (ex) {
         setStatus('Failed to decode embedded source: ' + ex.message, 'err');
@@ -7698,6 +7720,12 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     // Also capture a snapshot when exiting WYSIWYG (after sync to textarea)
     document.addEventListener('tessel-wysiwyg-exit', function() {
       pushSnapshot(editor.value);
+    });
+
+    // Cancel pending snapshot when a new file is opened, then push the loaded content
+    document.addEventListener('tessel-file-open', function() {
+      if (snapTimer) { clearTimeout(snapTimer); snapTimer = null; }
+      setTimeout(function() { pushSnapshot(editor.value); }, 0);
     });
 
     // Panel open/close
