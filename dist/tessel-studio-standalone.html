@@ -296,6 +296,39 @@ button:disabled { opacity: .4; cursor: default; }
 }
 .ds-reset:hover { border-color: var(--accent); color: var(--accent); }
 
+/* ---- Table builder modal ---- */
+#tbl-builder-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;display:flex;align-items:center;justify-content:center}
+#tbl-builder-modal{background:var(--surface);border:1px solid var(--border);border-radius:8px;width:min(680px,96vw);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+#tbl-builder-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);font-weight:600;font-size:12px;color:var(--accent);flex-shrink:0}
+#tbl-builder-hdr button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;line-height:1;padding:0}
+#tbl-builder-hdr button:hover{color:var(--text)}
+#tbl-builder-body{overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px;flex:1}
+#tbl-builder-footer{display:flex;justify-content:flex-end;gap:8px;padding:10px 14px;border-top:1px solid var(--border);flex-shrink:0}
+#tbl-builder-footer button{padding:6px 14px;border-radius:4px;border:1px solid var(--border);cursor:pointer;font-size:12px;font-family:inherit;background:var(--bg);color:var(--text)}
+#tbl-builder-footer button.primary{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
+#tbl-builder-footer button.primary:hover{opacity:.88}
+.tb-row{display:flex;align-items:center;gap:8px;font-size:12px}
+.tb-row label{flex-shrink:0;color:var(--muted);min-width:80px}
+.tb-row input[type=text],.tb-row input[type=number]{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:5px 8px;color:var(--text);font-size:12px;font-family:inherit}
+.tb-row input:focus{outline:none;border-color:var(--accent)}
+.tb-row-inline{flex-wrap:wrap}
+.tb-cols-hdr{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.tb-cols-hdr button{background:var(--btn-bg);border:1px solid var(--border);border-radius:4px;padding:3px 9px;font-size:11px;color:var(--accent);cursor:pointer;font-family:inherit}
+.tb-cols-hdr button:hover{border-color:var(--accent)}
+#tb-cols-list{display:flex;flex-direction:column;gap:6px}
+.tb-col-row{display:grid;grid-template-columns:1fr 140px 1fr auto;gap:6px;align-items:center}
+.tb-col-row input[type=text]{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:5px 8px;color:var(--text);font-size:12px;font-family:inherit;width:100%}
+.tb-col-row input[type=text]:focus{outline:none;border-color:var(--accent)}
+.tb-col-row select{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:5px 6px;color:var(--text);font-size:12px;font-family:inherit;width:100%}
+.tb-col-row select:focus{outline:none;border-color:var(--accent)}
+.tb-col-opts{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:5px 8px;color:var(--text);font-size:11px;font-family:inherit;width:100%;color:var(--muted)}
+.tb-col-opts::placeholder{color:var(--muted);opacity:.7}
+.tb-col-opts:focus{outline:none;border-color:var(--accent);color:var(--text)}
+.tb-col-row .tb-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;padding:2px 5px;border-radius:3px;line-height:1}
+.tb-col-row .tb-del:hover{color:var(--red)}
+.tb-preview-wrap{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)}
+#tb-preview{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 10px;font-family:'Cascadia Code',Consolas,monospace;font-size:11px;color:var(--accent);white-space:pre-wrap;word-break:break-all;line-height:1.5}
+
 /* ---- Studio theme panel (reuses doc-settings styles) ---- */
 #studio-theme-panel {
   position: absolute;
@@ -382,6 +415,8 @@ button:disabled { opacity: .4; cursor: default; }
   <div class="sep"></div>
   <span id="filename-display">No file open</span>
   <div class="spacer"></div>
+  <button id="btn-insert-table" title="Insert a typed table field">⊞ Table</button>
+  <div class="sep"></div>
   <button id="btn-doc-settings" title="Document defaults — applied to newly compiled documents">⚙ Document Settings</button>
   <button id="btn-studio-theme" title="Studio theme customization">🎨 Theme</button>
   <div class="sep"></div>
@@ -522,6 +557,41 @@ button:disabled { opacity: .4; cursor: default; }
       </div>
     </div>
     <button class="ds-reset" id="sth-reset" type="button">Reset to defaults</button>
+  </div>
+</div>
+
+<!-- Table builder modal -->
+<div id="tbl-builder-overlay" style="display:none">
+  <div id="tbl-builder-modal">
+    <div id="tbl-builder-hdr">
+      <span>Insert Table Field</span>
+      <button type="button" id="tbl-builder-close" title="Close">✕</button>
+    </div>
+    <div id="tbl-builder-body">
+      <div class="tb-row">
+        <label for="tb-label">Table label</label>
+        <input type="text" id="tb-label" placeholder="e.g. People" autocomplete="off">
+      </div>
+      <div class="tb-cols-hdr">
+        <span>Columns</span>
+        <button type="button" id="tb-add-col">+ Add column</button>
+      </div>
+      <div id="tb-cols-list"></div>
+      <div class="tb-row tb-row-inline">
+        <label for="tb-min-rows">Min rows</label>
+        <input type="number" id="tb-min-rows" min="1" max="20" value="1" style="width:52px">
+        <label for="tb-max-rows" style="margin-left:12px">Max rows <small>(0 = unlimited)</small></label>
+        <input type="number" id="tb-max-rows" min="0" max="100" value="0" style="width:52px">
+      </div>
+      <div class="tb-preview-wrap">
+        <label>Generated directive</label>
+        <pre id="tb-preview"></pre>
+      </div>
+    </div>
+    <div id="tbl-builder-footer">
+      <button type="button" id="tbl-builder-cancel">Cancel</button>
+      <button type="button" id="tbl-builder-insert" class="primary">Insert at cursor</button>
+    </div>
   </div>
 </div>
 
@@ -1863,27 +1933,64 @@ var TESSEL_RUNTIME_JS = String.raw`
     function makeInput(col,value){
       var inp;
       switch(col.type){
-        case 'date':inp=document.createElement('input');inp.type='date';break;
+        case 'area':
+          inp=document.createElement('textarea');inp.rows=2;break;
+        case 'date':
+          inp=document.createElement('input');inp.type='date';break;
+        case 'datetime':
+          inp=document.createElement('input');inp.type='datetime-local';break;
+        case 'number':
+          inp=document.createElement('input');inp.type='number';break;
+        case 'email':
+          inp=document.createElement('input');inp.type='email';break;
+        case 'phone':
+          inp=document.createElement('input');inp.type='tel';break;
+        case 'url':
+          inp=document.createElement('input');inp.type='url';break;
+        case 'check':
+          inp=document.createElement('input');inp.type='checkbox';break;
         case 'select':
           inp=document.createElement('select');
           inp.innerHTML='<option value="">—</option>'+col.opts.map(function(o){
             return'<option value="'+o+'">'+o+'</option>';}).join('');
           break;
-        case 'check':inp=document.createElement('input');inp.type='checkbox';break;
-        default:inp=document.createElement('input');inp.type='text';
+        case 'radio':
+          inp=document.createElement('div');inp.className='tb-radio-group';
+          col.opts.forEach(function(opt){
+            var lbl=document.createElement('label');lbl.style.cssText='display:inline-flex;align-items:center;gap:4px;margin-right:8px;font-size:.85em;cursor:pointer';
+            var r=document.createElement('input');r.type='radio';r.name='tbr-'+col.name+'-'+Math.random().toString(36).slice(2,6);r.value=opt;
+            if(value===opt)r.checked=true;
+            lbl.appendChild(r);lbl.appendChild(document.createTextNode(opt));
+            inp.appendChild(lbl);
+          });
+          break;
+        default:
+          inp=document.createElement('input');inp.type='text';
       }
       if(col.type==='check')inp.checked=!!value;
-      else if(inp.tagName==='SELECT'||inp.type!=='checkbox')inp.value=value||'';
+      else if(col.type==='radio'){/* handled above */}
+      else if(inp.tagName==='TEXTAREA'||inp.tagName==='SELECT')inp.value=value||'';
+      else if(inp.type!=='checkbox')inp.value=value||'';
       return inp;
     }
     function serializeTable(tbody,cols){
       var rows=[],trs=tbody.querySelectorAll('tr');
       trs.forEach(function(tr){
         var row={};
-        var inputs=tr.querySelectorAll('input:not([type=hidden]),select,textarea');
-        for(var i=0;i<Math.min(inputs.length,cols.length);i++){
-          var inp=inputs[i];
-          row[cols[i].name]=inp.type==='checkbox'?inp.checked:inp.value;
+        var tds=tr.querySelectorAll('td:not(.tbl-del-col)');
+        for(var i=0;i<Math.min(tds.length,cols.length);i++){
+          var col=cols[i];
+          var td=tds[i];
+          if(col.type==='radio'){
+            var checked=td.querySelector('input[type=radio]:checked');
+            row[col.name]=checked?checked.value:'';
+          } else if(col.type==='check'){
+            var cb=td.querySelector('input[type=checkbox]');
+            row[col.name]=cb?cb.checked:false;
+          } else {
+            var inp=td.querySelector('input,select,textarea');
+            row[col.name]=inp?inp.value:'';
+          }
         }
         rows.push(row);
       });
@@ -1909,8 +2016,13 @@ var TESSEL_RUNTIME_JS = String.raw`
       cols.forEach(function(col){
         var td=document.createElement('td');
         var inp=makeInput(col,rowData&&rowData[col.name]!=null?rowData[col.name]:'');
-        inp.addEventListener('change',function(){saveTable(slug,serializeTable(tbody,cols),hid);});
-        inp.addEventListener('input',function(){saveTable(slug,serializeTable(tbody,cols),hid);});
+        function onChange(){saveTable(slug,serializeTable(tbody,cols),hid);}
+        if(col.type==='radio'){
+          inp.querySelectorAll('input[type=radio]').forEach(function(r){r.addEventListener('change',onChange);});
+        } else {
+          inp.addEventListener('change',onChange);
+          inp.addEventListener('input',onChange);
+        }
         td.appendChild(inp);tr.appendChild(td);
       });
       var td=document.createElement('td');td.className='tbl-del-col';
@@ -4892,6 +5004,140 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     // Auto-save draft on edit
     editor.addEventListener('input', function() {
       try { localStorage.setItem('tessel-studio:draft', editor.value); } catch(ex) {}
+    });
+  })();
+
+  // ---- table builder ----
+  (function() {
+    var overlay   = document.getElementById('tbl-builder-overlay');
+    var openBtn   = document.getElementById('btn-insert-table');
+    var closeBtn  = document.getElementById('tbl-builder-close');
+    var cancelBtn = document.getElementById('tbl-builder-cancel');
+    var insertBtn = document.getElementById('tbl-builder-insert');
+    var colsList  = document.getElementById('tb-cols-list');
+    var addColBtn = document.getElementById('tb-add-col');
+    var preview   = document.getElementById('tb-preview');
+    var labelEl   = document.getElementById('tb-label');
+    var minEl     = document.getElementById('tb-min-rows');
+    var maxEl     = document.getElementById('tb-max-rows');
+    if (!overlay || !openBtn) return;
+
+    var COL_TYPES = [
+      { value: 'text',     label: 'Text (single line)' },
+      { value: 'area',     label: 'Text area (multiline)' },
+      { value: 'number',   label: 'Number' },
+      { value: 'email',    label: 'Email' },
+      { value: 'phone',    label: 'Phone / Tel' },
+      { value: 'url',      label: 'URL' },
+      { value: 'date',     label: 'Date' },
+      { value: 'datetime', label: 'Date + Time' },
+      { value: 'check',    label: 'Checkbox' },
+      { value: 'select',   label: 'Dropdown (select)' },
+      { value: 'radio',    label: 'Radio buttons' }
+    ];
+    var OPTS_TYPES = new Set(['select', 'radio']);
+
+    function typeSelectHtml(current) {
+      return '<select class="tb-type-sel">' +
+        COL_TYPES.map(function(t) {
+          return '<option value="' + t.value + '"' + (t.value === (current||'text') ? ' selected' : '') + '>' + t.label + '</option>';
+        }).join('') + '</select>';
+    }
+
+    function addColRow(name, type, opts) {
+      var row = document.createElement('div');
+      row.className = 'tb-col-row';
+      row.innerHTML =
+        '<input type="text" class="tb-col-name" placeholder="Column name" value="' + (name||'') + '">' +
+        typeSelectHtml(type || 'text') +
+        '<input type="text" class="tb-col-opts" placeholder="Options: A / B / C (for select or radio)" value="' + (opts||'') + '"' +
+          (OPTS_TYPES.has(type||'text') ? '' : ' style="display:none"') + '>' +
+        '<button type="button" class="tb-del" title="Remove column">×</button>';
+
+      row.querySelector('.tb-type-sel').addEventListener('change', function() {
+        var optsEl = row.querySelector('.tb-col-opts');
+        optsEl.style.display = OPTS_TYPES.has(this.value) ? '' : 'none';
+        updatePreview();
+      });
+      row.querySelector('.tb-col-name').addEventListener('input', updatePreview);
+      row.querySelector('.tb-col-opts').addEventListener('input', updatePreview);
+      row.querySelector('.tb-del').addEventListener('click', function() {
+        row.parentNode.removeChild(row); updatePreview();
+      });
+
+      colsList.appendChild(row);
+      updatePreview();
+    }
+
+    function buildDirective() {
+      var label = (labelEl ? labelEl.value.trim() : '') || 'Table';
+      var rows = colsList.querySelectorAll('.tb-col-row');
+      var cols = [];
+      rows.forEach(function(row) {
+        var name = row.querySelector('.tb-col-name').value.trim();
+        var type = row.querySelector('.tb-type-sel').value;
+        var opts = row.querySelector('.tb-col-opts').value.trim();
+        if (!name) return;
+        var colDef = name;
+        if (type !== 'text') colDef += ' | ' + type;
+        if (OPTS_TYPES.has(type) && opts) {
+          colDef += ':' + opts.split('/').map(function(o){return o.trim();}).filter(Boolean).join('/');
+        }
+        cols.push(colDef);
+      });
+      var directive = '@table ' + label + ': ' + cols.join(', ');
+      var min = parseInt(minEl ? minEl.value : 1, 10) || 1;
+      var max = parseInt(maxEl ? maxEl.value : 0, 10) || 0;
+      var meta = [];
+      if (min !== 1) meta.push('min_rows: ' + min);
+      if (max > 0)   meta.push('max_rows: ' + max);
+      if (meta.length) directive += '\n{' + meta.join(', ') + '}';
+      return directive;
+    }
+
+    function updatePreview() {
+      if (preview) preview.textContent = buildDirective();
+    }
+
+    function openModal() {
+      colsList.innerHTML = '';
+      if (labelEl) labelEl.value = '';
+      if (minEl) minEl.value = 1;
+      if (maxEl) maxEl.value = 0;
+      addColRow('', 'text', '');
+      updatePreview();
+      overlay.style.display = 'flex';
+      if (labelEl) setTimeout(function(){ labelEl.focus(); }, 50);
+    }
+
+    function closeModal() { overlay.style.display = 'none'; }
+
+    openBtn.addEventListener('click', openModal);
+    if (closeBtn)  closeBtn.addEventListener('click',  closeModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModal(); });
+    if (addColBtn) addColBtn.addEventListener('click', function() { addColRow('', 'text', ''); });
+    if (labelEl) labelEl.addEventListener('input', updatePreview);
+    if (minEl)   minEl.addEventListener('input',   updatePreview);
+    if (maxEl)   maxEl.addEventListener('input',   updatePreview);
+
+    if (insertBtn) insertBtn.addEventListener('click', function() {
+      var directive = buildDirective();
+      var wyEl = document.getElementById('wysiwyg-editor');
+      if (wyEl && wyEl.style.display !== 'none') {
+        // In WYSIWYG mode: exit to markdown first, then insert
+        document.getElementById('btn-wysiwyg').click();
+      }
+      var s = editor.selectionStart != null ? editor.selectionStart : editor.value.length;
+      var cur = editor.value;
+      var before = cur.slice(0, s);
+      if (before.length && !before.endsWith('\n\n')) {
+        directive = (before.endsWith('\n') ? '\n' : '\n\n') + directive;
+      }
+      editor.value = before + directive + '\n\n' + cur.slice(s);
+      editor.selectionStart = editor.selectionEnd = s + directive.length + 2;
+      editor.dispatchEvent(new Event('input'));
+      closeModal();
     });
   })();
 
