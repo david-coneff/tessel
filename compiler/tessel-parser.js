@@ -9,7 +9,8 @@
  *   - YAML front-matter (--- ... ---)
  *   - Standard markdown: h1-h6, paragraphs, code fences, blockquotes, lists, --- hr, tables
  *   - @field directives: @text, @area, @date, @credential, @totp, @radio, @check/@checkbox,
- *                        @select, @table, @parse, @filename, @dir
+ *                        @select, @table, @parse, @filename, @dir,
+ *                        @image, @richtext, @computed, @signature
  *   - @section / @endsection / @subsection / @endsubsection (collapsible wrapper directives)
  *   - @if / @endif (conditional blocks)
  *   - @param (template parameter declaration)
@@ -456,6 +457,26 @@ TesselParser.prototype.parse = function(source) {
         }
         else if (dir === 'dir') {
           fieldNode = { type: 'dir_field', label: rest };
+          applyMeta(fieldNode, meta);
+        }
+        else if (dir === 'image') {
+          fieldNode = { type: 'image_field', label: rest };
+          applyMeta(fieldNode, meta);
+        }
+        else if (dir === 'richtext' || dir === 'rt') {
+          fieldNode = { type: 'richtext_field', label: rest };
+          applyMeta(fieldNode, meta);
+        }
+        else if (dir === 'computed') {
+          // @computed Label: ${field_id} expression
+          var colonIdx4 = rest.indexOf(':');
+          var compLabel = colonIdx4 >= 0 ? rest.slice(0, colonIdx4).trim() : rest;
+          var compExpr  = colonIdx4 >= 0 ? rest.slice(colonIdx4 + 1).trim() : '';
+          fieldNode = { type: 'computed_field', label: compLabel, expr: compExpr };
+          applyMeta(fieldNode, meta);
+        }
+        else if (dir === 'signature' || dir === 'sig') {
+          fieldNode = { type: 'signature_field', label: rest };
           applyMeta(fieldNode, meta);
         }
         else {
