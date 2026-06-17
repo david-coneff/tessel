@@ -1274,12 +1274,28 @@ var TESSEL_CSS = `
     white-space:nowrap;pointer-events:none}
   .bf-pag-ruler.custom .bf-pag-label{background:rgba(137,180,250,.12);color:var(--accent);pointer-events:auto;cursor:pointer}
   .bf-pag-strip{display:none;flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border);
-    padding:4px 12px;gap:10px;align-items:center;font-size:.78em;color:var(--muted)}
+    padding:4px 12px;gap:8px;align-items:center;font-size:.78em;color:var(--muted);flex-wrap:wrap}
   .bf-pag-strip.active{display:flex}
   .bf-pag-strip select{background:var(--bg3);border:1px solid var(--border);border-radius:3px;
     padding:2px 6px;color:var(--text);font-size:.78em;font-family:inherit}
   .bf-pag-strip select:focus{outline:none;border-color:var(--accent)}
-  .bf-pag-strip-hint{color:var(--muted);font-size:.72em}
+  .bf-pag-strip input[type=number],.bf-pag-strip input[type=text]{background:var(--bg3);
+    border:1px solid var(--border);border-radius:3px;padding:2px 6px;color:var(--text);
+    font-size:.78em;font-family:inherit}
+  .bf-pag-strip input:focus{outline:none;border-color:var(--accent)}
+  .bf-pag-strip-hint{color:var(--muted);font-size:.72em;flex-basis:100%;padding-bottom:2px}
+  .bf-pag-custom-form{display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+    border-left:2px solid var(--accent);padding-left:8px;margin-left:4px}
+  .bf-pag-custom-form label{color:var(--muted)}
+  .bf-pag-del-btn{background:none;border:1px solid var(--border);border-radius:3px;
+    color:var(--muted);cursor:pointer;padding:1px 6px;font-size:.75em;font-family:inherit}
+  .bf-pag-del-btn:hover{border-color:var(--red);color:var(--red)}
+  .bf-pag-save-btn{background:var(--accent);border:none;border-radius:3px;
+    color:var(--bg);cursor:pointer;padding:2px 8px;font-size:.75em;font-family:inherit;font-weight:600}
+  .bf-pag-save-btn:hover{opacity:.85}
+  .bf-pag-cancel-btn{background:none;border:1px solid var(--border);border-radius:3px;
+    color:var(--muted);cursor:pointer;padding:2px 6px;font-size:.75em;font-family:inherit}
+  .bf-pag-strip-sep{color:var(--border);padding:0 2px}
   #bf-pag-btn.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
   @media print{#bf-main{padding:12px}#bf-notes-pane,#bf-drag,#bf-settings-panel,#bf-pag-strip,
     .bf-pag-overlay{display:none!important}
@@ -2944,19 +2960,120 @@ var TESSEL_RUNTIME_JS = String.raw`
     if(!pagBtn||!main||!docBody)return;
 
     var PAG_KEY=ns+'pag-breaks';
+    var PAG_CUSTOM_KEY=ns+'pag-custom-sizes';
+    var PAG_FMT_KEY=ns+'pag-last-format';
     var active=false;
     var overlay=null;
 
-    // Page printable heights at 96dpi minus top+bottom margins
-    var PAGE_H={
-      letter:function(m){return Math.round(11*96 - 2*m);},
-      a4:function(m){return Math.round(297/25.4*96 - 2*m);}
+    // Standard sizes: [width_mm, height_mm]
+    var STANDARD_SIZES={
+      letter:  {label:'Letter (8.5×11in)',  w:215.9, h:279.4},
+      legal:   {label:'Legal (8.5×14in)',   w:215.9, h:355.6},
+      tabloid: {label:'Tabloid (11×17in)',   w:279.4, h:431.8},
+      executive:{label:'Executive (7.25×10.5in)',w:184.1,h:266.7},
+      a3:      {label:'A3 (297×420mm)',      w:297,   h:420},
+      a4:      {label:'A4 (210×297mm)',      w:210,   h:297},
+      a5:      {label:'A5 (148×210mm)',      w:148,   h:210},
+      b4:      {label:'B4 (257×364mm)',      w:257,   h:364},
+      b5:      {label:'B5 (182×257mm)',      w:182,   h:257}
     };
 
+    function loadCustomSizes(){try{var s=localStorage.getItem(PAG_CUSTOM_KEY);return s?JSON.parse(s):{};}catch(e){return{};}}
+    function saveCustomSizes(m){try{localStorage.setItem(PAG_CUSTOM_KEY,JSON.stringify(m));}catch(e){}}
+
+    function populateFormatSelect(){
+      if(!fmtSel)return;
+      var last=localStorage.getItem(PAG_FMT_KEY)||'letter';
+      fmtSel.innerHTML='';
+      var grp1=document.createElement('optgroup');grp1.label='Standard';
+      Object.keys(STANDARD_SIZES).forEach(function(k){
+        var o=document.createElement('option');o.value=k;o.textContent=STANDARD_SIZES[k].label;
+        grp1.appendChild(o);
+      });
+      fmtSel.appendChild(grp1);
+      var custom=loadCustomSizes();
+      var ckeys=Object.keys(custom);
+      if(ckeys.length){
+        var grp2=document.createElement('optgroup');grp2.label='Custom';
+        ckeys.forEach(function(k){
+          var o=document.createElement('option');o.value=k;o.textContent=custom[k].label;
+          grp2.appendChild(o);
+        });
+        fmtSel.appendChild(grp2);
+      }
+      // restore last selection
+      if(fmtSel.querySelector('option[value="'+last+'"]'))fmtSel.value=last;
+      updateDelBtn();
+    }
+
+    var delBtn=document.getElementById('bf-pag-del-size');
+    var addCustomBtn=document.getElementById('bf-pag-add-custom');
+    var customForm=document.getElementById('bf-pag-custom-form');
+    var custName=document.getElementById('bf-pag-cust-name');
+    var custW=document.getElementById('bf-pag-cust-w');
+    var custH=document.getElementById('bf-pag-cust-h');
+    var custUnit=document.getElementById('bf-pag-cust-unit');
+    var custSave=document.getElementById('bf-pag-cust-save');
+    var custCancel=document.getElementById('bf-pag-cust-cancel');
+
+    function updateDelBtn(){
+      if(!delBtn||!fmtSel)return;
+      var v=fmtSel.value;
+      delBtn.style.display=STANDARD_SIZES[v]?'none':'inline-block';
+    }
+
+    if(fmtSel){fmtSel.addEventListener('change',function(){
+      localStorage.setItem(PAG_FMT_KEY,fmtSel.value);
+      updateDelBtn();
+      renderRulers();
+    });}
+
+    if(delBtn){delBtn.addEventListener('click',function(){
+      var v=fmtSel.value;
+      if(STANDARD_SIZES[v])return;
+      var c=loadCustomSizes();delete c[v];saveCustomSizes(c);
+      populateFormatSelect();
+      renderRulers();
+    });}
+
+    if(addCustomBtn){addCustomBtn.addEventListener('click',function(){
+      if(customForm){customForm.style.display='flex';}
+      addCustomBtn.style.display='none';
+    });}
+    if(custCancel){custCancel.addEventListener('click',function(){
+      if(customForm)customForm.style.display='none';
+      if(addCustomBtn)addCustomBtn.style.display='inline-block';
+    });}
+    if(custSave){custSave.addEventListener('click',function(){
+      var name=(custName?custName.value.trim():'')||'Custom';
+      var w=parseFloat(custW?custW.value:0)||0;
+      var h=parseFloat(custH?custH.value:0)||0;
+      var unit=custUnit?custUnit.value:'mm';
+      if(!w||!h){alert('Please enter valid width and height.');return;}
+      if(unit==='in'){w=w*25.4;h=h*25.4;}
+      var key='custom_'+Date.now();
+      var c=loadCustomSizes();
+      c[key]={label:name+' ('+(unit==='in'?(w/25.4).toFixed(2)+'×'+(h/25.4).toFixed(2)+'in':Math.round(w)+'×'+Math.round(h)+'mm)'),w:w,h:h};
+      saveCustomSizes(c);
+      populateFormatSelect();
+      fmtSel.value=key;
+      localStorage.setItem(PAG_FMT_KEY,key);
+      updateDelBtn();
+      if(customForm)customForm.style.display='none';
+      if(addCustomBtn)addCustomBtn.style.display='inline-block';
+      if(custName)custName.value='';if(custW)custW.value='';if(custH)custH.value='';
+      renderRulers();
+    });}
+
+    populateFormatSelect();
+
     function getPageH(){
-      var fmt=(fmtSel?fmtSel.value:'letter')||'letter';
+      var v=(fmtSel?fmtSel.value:'letter')||'letter';
       var m=parseInt(marginSel?marginSel.value:48,10)||48;
-      return PAGE_H[fmt]?PAGE_H[fmt](m):PAGE_H.letter(m);
+      var sz=STANDARD_SIZES[v];
+      if(!sz){var c=loadCustomSizes();sz=c[v];}
+      var hMm=sz?sz.h:279.4;
+      return Math.round(hMm/25.4*96 - 2*m);
     }
 
     function loadBreaks(){try{var s=localStorage.getItem(PAG_KEY);return s?JSON.parse(s):{};}catch(e){return{};}}
@@ -3100,7 +3217,6 @@ var TESSEL_RUNTIME_JS = String.raw`
       docBody.appendChild(overlay);
       applyBreaks();
       renderRulers();
-      if(fmtSel)fmtSel.addEventListener('change',renderRulers);
       if(marginSel)marginSel.addEventListener('change',renderRulers);
     }
 
@@ -4764,17 +4880,26 @@ TesselCompiler.prototype.compile = function(ast) {
     '<div id="bf-pag-strip">',
     '  <strong style="color:var(--accent)">Pagination Preview</strong>',
     '  <span>Paper:</span>',
-    '  <select id="bf-pag-format">',
-    '    <option value="letter">Letter (8.5×11in)</option>',
-    '    <option value="a4">A4 (210×297mm)</option>',
-    '  </select>',
+    '  <select id="bf-pag-format"></select>',
+    '  <button type="button" id="bf-pag-del-size" class="bf-pag-del-btn" style="display:none" title="Delete this custom size">✕ Delete</button>',
+    '  <div id="bf-pag-custom-form" class="bf-pag-custom-form" style="display:none">',
+    '    <span>Name:</span><input type="text" id="bf-pag-cust-name" placeholder="e.g. My Label" style="width:90px">',
+    '    <input type="number" id="bf-pag-cust-w" placeholder="W" min="1" step="0.1" style="width:55px">',
+    '    <span>×</span>',
+    '    <input type="number" id="bf-pag-cust-h" placeholder="H" min="1" step="0.1" style="width:55px">',
+    '    <select id="bf-pag-cust-unit"><option value="mm">mm</option><option value="in">in</option></select>',
+    '    <button type="button" id="bf-pag-cust-save" class="bf-pag-save-btn">Save</button>',
+    '    <button type="button" id="bf-pag-cust-cancel" class="bf-pag-cancel-btn">Cancel</button>',
+    '  </div>',
+    '  <span class="bf-pag-strip-sep">|</span>',
     '  <span>Margins:</span>',
     '  <select id="bf-pag-margin">',
     '    <option value="48">0.5in</option>',
     '    <option value="96">1in</option>',
     '    <option value="0">None</option>',
     '  </select>',
-    '  <span class="bf-pag-strip-hint">Orange = natural break · Blue = custom break · Drag handle up to reposition</span>',
+    '  <button type="button" id="bf-pag-add-custom" class="bf-pag-cancel-btn" title="Define a custom page size">+ Custom size</button>',
+    '  <span class="bf-pag-strip-hint">Orange = natural break · Blue = custom break · Drag handle up to reposition · Use Paper picker to change page size</span>',
     '</div>',
 
     // main split layout
