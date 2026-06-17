@@ -424,7 +424,26 @@ button:disabled { opacity: .4; cursor: default; }
   <button id="btn-insert-img" title="Insert image (embedded as data URI)">⬡ Image</button>
   <input type="file" id="pick-img" accept="image/*" style="display:none">
   <div class="sep"></div>
+  <button id="btn-history" title="Edit history — undo/redo and jump to past versions (Ctrl+Z / Ctrl+Y)">⏳ History</button>
+  <div class="sep"></div>
   <button id="btn-theme">☀ Light</button>
+</div>
+
+<!-- History panel -->
+<div id="history-panel">
+  <div id="history-hdr">
+    <span>Edit History</span>
+    <div id="history-hdr-btns">
+      <button type="button" class="hist-nav-btn" id="hist-undo-btn" title="Undo (Ctrl+Z)" disabled>↩ Undo</button>
+      <button type="button" class="hist-nav-btn" id="hist-redo-btn" title="Redo (Ctrl+Y)" disabled>↪ Redo</button>
+      <button type="button" id="history-close" title="Close">✕</button>
+    </div>
+  </div>
+  <div id="history-list"></div>
+  <div id="history-footer">
+    <button type="button" id="hist-clear-btn">Clear history</button>
+    <span class="hist-count" id="hist-count-label"></span>
+  </div>
 </div>
 
 <!-- Document settings panel -->
@@ -518,6 +537,25 @@ button:disabled { opacity: .4; cursor: default; }
       <div class="ds-row">
         <label for="ds-tbl-max">Default max rows (0 = unlimited)</label>
         <input type="number" id="ds-tbl-max" min="0" max="100" value="0" style="width:56px">
+      </div>
+    </div>
+    <div class="ds-group">
+      <span class="ds-group-label">Editor History</span>
+      <p class="ds-hint" style="margin:0 0 6px">Controls the Studio's undo/redo snapshot behaviour.</p>
+      <div class="ds-row">
+        <label for="ds-hist-interval">Snapshot interval</label>
+        <select id="ds-hist-interval">
+          <option value="500">0.5 s — very fine</option>
+          <option value="1000">1 s — fine</option>
+          <option value="2000" selected>2 s — normal</option>
+          <option value="5000">5 s — coarse</option>
+          <option value="10000">10 s — very coarse</option>
+          <option value="30000">30 s — minimal</option>
+        </select>
+      </div>
+      <div class="ds-row">
+        <label for="ds-hist-max">Max snapshots kept</label>
+        <input type="number" id="ds-hist-max" min="10" max="500" value="100" style="width:64px">
       </div>
     </div>
     <button class="ds-reset" id="ds-reset" type="button">Reset to defaults</button>
@@ -1297,6 +1335,44 @@ var TESSEL_CSS = `
     color:var(--muted);cursor:pointer;padding:2px 6px;font-size:.75em;font-family:inherit}
   .bf-pag-strip-sep{color:var(--border);padding:0 2px}
   #bf-pag-btn.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  /* ---- history panel ---- */
+  #history-panel{position:fixed;top:var(--toolbar-h);right:0;width:320px;background:var(--bg2);
+    border-left:1px solid var(--border);border-bottom:1px solid var(--border);
+    z-index:200;display:none;flex-direction:column;max-height:calc(100vh - var(--toolbar-h));
+    box-shadow:-4px 4px 16px rgba(0,0,0,.25)}
+  #history-panel.open{display:flex}
+  #history-hdr{display:flex;align-items:center;justify-content:space-between;
+    padding:8px 12px;border-bottom:1px solid var(--border);background:var(--bg3);flex-shrink:0}
+  #history-hdr span{font-size:.82em;font-weight:600;color:var(--text)}
+  #history-hdr-btns{display:flex;gap:6px;align-items:center}
+  .hist-nav-btn{background:none;border:1px solid var(--border);border-radius:3px;
+    color:var(--muted);cursor:pointer;padding:2px 8px;font-size:.78em;font-family:inherit;
+    line-height:1.4}
+  .hist-nav-btn:hover:not(:disabled){background:var(--bg);color:var(--text)}
+  .hist-nav-btn:disabled{opacity:.35;cursor:not-allowed}
+  #history-close{background:none;border:none;color:var(--muted);cursor:pointer;
+    font-size:.9em;padding:2px 6px;border-radius:3px;line-height:1}
+  #history-close:hover{color:var(--text);background:var(--bg)}
+  #history-list{overflow-y:auto;flex:1;min-height:0;padding:4px 0}
+  .hist-item{padding:7px 12px;cursor:pointer;border-bottom:1px solid var(--border);
+    transition:background .1s}
+  .hist-item:last-child{border-bottom:none}
+  .hist-item:hover{background:var(--bg3)}
+  .hist-item.current{background:rgba(137,180,250,.12);border-left:3px solid var(--accent)}
+  .hist-item.current .hist-time{color:var(--accent)}
+  .hist-time{font-size:.72em;color:var(--muted);display:block;margin-bottom:2px;
+    font-family:monospace}
+  .hist-preview{font-size:.75em;color:var(--text);white-space:nowrap;overflow:hidden;
+    text-overflow:ellipsis;display:block;opacity:.8}
+  .hist-badge{font-size:.65em;background:var(--accent);color:var(--bg);border-radius:3px;
+    padding:1px 5px;margin-left:6px;vertical-align:middle}
+  #history-footer{padding:8px 12px;border-top:1px solid var(--border);
+    display:flex;gap:8px;align-items:center;flex-shrink:0;background:var(--bg3)}
+  #hist-clear-btn{background:none;border:1px solid var(--border);border-radius:3px;
+    color:var(--muted);cursor:pointer;padding:3px 10px;font-size:.78em;font-family:inherit}
+  #hist-clear-btn:hover{border-color:var(--red);color:var(--red)}
+  .hist-count{font-size:.72em;color:var(--muted);margin-left:auto}
+  #btn-history.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
   @media print{#bf-main{padding:12px}#bf-notes-pane,#bf-drag,#bf-settings-panel,#bf-pag-strip,
     .bf-pag-overlay{display:none!important}
     #bf-pag-btn,#bf-print-btn,#bf-theme-btn,.copy-btn{display:none}
@@ -5169,12 +5245,18 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
   document.getElementById('btn-compile-first').addEventListener('click', compile);
   document.getElementById('btn-download').addEventListener('click', downloadHtml);
 
-  // ---- keyboard shortcut: Ctrl/Cmd + Enter = compile now ----
+  // ---- keyboard shortcut: Ctrl/Cmd + Enter = compile now, Ctrl+Z/Y = history undo/redo ----
   editor.addEventListener('keydown', function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
       if (compileTimer) { clearTimeout(compileTimer); compileTimer = null; }
       compile();
+    }
+    // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y → handled by history IIFE (event dispatched globally)
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z' || e.key === 'y' || e.key === 'Y') && !e.altKey) {
+      e.preventDefault();
+      var redo = e.key === 'y' || e.key === 'Y' || (e.shiftKey && (e.key === 'z' || e.key === 'Z'));
+      document.dispatchEvent(new CustomEvent('tessel-history-nav', { detail: { redo: redo } }));
     }
     // Tab → insert 2 spaces
     if (e.key === 'Tab') {
@@ -5341,6 +5423,28 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         panel.style.display = 'none';
       }
     });
+
+    // Wire history settings inputs — they live in this panel but are handled by history IIFE
+    var histIntervalSel = document.getElementById('ds-hist-interval');
+    var histMaxEl       = document.getElementById('ds-hist-max');
+    function loadHistSettings() {
+      try {
+        var s = localStorage.getItem('tessel-studio:history-settings');
+        if (s) { var p = JSON.parse(s);
+          if (histIntervalSel && p.interval) histIntervalSel.value = p.interval;
+          if (histMaxEl && p.maxSnapshots) histMaxEl.value = p.maxSnapshots;
+        }
+      } catch(e) {}
+    }
+    function saveHistSettings() {
+      var cfg = { interval: parseInt(histIntervalSel ? histIntervalSel.value : 2000, 10) || 2000,
+                  maxSnapshots: parseInt(histMaxEl ? histMaxEl.value : 100, 10) || 100 };
+      try { localStorage.setItem('tessel-studio:history-settings', JSON.stringify(cfg)); } catch(e) {}
+      document.dispatchEvent(new CustomEvent('tessel-history-settings-changed', { detail: cfg }));
+    }
+    if (histIntervalSel) histIntervalSel.addEventListener('change', saveHistSettings);
+    if (histMaxEl)       histMaxEl.addEventListener('input', saveHistSettings);
+    loadHistSettings();
 
     load();
   })();
@@ -5710,6 +5814,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       btnWysiwyg.textContent = '✎ WYSIWYG';
       btnWysiwyg.classList.remove('active');
       isWysiwyg = false;
+      document.dispatchEvent(new CustomEvent('tessel-wysiwyg-exit'));
     }
 
     btnWysiwyg.addEventListener('click', function() {
@@ -5761,6 +5866,186 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         }
       });
     }
+  })();
+
+  // ---- edit history (undo/redo + visual time-travel panel) ----
+  (function() {
+    var HIST_KEY = 'tessel-studio:history-settings';
+    var histBtn  = document.getElementById('btn-history');
+    var panel    = document.getElementById('history-panel');
+    var closeBtn = document.getElementById('history-close');
+    var list     = document.getElementById('history-list');
+    var countLbl = document.getElementById('hist-count-label');
+    var clearBtn = document.getElementById('hist-clear-btn');
+    var undoBtn  = document.getElementById('hist-undo-btn');
+    var redoBtn  = document.getElementById('hist-redo-btn');
+    if (!histBtn || !panel) return;
+
+    // Settings
+    var snapshotInterval = 2000;
+    var maxSnapshots = 100;
+    try {
+      var sc = localStorage.getItem(HIST_KEY);
+      if (sc) { var sp = JSON.parse(sc); snapshotInterval = sp.interval || 2000; maxSnapshots = sp.maxSnapshots || 100; }
+    } catch(e) {}
+
+    document.addEventListener('tessel-history-settings-changed', function(e) {
+      snapshotInterval = e.detail.interval || 2000;
+      maxSnapshots = e.detail.maxSnapshots || 100;
+      while (snapshots.length > maxSnapshots) snapshots.shift();
+      if (ptr >= snapshots.length) ptr = snapshots.length - 1;
+      renderList();
+    });
+
+    // Snapshot store: [{ ts, content }], ptr = index of "current" version
+    var snapshots = [];
+    var ptr = -1;
+    var snapTimer = null;
+    var panelOpen = false;
+
+    function timestamp() {
+      var d = new Date();
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function pushSnapshot(content) {
+      // Don't push if identical to current
+      if (ptr >= 0 && snapshots[ptr] && snapshots[ptr].content === content) return;
+      // Discard any "future" snapshots (undo branch)
+      if (ptr < snapshots.length - 1) snapshots = snapshots.slice(0, ptr + 1);
+      snapshots.push({ ts: timestamp(), content: content });
+      // Trim to max
+      while (snapshots.length > maxSnapshots) snapshots.shift();
+      ptr = snapshots.length - 1;
+      renderList();
+    }
+
+    function scheduleSnapshot() {
+      if (snapTimer) clearTimeout(snapTimer);
+      snapTimer = setTimeout(function() {
+        snapTimer = null;
+        pushSnapshot(editor.value);
+      }, snapshotInterval);
+    }
+
+    function restoreSnapshot(idx) {
+      if (idx < 0 || idx >= snapshots.length) return;
+      ptr = idx;
+      editor.value = snapshots[idx].content;
+      try { localStorage.setItem('tessel-studio:draft', editor.value); } catch(e) {}
+      updateEditorMeta();
+      btnCompile.disabled = editor.value.trim() === '';
+      // If a compile timer is pending, let it fire with new content
+      renderList();
+    }
+
+    function renderList() {
+      if (!list) return;
+      list.innerHTML = '';
+      if (snapshots.length === 0) {
+        var empty = document.createElement('p');
+        empty.style.cssText = 'padding:16px 12px;color:var(--muted);font-size:.8em;text-align:center';
+        empty.textContent = 'No history yet. Start editing to begin recording snapshots.';
+        list.appendChild(empty);
+        if (countLbl) countLbl.textContent = '';
+        if (undoBtn) undoBtn.disabled = true;
+        if (redoBtn) redoBtn.disabled = true;
+        return;
+      }
+      // Render newest first
+      for (var i = snapshots.length - 1; i >= 0; i--) {
+        (function(idx) {
+          var item = document.createElement('div');
+          item.className = 'hist-item' + (idx === ptr ? ' current' : '');
+          item.dataset.idx = idx;
+
+          var time = document.createElement('span');
+          time.className = 'hist-time';
+          var label = snapshots[idx].ts;
+          if (idx === ptr) label += ' ';
+          time.innerHTML = label;
+          if (idx === ptr) {
+            var badge = document.createElement('span');
+            badge.className = 'hist-badge';
+            badge.textContent = 'current';
+            time.appendChild(badge);
+          }
+
+          var preview = document.createElement('span');
+          preview.className = 'hist-preview';
+          var raw = snapshots[idx].content.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+          preview.textContent = raw.slice(0, 100) || '(empty)';
+
+          item.appendChild(time);
+          item.appendChild(preview);
+          item.addEventListener('click', function() { restoreSnapshot(idx); });
+          list.appendChild(item);
+        })(i);
+      }
+      if (countLbl) countLbl.textContent = snapshots.length + ' snapshot' + (snapshots.length !== 1 ? 's' : '');
+      if (undoBtn) undoBtn.disabled = ptr <= 0;
+      if (redoBtn) redoBtn.disabled = ptr >= snapshots.length - 1;
+    }
+
+    // Undo / redo via keyboard (event dispatched by keydown handler)
+    document.addEventListener('tessel-history-nav', function(e) {
+      if (e.detail.redo) {
+        if (ptr < snapshots.length - 1) restoreSnapshot(ptr + 1);
+      } else {
+        if (ptr > 0) restoreSnapshot(ptr - 1);
+      }
+    });
+
+    if (undoBtn) undoBtn.addEventListener('click', function() {
+      if (ptr > 0) restoreSnapshot(ptr - 1);
+    });
+    if (redoBtn) redoBtn.addEventListener('click', function() {
+      if (ptr < snapshots.length - 1) restoreSnapshot(ptr + 1);
+    });
+
+    // Capture snapshot on editor input (debounced)
+    editor.addEventListener('input', scheduleSnapshot);
+
+    // Also capture a snapshot when exiting WYSIWYG (after sync to textarea)
+    document.addEventListener('tessel-wysiwyg-exit', function() {
+      pushSnapshot(editor.value);
+    });
+
+    // Panel open/close
+    histBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      panelOpen = !panelOpen;
+      panel.classList.toggle('open', panelOpen);
+      histBtn.classList.toggle('active', panelOpen);
+      if (panelOpen) renderList();
+    });
+    if (closeBtn) closeBtn.addEventListener('click', function() {
+      panelOpen = false;
+      panel.classList.remove('open');
+      histBtn.classList.remove('active');
+    });
+    document.addEventListener('click', function(e) {
+      if (panelOpen && !panel.contains(e.target) && e.target !== histBtn) {
+        panelOpen = false;
+        panel.classList.remove('open');
+        histBtn.classList.remove('active');
+      }
+    });
+
+    // Clear
+    if (clearBtn) clearBtn.addEventListener('click', function() {
+      if (snapshots.length > 0 && !confirm('Clear all history snapshots?')) return;
+      var cur = snapshots[ptr] ? snapshots[ptr].content : editor.value;
+      snapshots = [{ ts: timestamp(), content: cur }];
+      ptr = 0;
+      renderList();
+    });
+
+    // Seed with initial content (after a tick so editor may be restored first)
+    setTimeout(function() {
+      if (editor.value.trim()) pushSnapshot(editor.value);
+      else renderList();
+    }, 200);
   })();
 
   // ---- insert image ----
