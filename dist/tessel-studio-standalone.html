@@ -9680,6 +9680,11 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         var activeTab = document.querySelector('.ribbon-tab.active');
         if (activeTab && activeTab.dataset.tab) wsPrevTabId = activeTab.dataset.tab;
 
+        // If the legacy rich-text WYSIWYG editor is open, sync it back first
+        var legacyWy = document.getElementById('wysiwyg-editor');
+        var legacyWyBtn = document.getElementById('btn-wysiwyg');
+        if (legacyWy && legacyWy.style.display !== 'none' && legacyWyBtn) legacyWyBtn.click();
+
         workspace.style.display = 'none';
         wsMode.classList.add('active');
         var editorEl = document.getElementById('editor');
