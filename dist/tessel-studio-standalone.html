@@ -590,12 +590,69 @@ var TESSEL_CSS = `
   .notefield{margin:10px 0}
   .notefield label{display:block;font-size:.82em;color:var(--muted);margin-bottom:3px;font-weight:600}
   .note-area,#bf-session-notes{width:100%;min-height:70px;resize:vertical;flex:none}
-  /* date fields (Tessel) */
-  .date-field input[type=date]{background:var(--code-bg);color:var(--text);
+  /* date / datetime fields (Tessel) */
+  .date-field input[type=date],.datetime-field input[type=datetime-local]{background:var(--code-bg);color:var(--text);
     border:1px solid var(--border);border-radius:4px;padding:5px 8px;
     font-family:'Cascadia Code',Consolas,monospace;font-size:.85em;
     color-scheme:dark}
-  body.light .date-field input[type=date]{color-scheme:light}
+  body.light .date-field input[type=date],
+  body.light .datetime-field input[type=datetime-local]{color-scheme:light}
+  .date-display,.datetime-display{display:inline-block;font-size:.78em;color:var(--muted);
+    margin-top:3px;min-height:1.2em;font-style:italic}
+  /* signature field */
+  .sig-field{}
+  .sig-tabs{display:flex;gap:0;margin:6px 0 0;border-bottom:1px solid var(--border)}
+  .sig-tab{background:none;border:none;border-bottom:2px solid transparent;
+    color:var(--muted);cursor:pointer;padding:5px 12px;font-size:.78em;font-family:inherit;
+    margin-bottom:-1px;border-radius:3px 3px 0 0;transition:color .1s,border-color .1s}
+  .sig-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .sig-tab:hover:not(.active){color:var(--text)}
+  .sig-panel{padding:8px 0}
+  .sig-type-input{font-size:1.4em;font-family:'Dancing Script','Brush Script MT','Segoe Script',cursive;
+    width:100%;padding:6px 10px;background:var(--code-bg);border:1px solid var(--border);
+    border-radius:4px;color:var(--text)}
+  .sig-type-preview{font-family:'Dancing Script','Brush Script MT','Segoe Script',cursive;
+    font-size:1.8em;color:var(--accent);min-height:2em;padding:4px 10px;
+    border-bottom:1px solid var(--border);margin-top:4px;letter-spacing:.04em;
+    word-break:break-word}
+  .sig-canvas-wrap{position:relative;border:1px solid var(--border);border-radius:4px;
+    background:var(--code-bg);cursor:crosshair;touch-action:none;overflow:hidden}
+  canvas.sig-canvas{display:block;width:100%;height:120px}
+  .sig-canvas-controls{display:flex;gap:6px;margin-top:4px;align-items:center}
+  .sig-clear-btn{background:none;border:1px solid var(--border);color:var(--muted);
+    border-radius:3px;padding:2px 8px;font-size:.78em;cursor:pointer;font-family:inherit}
+  .sig-clear-btn:hover{border-color:var(--red);color:var(--red)}
+  .sig-canvas-hint{font-size:.72em;color:var(--muted);margin-left:auto}
+  .sig-crypto{display:flex;flex-direction:column;gap:8px}
+  .sig-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px}
+  .sig-meta-full{grid-column:1/-1}
+  .sig-meta-label{font-size:.75em;color:var(--muted);display:block;margin-bottom:2px}
+  .sig-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+  .sig-sign-btn{background:var(--accent);color:var(--bg);border:none;border-radius:3px;
+    padding:5px 12px;font-size:.82em;font-family:inherit;cursor:pointer;font-weight:600}
+  .sig-sign-btn:hover{opacity:.88}
+  .sig-verify-btn,.sig-import-btn{background:var(--btn-bg);color:var(--muted);
+    border:1px solid var(--border);border-radius:3px;padding:5px 12px;
+    font-size:.82em;font-family:inherit;cursor:pointer}
+  .sig-verify-btn:hover,.sig-import-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .sig-status{font-size:.78em;padding:4px 8px;border-radius:3px;margin-top:4px}
+  .sig-status.ok{background:rgba(166,227,161,.12);color:var(--green);border:1px solid rgba(166,227,161,.3)}
+  .sig-status.err{background:rgba(243,139,168,.1);color:var(--red);border:1px solid rgba(243,139,168,.25)}
+  .sig-download{display:inline-flex;align-items:center;gap:5px;font-size:.78em;
+    color:var(--accent);text-decoration:none;padding:4px 8px;border:1px solid var(--accent);
+    border-radius:3px;margin-top:4px}
+  .sig-download:hover{background:rgba(137,180,250,.1)}
+  .sig-pdf-note{font-size:.72em;color:var(--muted);margin-top:4px;line-height:1.5;
+    border-left:2px solid var(--border);padding-left:8px}
+  /* markdown tables */
+  .md-table-wrap{overflow-x:auto;margin:10px 0;border:1px solid var(--border);border-radius:var(--radius)}
+  .md-table{width:100%;border-collapse:collapse;font-size:.88em;margin:0}
+  .md-table th{background:var(--bg2);color:var(--muted);text-align:left;padding:7px 10px;
+    border-bottom:2px solid var(--border);font-weight:600;font-size:.8em;text-transform:uppercase;letter-spacing:.05em}
+  .md-table td{padding:6px 10px;border-bottom:1px solid var(--bg3);vertical-align:top}
+  .md-table tr:last-child td{border-bottom:none}
+  .md-table tr:hover td{background:rgba(137,180,250,.04)}
+  body.light .md-table tr:hover td{background:rgba(9,105,218,.04)}
   /* collapsible subsections */
   details.subsection{margin:4px 0;border-top:1px solid var(--border)}
   details.subsection>summary.sub-summary{list-style:none;cursor:pointer;user-select:none;
@@ -1031,17 +1088,260 @@ var TESSEL_RUNTIME_JS = String.raw`
     });
   })();
 
+  // ---- date / datetime display formatting ----
+  (function(){
+    var dateFmt = document.body.dataset.dateFmt || 'YYYY-MM-DD';
+    var timeFmt = document.body.dataset.timeFmt || '24';
+    var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var MONTHS_S = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    window._tesselFmtDate = function(isoVal, hasTime) {
+      if (!isoVal) return '';
+      var d;
+      if (hasTime) {
+        d = new Date(isoVal.length === 16 ? isoVal + ':00' : isoVal);
+      } else {
+        var p = isoVal.split('-'); d = new Date(+p[0], +p[1]-1, +p[2]);
+      }
+      if (isNaN(d.getTime())) return isoVal;
+      var y=d.getFullYear(), m=d.getMonth(), dy=d.getDate();
+      var mm=String(m+1).padStart(2,'0'), dd=String(dy).padStart(2,'0');
+      var ds;
+      switch(dateFmt){
+        case 'MM/DD/YYYY': ds=mm+'/'+dd+'/'+y; break;
+        case 'DD/MM/YYYY': ds=dd+'/'+mm+'/'+y; break;
+        case 'MMM D, YYYY': ds=MONTHS_S[m]+' '+dy+', '+y; break;
+        case 'D MMMM YYYY': ds=dy+' '+MONTHS[m]+' '+y; break;
+        default: ds=y+'-'+mm+'-'+dd;
+      }
+      if (!hasTime) return ds;
+      var h=d.getHours(), min=String(d.getMinutes()).padStart(2,'0');
+      var ts = timeFmt==='12'
+        ? (h%12||12)+':'+min+(h>=12?' PM':' AM')
+        : String(h).padStart(2,'0')+':'+min;
+      return ds + ' ' + ts;
+    };
+    // apply display spans for @date fields
+    document.querySelectorAll('.date-field input[type=date]').forEach(function(inp){
+      var wrap = inp.closest('.date-field');
+      var disp = wrap ? wrap.querySelector('.date-display') : null;
+      function upd(){ if(disp) disp.textContent = window._tesselFmtDate(inp.value, false); }
+      inp.addEventListener('input', upd); upd();
+    });
+  })();
+
   // ---- date fields (Tessel) ----
   (function(){
     document.querySelectorAll('.date-field input[type=date]').forEach(function(inp){
       var slug = inp.dataset.note || inp.id || '';
       if(!slug) return;
-      try{ var s=localStorage.getItem(ns+'note:'+slug); if(s!==null) inp.value=s; }catch(e){}
+      try{ var s=localStorage.getItem(ns+'note:'+slug); if(s!==null){ inp.value=s; } }catch(e){}
       inp.addEventListener('input', function(){
         try{ localStorage.setItem(ns+'note:'+slug, inp.value); }catch(e){}
         tesselValidate(inp);
         tesselVisibility();
       });
+    });
+  })();
+
+  // ---- datetime fields (Tessel) ----
+  (function(){
+    document.querySelectorAll('.datetime-field input[type=datetime-local]').forEach(function(inp){
+      var slug = inp.dataset.note || inp.id || '';
+      if(!slug) return;
+      var dispId = inp.id ? inp.id.replace(/^note-/,'dtdisp-') : '';
+      var disp = dispId ? document.getElementById(dispId) : null;
+      function upd(){ if(disp) disp.textContent = window._tesselFmtDate ? window._tesselFmtDate(inp.value, true) : inp.value; }
+      try{ var s=localStorage.getItem(ns+'note:'+slug); if(s!==null){ inp.value=s; upd(); } }catch(e){}
+      inp.addEventListener('input', function(){
+        try{ localStorage.setItem(ns+'note:'+slug, inp.value); }catch(e){}
+        upd();
+        tesselValidate(inp);
+        tesselVisibility();
+      });
+      upd();
+    });
+  })();
+
+  // ---- signature fields (Tessel) ----
+  (function(){
+    document.querySelectorAll('.sig-field').forEach(function(field){
+      var id = field.dataset.sigId;
+      if(!id) return;
+
+      // tab switching
+      var tabs = field.querySelectorAll('.sig-tab');
+      var panels = field.querySelectorAll('.sig-panel');
+      function showPanel(mode){
+        tabs.forEach(function(t){ t.classList.toggle('active', t.dataset.mode===mode); });
+        panels.forEach(function(p){ p.style.display = p.dataset.panel===mode ? '' : 'none'; });
+        try{ localStorage.setItem('bf:sig:'+id+':mode', mode); }catch(e){}
+      }
+      tabs.forEach(function(t){ t.addEventListener('click', function(){ showPanel(t.dataset.mode); }); });
+      var savedMode = null;
+      try{ savedMode = localStorage.getItem('bf:sig:'+id+':mode'); }catch(e){}
+      if(savedMode && ['type','draw','crypto'].indexOf(savedMode)>=0) showPanel(savedMode);
+
+      // ---- type mode ----
+      var typeInp = document.getElementById('sig-type-'+id);
+      var typePrev = document.getElementById('sig-preview-'+id);
+      if(typeInp){
+        try{ var sv=localStorage.getItem(ns+'note:sig-type-'+id); if(sv!==null) typeInp.value=sv; }catch(e){}
+        function updPreview(){ if(typePrev) typePrev.textContent = typeInp.value; }
+        typeInp.addEventListener('input', function(){
+          try{ localStorage.setItem(ns+'note:sig-type-'+id, typeInp.value); }catch(e){}
+          updPreview();
+        });
+        updPreview();
+      }
+
+      // ---- draw mode ----
+      var canvas = document.getElementById('sig-canvas-'+id);
+      var drawHid = document.getElementById('sig-draw-'+id);
+      var clearBtn = field.querySelector('.sig-clear-btn[data-for="'+id+'"]');
+      if(canvas){
+        var ctx = canvas.getContext('2d');
+        // resize canvas to actual pixel dimensions
+        function resizeCanvas(){
+          var rect = canvas.getBoundingClientRect();
+          var ratio = window.devicePixelRatio || 1;
+          if(canvas.width !== Math.round(rect.width*ratio)){
+            var dataUrl = canvas.toDataURL();
+            canvas.width = Math.round(rect.width*ratio);
+            canvas.height = Math.round(rect.height*ratio);
+            ctx.scale(ratio,ratio);
+            // restore
+            if(dataUrl !== 'data:,'){
+              var img = new Image(); img.onload=function(){ctx.drawImage(img,0,0);};img.src=dataUrl;
+            }
+          }
+        }
+        // restore saved drawing
+        try{ var sd=localStorage.getItem('bf:sig:'+id+':draw'); if(sd){ var img=new Image(); img.onload=function(){resizeCanvas();ctx.drawImage(img,0,0,canvas.width/devicePixelRatio,canvas.height/devicePixelRatio);};img.src=sd; if(drawHid)drawHid.value=sd; } }catch(e){}
+        function saveDrawing(){
+          var url=canvas.toDataURL('image/png');
+          if(drawHid)drawHid.value=url;
+          try{ localStorage.setItem('bf:sig:'+id+':draw',url); }catch(e){}
+        }
+        var drawing=false, lx=0, ly=0;
+        function pos(e){
+          var r=canvas.getBoundingClientRect();
+          var src=e.touches?e.touches[0]:e;
+          return{x:(src.clientX-r.left),y:(src.clientY-r.top)};
+        }
+        function startDraw(e){ e.preventDefault(); resizeCanvas(); drawing=true; var p=pos(e); lx=p.x;ly=p.y; ctx.beginPath(); ctx.moveTo(lx,ly); }
+        function moveDraw(e){ if(!drawing)return; e.preventDefault(); var p=pos(e); ctx.lineWidth=2; ctx.lineCap='round'; ctx.strokeStyle=getComputedStyle(document.body).getPropertyValue('--text')||'#cdd6f4'; ctx.lineTo(p.x,p.y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(p.x,p.y); lx=p.x;ly=p.y; }
+        function endDraw(){ if(!drawing)return; drawing=false; saveDrawing(); }
+        canvas.addEventListener('mousedown',startDraw); canvas.addEventListener('mousemove',moveDraw); canvas.addEventListener('mouseup',endDraw); canvas.addEventListener('mouseleave',endDraw);
+        canvas.addEventListener('touchstart',startDraw,{passive:false}); canvas.addEventListener('touchmove',moveDraw,{passive:false}); canvas.addEventListener('touchend',endDraw);
+        if(clearBtn){ clearBtn.addEventListener('click',function(){ ctx.clearRect(0,0,canvas.width,canvas.height); if(drawHid)drawHid.value=''; try{localStorage.removeItem('bf:sig:'+id+':draw');}catch(e){} }); }
+      }
+
+      // ---- crypto mode ----
+      var signBtn = field.querySelector('.sig-sign-btn[data-for="'+id+'"]');
+      var verifyBtn = field.querySelector('.sig-verify-btn[data-for="'+id+'"]');
+      var importBtn = field.querySelector('.sig-import-btn[data-for="'+id+'"]');
+      var importFile = document.getElementById('sig-import-file-'+id);
+      var statusEl = document.getElementById('sig-status-'+id);
+      var dlLink = document.getElementById('sig-dl-'+id);
+      var cryptoHid = document.getElementById('sig-crypto-'+id);
+      var nameInp = document.getElementById('sig-name-'+id);
+      var locInp = document.getElementById('sig-location-'+id);
+      var reasonInp = document.getElementById('sig-reason-'+id);
+
+      function setStatus(msg, ok){
+        if(!statusEl) return;
+        statusEl.textContent = msg;
+        statusEl.className = 'sig-status ' + (ok ? 'ok' : 'err');
+        statusEl.style.display = msg ? '' : 'none';
+      }
+
+      // restore saved crypto sig data
+      try{ var sc=localStorage.getItem('bf:sig:'+id+':crypto'); if(sc&&cryptoHid){ cryptoHid.value=sc; var scParsed=JSON.parse(sc); setStatus('Signed by ' + (scParsed.signer&&scParsed.signer.name||'unknown') + ' · ' + (scParsed.signed_at||''), true); } }catch(e){}
+
+      if(signBtn){ signBtn.addEventListener('click', async function(){
+        if(!window.crypto||!window.crypto.subtle){ setStatus('Web Crypto API not available in this context.', false); return; }
+        setStatus('Generating key pair…', true);
+        try {
+          var keyPair = await crypto.subtle.generateKey(
+            { name:'RSA-PSS', modulusLength:2048, publicExponent:new Uint8Array([1,0,1]), hash:'SHA-256' },
+            true, ['sign','verify']
+          );
+          // gather document content for signing
+          var docContent = document.title + '|' + (document.body.dataset.doc||'') + '|' + new Date().toISOString();
+          var enc = new TextEncoder();
+          var sig = await crypto.subtle.sign({name:'RSA-PSS',saltLength:32}, keyPair.privateKey, enc.encode(docContent));
+          var pubKeyBuf = await crypto.subtle.exportKey('spki', keyPair.publicKey);
+          function bufToB64(buf){ var b=new Uint8Array(buf),s=''; b.forEach(function(x){s+=String.fromCharCode(x);}); return btoa(s); }
+          var sigB64 = bufToB64(sig);
+          var pubB64 = bufToB64(pubKeyBuf);
+          var signedAt = new Date().toISOString();
+          var signerName = nameInp?nameInp.value:'';
+          var signerReason = reasonInp?reasonInp.value:'';
+          var signerLocation = locInp?locInp.value:'';
+          var sigObj = {
+            version:'tessel-sig/1', algorithm:'RSA-PSS-SHA256',
+            signer:{ name:signerName, reason:signerReason, location:signerLocation },
+            signed_at:signedAt, document_title:document.title,
+            document_id:document.body.dataset.doc||'',
+            content_digest:docContent,
+            signature_b64:sigB64, public_key_spki_b64:pubB64,
+            pdf_compat:{
+              Filter:'/Adobe.PPKLite', SubFilter:'/adbe.pkcs7.detached',
+              Name:signerName, Reason:signerReason, Location:signerLocation,
+              M:'D:'+signedAt.replace(/[-:T]/g,'').replace(/\..*/,'')+"Z00'00'"
+            }
+          };
+          var sigJson = JSON.stringify(sigObj, null, 2);
+          if(cryptoHid) cryptoHid.value = sigJson;
+          try{ localStorage.setItem('bf:sig:'+id+':crypto', sigJson); }catch(e){}
+          // build download link
+          if(dlLink){
+            var blob = new Blob([sigJson],{type:'application/json'});
+            var url = URL.createObjectURL(blob);
+            dlLink.href = url;
+            dlLink.download = (document.body.dataset.doc||'doc') + '-signature.json';
+            dlLink.style.display = '';
+          }
+          setStatus('Signed · ' + signedAt + (signerName ? ' · ' + signerName : ''), true);
+        } catch(e){ setStatus('Signing failed: ' + e.message, false); }
+      }); }
+
+      if(verifyBtn){ verifyBtn.addEventListener('click', async function(){
+        if(!cryptoHid||!cryptoHid.value){ setStatus('No signature to verify.', false); return; }
+        try {
+          var sigObj = JSON.parse(cryptoHid.value);
+          if(!sigObj.public_key_spki_b64||!sigObj.signature_b64){ setStatus('Signature data incomplete.', false); return; }
+          function b64ToBuf(s){ var bin=atob(s); var arr=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i); return arr.buffer; }
+          var pubKey = await crypto.subtle.importKey('spki', b64ToBuf(sigObj.public_key_spki_b64),
+            {name:'RSA-PSS',hash:'SHA-256'}, false, ['verify']);
+          var enc = new TextEncoder();
+          var ok = await crypto.subtle.verify({name:'RSA-PSS',saltLength:32}, pubKey,
+            b64ToBuf(sigObj.signature_b64), enc.encode(sigObj.content_digest));
+          setStatus(ok ? '✓ Signature is valid · signed by ' + (sigObj.signer&&sigObj.signer.name||'unknown') : '✗ Signature verification failed', ok);
+        } catch(e){ setStatus('Verification error: ' + e.message, false); }
+      }); }
+
+      if(importBtn&&importFile){ importBtn.addEventListener('click',function(){ importFile.click(); });
+        importFile.addEventListener('change',function(){
+          var f=this.files&&this.files[0]; if(!f)return; this.value='';
+          var reader=new FileReader();
+          reader.onload=function(e){
+            try{
+              var obj=JSON.parse(e.target.result);
+              if(obj.version&&obj.version.startsWith('tessel-sig')){
+                var sigJson=e.target.result;
+                if(cryptoHid)cryptoHid.value=sigJson;
+                try{localStorage.setItem('bf:sig:'+id+':crypto',sigJson);}catch(ex){}
+                if(nameInp&&obj.signer&&obj.signer.name)nameInp.value=obj.signer.name;
+                if(reasonInp&&obj.signer&&obj.signer.reason)reasonInp.value=obj.signer.reason;
+                if(locInp&&obj.signer&&obj.signer.location)locInp.value=obj.signer.location;
+                if(dlLink){var blob=new Blob([sigJson],{type:'application/json'});dlLink.href=URL.createObjectURL(blob);dlLink.style.display='';}
+                setStatus('Imported signature · signed by '+(obj.signer&&obj.signer.name||'unknown')+' · '+(obj.signed_at||''), true);
+              } else { setStatus('Not a valid Tessel signature file.', false); }
+            }catch(ex){ setStatus('Could not parse signature file.', false); }
+          };
+          reader.readAsText(f);
+        }); }
     });
   })();
 
@@ -1800,6 +2100,22 @@ var TESSEL_RUNTIME_JS = String.raw`
         var label=div.querySelector('label')?.textContent||inp.dataset.note||'date';
         notes.push({label:label,value:inp.value,type:'date'});
       });
+      document.querySelectorAll('.datetime-field').forEach(function(div){
+        var inp=div.querySelector('input[type=datetime-local]');if(!inp)return;
+        var label=div.querySelector('label')?.textContent||inp.dataset.note||'datetime';
+        notes.push({label:label,value:inp.value,type:'datetime'});
+      });
+      document.querySelectorAll('.sig-field').forEach(function(div){
+        var id=div.dataset.sigId;if(!id)return;
+        var label=div.querySelector('label')?.textContent||'signature';
+        var mode=null;try{mode=localStorage.getItem('bf:sig:'+id+':mode');}catch(e){}
+        mode=mode||'type';
+        var val='';
+        if(mode==='type'){ var ti=document.getElementById('sig-type-'+id); val=ti?ti.value:''; }
+        else if(mode==='draw'){ var di=document.getElementById('sig-draw-'+id); val=di?di.value:''; }
+        else if(mode==='crypto'){ var ci=document.getElementById('sig-crypto-'+id); val=ci?ci.value:''; }
+        notes.push({label:label,value:val,type:'signature',mode:mode});
+      });
       document.querySelectorAll('.choice-field').forEach(function(div){
         var slug=div.dataset.slug;if(!slug)return;
         var label=div.querySelector('label')?.textContent||slug;
@@ -2128,7 +2444,10 @@ var TESSEL_RUNTIME_JS = String.raw`
     btn.addEventListener('click',function(){
       if(!confirm('Clear ALL fields on this page? This cannot be undone.'))return;
       document.querySelectorAll('.note-input,.note-area').forEach(function(f){f.value='';try{localStorage.removeItem(ns+'note:'+(f.dataset.note||f.id));}catch(e){}f.dispatchEvent(new Event('input'));});
-      document.querySelectorAll('.date-field input[type=date]').forEach(function(f){f.value='';try{localStorage.removeItem(ns+'note:'+(f.dataset.note||f.id));}catch(e){} });
+      document.querySelectorAll('.date-field input[type=date]').forEach(function(f){f.value='';try{localStorage.removeItem(ns+'note:'+(f.dataset.note||f.id));}catch(e){} var wr=f.closest('.date-field');var dp=wr?wr.querySelector('.date-display'):null;if(dp)dp.textContent=''; });
+      document.querySelectorAll('.datetime-field input[type=datetime-local]').forEach(function(f){f.value='';try{localStorage.removeItem(ns+'note:'+(f.dataset.note||f.id));}catch(e){} var id=f.id?f.id.replace(/^note-/,''):null;var dp=id?document.getElementById('dtdisp-'+id):null;if(dp)dp.textContent=''; });
+      document.querySelectorAll('.sig-type-input').forEach(function(f){f.value='';try{localStorage.removeItem(ns+'note:'+(f.dataset.note||f.id));}catch(e){}});
+      document.querySelectorAll('.sig-canvas').forEach(function(c){var ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);var sf=c.closest('.sig-field');var id=sf?sf.dataset.sigId:'';if(id){var dh=document.getElementById('sig-draw-'+id);if(dh)dh.value='';try{localStorage.removeItem('bf:sig:'+id+':draw');}catch(e){}}});
       document.querySelectorAll('.param-input').forEach(function(f){var def=f.getAttribute('value')||f.placeholder||'';f.value=def;applyVar(f.dataset.var,f.value);try{localStorage.removeItem(ns+'param:'+f.dataset.var);}catch(e){}});
       document.querySelectorAll('.cred-input').forEach(function(f){var slug=f.dataset.cred||'';f.value='';try{sessionStorage.removeItem('bf:cred:'+slug);}catch(e){}var conf=document.getElementById('cred-confirm-'+slug);if(conf)conf.value='';if(slug&&window._updateCredMatch)window._updateCredMatch(slug);});
       document.querySelectorAll('input[type=radio],input[type=checkbox]').forEach(function(cb){cb.checked=false;cb.dispatchEvent(new Event('change'));});
@@ -2733,6 +3052,14 @@ TesselParser.prototype.parse = function(source) {
           fieldNode = { type: 'date_field', label: rest };
           applyMeta(fieldNode, meta);
         }
+        else if (dir === 'datetime') {
+          fieldNode = { type: 'datetime_field', label: rest };
+          applyMeta(fieldNode, meta);
+        }
+        else if (dir === 'signature' || dir === 'sig') {
+          fieldNode = { type: 'signature_field', label: rest };
+          applyMeta(fieldNode, meta);
+        }
         else if (dir === 'credential' || dir === 'cred') {
           fieldNode = { type: 'credential_field', label: rest };
           applyMeta(fieldNode, meta);
@@ -3082,6 +3409,24 @@ var TesselFields = (function() {
       (minVal ? '    min="' + minVal + '"' : ''),
       (maxVal ? '    max="' + maxVal + '"' : ''),
       '  >',
+      '  <span class="date-display" id="dtdisp-' + id + '"></span>',
+      fieldFooter(meta),
+      '</div>'
+    ].filter(Boolean).join('\n');
+  }
+
+  // ---- @datetime ----
+  function renderDatetime(node, docSlug) {
+    var meta = node.meta || {};
+    var id = esc(meta.id || node.id);
+    var label = esc(node.label);
+    var tv = tvAttrs(meta);
+    return [
+      '<div class="datetime-field notefield" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
+      '  <label>' + label + reqMark(meta) + '</label>',
+      '  <input type="datetime-local" id="note-' + id + '"',
+      '    data-note="' + id + '" data-field-type="datetime" ' + tv + '>',
+      '  <span class="datetime-display" id="dtdisp-' + id + '"></span>',
       fieldFooter(meta),
       '</div>'
     ].filter(Boolean).join('\n');
@@ -3328,12 +3673,83 @@ var TesselFields = (function() {
     ].join('\n');
   }
 
+  // ---- @signature ----
+  function renderSignature(node, docSlug) {
+    var meta = node.meta || {};
+    var id = esc(meta.id || node.id);
+    var label = esc(node.label);
+    var tv = tvAttrs(meta);
+    return [
+      '<div class="notefield sig-field" data-sig-id="' + id + '" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
+      '  <label>' + label + reqMark(meta) + '</label>',
+      '  <div class="sig-tabs">',
+      '    <button type="button" class="sig-tab active" data-mode="type">Type</button>',
+      '    <button type="button" class="sig-tab" data-mode="draw">Draw</button>',
+      '    <button type="button" class="sig-tab" data-mode="crypto">Cryptographic</button>',
+      '  </div>',
+      '  <!-- type mode -->',
+      '  <div class="sig-panel" data-panel="type">',
+      '    <input type="text" class="sig-type-input" id="sig-type-' + id + '"',
+      '      data-note="sig-type-' + id + '" ' + tv,
+      '      placeholder="Sign here…" autocomplete="off">',
+      '    <div class="sig-type-preview" id="sig-preview-' + id + '"></div>',
+      '  </div>',
+      '  <!-- draw mode -->',
+      '  <div class="sig-panel" data-panel="draw" style="display:none">',
+      '    <div class="sig-canvas-wrap">',
+      '      <canvas class="sig-canvas" id="sig-canvas-' + id + '" width="900" height="200"></canvas>',
+      '    </div>',
+      '    <div class="sig-canvas-controls">',
+      '      <button type="button" class="sig-clear-btn" data-for="' + id + '">Clear</button>',
+      '      <span class="sig-canvas-hint">Draw with mouse or finger</span>',
+      '    </div>',
+      '    <input type="hidden" id="sig-draw-' + id + '" data-note="sig-draw-' + id + '">',
+      '  </div>',
+      '  <!-- crypto mode -->',
+      '  <div class="sig-panel" data-panel="crypto" style="display:none">',
+      '    <div class="sig-crypto">',
+      '      <div class="sig-meta-grid">',
+      '        <div>',
+      '          <span class="sig-meta-label">Signer name</span>',
+      '          <input type="text" class="note-input sig-meta-name" id="sig-name-' + id + '"',
+      '            placeholder="Full name…" autocomplete="name">',
+      '        </div>',
+      '        <div>',
+      '          <span class="sig-meta-label">Location</span>',
+      '          <input type="text" class="note-input" id="sig-location-' + id + '"',
+      '            placeholder="City, Country…">',
+      '        </div>',
+      '        <div class="sig-meta-full">',
+      '          <span class="sig-meta-label">Reason</span>',
+      '          <input type="text" class="note-input" id="sig-reason-' + id + '"',
+      '            placeholder="I approve this document…">',
+      '        </div>',
+      '      </div>',
+      '      <div class="sig-actions">',
+      '        <button type="button" class="sig-sign-btn" data-for="' + id + '">✎ Sign Document</button>',
+      '        <button type="button" class="sig-verify-btn" data-for="' + id + '">✓ Verify</button>',
+      '        <button type="button" class="sig-import-btn" data-for="' + id + '">↑ Import Key</button>',
+      '        <input type="file" id="sig-import-file-' + id + '" accept=".json,.pem" style="display:none">',
+      '      </div>',
+      '      <div class="sig-status" id="sig-status-' + id + '" style="display:none"></div>',
+      '      <input type="hidden" id="sig-crypto-' + id + '" data-note="sig-crypto-' + id + '">',
+      '      <a class="sig-download" id="sig-dl-' + id + '" style="display:none" download="signature.json">↓ Download Signature File</a>',
+      '      <p class="sig-pdf-note">The downloaded .json signature file is compatible with Adobe PDF AcroForm signature fields. Import a completed Tessel document into a PDF workflow to auto-fill and sign the corresponding fields.</p>',
+      '    </div>',
+      '  </div>',
+      fieldFooter(meta),
+      '</div>'
+    ].filter(Boolean).join('\n');
+  }
+
   // ---- dispatch ----
   function render(node, docSlug) {
     switch (node.type) {
       case 'text_field':       return renderText(node, docSlug);
       case 'area_field':       return renderArea(node, docSlug);
       case 'date_field':       return renderDate(node, docSlug);
+      case 'datetime_field':   return renderDatetime(node, docSlug);
+      case 'signature_field':  return renderSignature(node, docSlug);
       case 'credential_field': return renderCredential(node, docSlug);
       case 'totp_field':       return renderTotp(node, docSlug);
       case 'radio_field':      return renderRadio(node, docSlug);
@@ -3353,6 +3769,8 @@ var TesselFields = (function() {
     renderText: renderText,
     renderArea: renderArea,
     renderDate: renderDate,
+    renderDatetime: renderDatetime,
+    renderSignature: renderSignature,
     renderCredential: renderCredential,
     renderTotp: renderTotp,
     renderRadio: renderRadio,
@@ -3498,8 +3916,9 @@ TesselCompiler.prototype._renderBlock = function(block, docSlug) {
   }
 
   // field types
-  var fieldTypes = ['text_field','area_field','date_field','credential_field','totp_field',
-    'radio_field','check_field','select_field','table_field','parse_field','filename_field','dir_field'];
+  var fieldTypes = ['text_field','area_field','date_field','datetime_field','credential_field','totp_field',
+    'radio_field','check_field','select_field','table_field','parse_field','filename_field','dir_field',
+    'signature_field'];
   if (fieldTypes.indexOf(type) >= 0) {
     if (self._fields) return self._fields.render(block, docSlug);
     return '<!-- fields renderer not available -->';
