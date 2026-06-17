@@ -6954,6 +6954,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       document.dispatchEvent(new CustomEvent('tessel-file-open'));
       compile();
     };
+    reader.onerror = function(e) { setStatus('Failed to read file: ' + ((e.target.error && e.target.error.message) || 'unknown error'), 'err'); };
     reader.readAsText(file);
   }
 
@@ -6998,6 +6999,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         setStatus('Failed to decode embedded source: ' + ex.message, 'err');
       }
     };
+    reader.onerror = function(e) { setStatus('Failed to read file: ' + ((e.target.error && e.target.error.message) || 'unknown error'), 'err'); };
     reader.readAsText(file);
   }
 
@@ -7388,8 +7390,8 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     openBtn.addEventListener('click', function(e) {
       e.stopPropagation();
       var open = panel.style.display !== 'none';
+      if (!open && window._tsCloseAllPanels) window._tsCloseAllPanels();
       panel.style.display = open ? 'none' : 'flex';
-      if (!open) { var tc = document.getElementById('toolbar-customize-panel'); if (tc) tc.style.display = 'none'; var tcb = document.getElementById('btn-toolbar-customize'); if (tcb) tcb.classList.remove('active'); }
     });
     if (closeBtn) closeBtn.addEventListener('click', function() { panel.style.display = 'none'; });
     document.addEventListener('click', function(e) {
@@ -7652,9 +7654,9 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     openBtn.addEventListener('click', function(e) {
       e.stopPropagation();
       var open = panel.style.display !== 'none';
+      if (!open && window._tsCloseAllPanels) window._tsCloseAllPanels();
       panel.style.display = open ? 'none' : 'flex';
       openBtn.classList.toggle('active', !open);
-      if (!open) { var tc = document.getElementById('toolbar-customize-panel'); if (tc) tc.style.display = 'none'; var tcb = document.getElementById('btn-toolbar-customize'); if (tcb) tcb.classList.remove('active'); }
     });
     if (closeBtn) closeBtn.addEventListener('click', function() { panel.style.display = 'none'; openBtn.classList.remove('active'); });
     document.addEventListener('click', function(e) {
@@ -7720,14 +7722,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     if (!panel || !openBtn) return;
 
     function openPanel() {
-      // Close other drawers
-      ['doc-settings-panel', 'studio-theme-panel'].forEach(function(id) {
-        var p = document.getElementById(id);
-        if (p) p.style.display = 'none';
-      });
-      document.getElementById('btn-doc-settings') && document.getElementById('btn-doc-settings').classList.remove('active');
-      document.getElementById('btn-studio-theme') && document.getElementById('btn-studio-theme').classList.remove('active');
-
+      if (window._tsCloseAllPanels) window._tsCloseAllPanels();
       panel.style.display = 'flex';
       openBtn.classList.add('active');
       loadCheckboxes(getPrefs());
@@ -7986,6 +7981,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     }
 
     function exitWysiwyg() {
+      clearTimeout(_wyDebounce); _wyDebounce = null;
       syncToTextarea();
       editor.style.display = '';
       wysiwygEl.style.display = 'none';
@@ -8073,8 +8069,9 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     document.addEventListener('tessel-history-settings-changed', function(e) {
       snapshotInterval = e.detail.interval || 2000;
       maxSnapshots = e.detail.maxSnapshots || 100;
-      while (snapshots.length > maxSnapshots) snapshots.shift();
-      if (ptr >= snapshots.length) ptr = snapshots.length - 1;
+      var _removed = 0;
+      while (snapshots.length > maxSnapshots) { snapshots.shift(); _removed++; }
+      ptr = Math.max(0, Math.min(ptr - _removed, snapshots.length - 1));
       saveHistory();
       renderList();
     });
@@ -8151,6 +8148,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       try { localStorage.setItem('tessel-studio:draft', editor.value); } catch(e) {}
       updateEditorMeta();
       btnCompile.disabled = editor.value.trim() === '';
+      scheduleCompile();
       saveHistory();
       renderList();
     }
@@ -8237,6 +8235,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     histBtn.addEventListener('click', function(e) {
       e.stopPropagation();
       panelOpen = !panelOpen;
+      if (panelOpen && window._tsCloseAllPanels) window._tsCloseAllPanels();
       panel.classList.toggle('open', panelOpen);
       histBtn.classList.toggle('active', panelOpen);
       if (panelOpen) renderList();
@@ -8286,6 +8285,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
 
     function togglePanel(open) {
       panelOpen = (open !== undefined) ? open : !panelOpen;
+      if (panelOpen && window._tsCloseAllPanels) window._tsCloseAllPanels();
       if (panel) panel.classList.toggle('open', panelOpen);
       if (auditBtn) auditBtn.classList.toggle('active', panelOpen);
     }
@@ -8977,6 +8977,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     btn.addEventListener('click', function(e) {
       e.stopPropagation();
       var open = panel.classList.contains('open');
+      if (!open && window._tsCloseAllPanels) window._tsCloseAllPanels();
       panel.classList.toggle('open', !open);
       btn.classList.toggle('active', !open);
     });
@@ -9122,8 +9123,22 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       if (e.key === 'Escape') { closeFind(); e.preventDefault(); }
     });
 
+    // Shared helper — closes every right-side drawer/panel
+    window._tsCloseAllPanels = function() {
+      [['history-panel', 'btn-history'], ['a11y-panel', 'btn-a11y-audit'], ['directive-palette', 'btn-directives']].forEach(function(pair) {
+        var el = document.getElementById(pair[0]); if (el) el.classList.remove('open');
+        var btn = document.getElementById(pair[1]); if (btn) btn.classList.remove('active');
+      });
+      [['doc-settings-panel', 'btn-doc-settings'], ['studio-theme-panel', 'btn-studio-theme'], ['toolbar-customize-panel', 'btn-toolbar-customize']].forEach(function(pair) {
+        var el = document.getElementById(pair[0]); if (el) el.style.display = 'none';
+        var btn = document.getElementById(pair[1]); if (btn) btn.classList.remove('active');
+      });
+      var fi = document.getElementById('field-inspector'); if (fi) fi.style.display = 'none';
+    };
+
     // Ctrl+F / Cmd+F  and  global Ctrl+S
     document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') { window._tsCloseAllPanels && window._tsCloseAllPanels(); }
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault();
         openFind();
@@ -9141,7 +9156,9 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       // Ctrl+Z / Ctrl+Y in visual block editor mode — route to block editor undo/redo
       if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z' || e.key === 'y' || e.key === 'Y') && !e.altKey) {
         var wsMode3 = document.getElementById('ws-mode');
-        if (wsMode3 && wsMode3.classList.contains('active')) {
+        var _af = document.activeElement;
+        var _inField = _af && (_af.tagName === 'INPUT' || _af.tagName === 'TEXTAREA' || _af.isContentEditable);
+        if (wsMode3 && wsMode3.classList.contains('active') && !_inField) {
           e.preventDefault();
           var isRedo = e.key === 'y' || e.key === 'Y' || (e.shiftKey && (e.key === 'z' || e.key === 'Z'));
           var btn = document.getElementById(isRedo ? 'ws-btn-redo' : 'ws-btn-undo');
@@ -9230,6 +9247,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         choicesGroup.style.display = 'none';
       }
 
+      if (window._tsCloseAllPanels) window._tsCloseAllPanels();
       fiPanel.style.display = 'flex';
       fiPanel.classList.add('open');
     }
