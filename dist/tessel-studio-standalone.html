@@ -416,6 +416,7 @@ button:disabled { opacity: .4; cursor: default; }
   <span id="filename-display">No file open</span>
   <div class="spacer"></div>
   <button id="btn-insert-table" title="Insert a typed table field">⊞ Table</button>
+  <button id="btn-directives" title="Directive palette — insert any field type at cursor">⊕ Directives</button>
   <div class="sep"></div>
   <button id="btn-doc-settings" title="Document defaults — applied to newly compiled documents">⚙ Document Settings</button>
   <button id="btn-studio-theme" title="Studio theme customization">🎨 Theme</button>
@@ -444,6 +445,15 @@ button:disabled { opacity: .4; cursor: default; }
     <button type="button" id="hist-clear-btn">Clear history</button>
     <span class="hist-count" id="hist-count-label"></span>
   </div>
+</div>
+
+<!-- Directive palette panel -->
+<div id="directive-palette">
+  <div id="dp-hdr">
+    <span>Insert Directive</span>
+    <button type="button" id="dp-close" title="Close">✕</button>
+  </div>
+  <div id="dp-body"></div>
 </div>
 
 <!-- Document settings panel -->
@@ -1373,11 +1383,78 @@ var TESSEL_CSS = `
   #hist-clear-btn:hover{border-color:var(--red);color:var(--red)}
   .hist-count{font-size:.72em;color:var(--muted);margin-left:auto}
   #btn-history.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  /* ---- directive palette ---- */
+  #directive-palette{position:fixed;top:var(--toolbar-h);right:0;width:300px;
+    background:var(--bg2);border-left:1px solid var(--border);z-index:200;
+    display:none;flex-direction:column;max-height:calc(100vh - var(--toolbar-h));
+    box-shadow:-4px 4px 16px rgba(0,0,0,.25)}
+  #directive-palette.open{display:flex}
+  #dp-hdr{display:flex;align-items:center;justify-content:space-between;
+    padding:8px 12px;border-bottom:1px solid var(--border);background:var(--bg3);flex-shrink:0}
+  #dp-hdr span{font-size:.82em;font-weight:600;color:var(--text)}
+  #dp-close{background:none;border:none;color:var(--muted);cursor:pointer;
+    font-size:.9em;padding:2px 6px;border-radius:3px}
+  #dp-close:hover{color:var(--text);background:var(--bg)}
+  #dp-body{overflow-y:auto;flex:1;min-height:0;padding:8px 0}
+  .dp-group-hdr{font-size:.7em;font-weight:700;color:var(--accent);text-transform:uppercase;
+    letter-spacing:.07em;padding:8px 12px 4px;margin-top:4px}
+  .dp-group-hdr:first-child{margin-top:0}
+  .dp-item{display:flex;align-items:flex-start;gap:10px;padding:6px 12px;
+    border-radius:0;transition:background .1s}
+  .dp-item:hover{background:var(--bg3)}
+  .dp-item-icon{font-size:1.1em;min-width:20px;text-align:center;margin-top:2px}
+  .dp-item-info{flex:1;min-width:0}
+  .dp-item-name{font-size:.82em;font-weight:600;color:var(--text);display:block}
+  .dp-item-desc{font-size:.72em;color:var(--muted);line-height:1.3;margin-top:1px;display:block}
+  .dp-insert-btn{background:var(--accent);border:none;border-radius:3px;
+    color:var(--bg);cursor:pointer;padding:2px 8px;font-size:.72em;font-family:inherit;
+    font-weight:600;flex-shrink:0;align-self:center}
+  .dp-insert-btn:hover{opacity:.85}
+  #btn-directives.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
   @media print{#bf-main{padding:12px}#bf-notes-pane,#bf-drag,#bf-settings-panel,#bf-pag-strip,
     .bf-pag-overlay{display:none!important}
     #bf-pag-btn,#bf-print-btn,#bf-theme-btn,.copy-btn{display:none}
     .bf-sub-controls,.bf-edit-btn,.bf-edit-controls{display:none}
     .param-input,.note-input,.note-area,#bf-session-notes{border:1px solid #999}}
+  /* ---- @image field ---- */
+  .image-field .image-controls{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+  .image-field input[type=file]{font-size:.82em;color:var(--muted)}
+  .image-field .image-clear-btn{background:none;border:1px solid var(--border);border-radius:3px;
+    color:var(--muted);cursor:pointer;padding:2px 8px;font-size:.78em;font-family:inherit}
+  .image-field .image-clear-btn:hover{border-color:var(--red);color:var(--red)}
+  .image-field .image-preview{display:none;max-width:100%;max-height:220px;object-fit:contain;
+    border-radius:4px;border:1px solid var(--border);background:var(--bg3);margin-top:4px}
+  .image-field .image-preview.has-img{display:block}
+  /* ---- @richtext field ---- */
+  .richtext-field .rt-toolbar{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:4px}
+  .richtext-field .rt-toolbar button{background:var(--bg3);border:1px solid var(--border);
+    border-radius:3px;color:var(--text);cursor:pointer;padding:2px 7px;font-size:.78em;
+    font-family:inherit;line-height:1.5}
+  .richtext-field .rt-toolbar button:hover,.richtext-field .rt-toolbar button:focus{
+    background:var(--accent);color:var(--bg);border-color:var(--accent);outline:none}
+  .richtext-field .rt-editor{min-height:80px;background:var(--code-bg);border:1px solid var(--border);
+    border-radius:4px;padding:6px 8px;color:var(--text);font-family:inherit;font-size:.9em;line-height:1.6}
+  .richtext-field .rt-editor:focus{outline:none;border-color:var(--accent)}
+  .richtext-field .rt-editor p{margin:0 0 4px}
+  .richtext-field .rt-editor ul,.richtext-field .rt-editor ol{padding-left:20px;margin:0 0 4px}
+  .richtext-field .rt-editor:empty::before{content:attr(data-placeholder);color:var(--muted);
+    font-style:italic;pointer-events:none}
+  /* ---- @computed field ---- */
+  .computed-field .computed-display{background:var(--bg3);border:1px solid var(--border);
+    border-radius:4px;padding:5px 8px;color:var(--text);font-size:.9em;min-height:28px;
+    font-family:'Cascadia Code',Consolas,monospace;white-space:pre-wrap;word-break:break-all}
+  .computed-field .computed-display:empty::after{content:attr(data-placeholder);
+    color:var(--muted);font-style:italic}
+  /* ---- WCAG: skip-nav and focus-visible ---- */
+  .bf-skip-nav{position:absolute;top:-40px;left:0;background:var(--accent);color:var(--bg);
+    padding:6px 12px;font-size:.9em;font-weight:600;border-radius:0 0 4px 0;z-index:9999;
+    transition:top .15s;text-decoration:none}
+  .bf-skip-nav:focus{top:0}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible{
+    outline:2px solid var(--accent);outline-offset:2px}
+  [contenteditable]:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  [aria-invalid=true]{border-color:var(--red)!important}
 `;
 
 // ---- tessel-runtime.js ----
@@ -2311,12 +2388,14 @@ var TESSEL_RUNTIME_JS = String.raw`
       var warnSpan = fieldWrap&&fieldWrap.querySelector('.tv-warn-msg');
       if(err){
         el.classList.add('tv-invalid');
+        el.setAttribute('aria-invalid','true');
         if(fieldWrap){
           if(!warnSpan){warnSpan=document.createElement('span');warnSpan.className='tv-warn-msg';fieldWrap.appendChild(warnSpan);}
           warnSpan.textContent=err;warnSpan.style.display='';
         }
       } else {
         el.classList.remove('tv-invalid');
+        el.removeAttribute('aria-invalid');
         if(warnSpan){warnSpan.textContent='';warnSpan.style.display='none';}
       }
     });
@@ -2338,9 +2417,11 @@ var TESSEL_RUNTIME_JS = String.raw`
         var first = inputs[0];
         if(!first.value.trim()){
           first.classList.add('tv-invalid');
+          first.setAttribute('aria-invalid','true');
           hasError = true;
         } else {
           first.classList.remove('tv-invalid');
+          first.removeAttribute('aria-invalid');
         }
       });
       // table-level warn
@@ -2351,10 +2432,12 @@ var TESSEL_RUNTIME_JS = String.raw`
       // if no rows at all and table is required → warn
       if(required && rows.length === 0){
         hid && hid.classList.add('tv-invalid');
+        hid && hid.setAttribute('aria-invalid','true');
         if(!warnSpan){warnSpan=document.createElement('span');warnSpan.className='tv-warn-msg';fieldWrap.appendChild(warnSpan);}
         warnSpan.textContent = warnMsg||'At least one row is required.';warnSpan.style.display='';
       } else if(!hasError){
         hid && hid.classList.remove('tv-invalid');
+        hid && hid.removeAttribute('aria-invalid');
         if(warnSpan){warnSpan.textContent='';warnSpan.style.display='none';}
       }
     });
@@ -3388,6 +3471,86 @@ var TESSEL_RUNTIME_JS = String.raw`
     document.addEventListener('click',function(e){if(panel.classList.contains('open')&&!panel.contains(e.target)&&e.target!==btn){panel.classList.remove('open');}});
   })();
 
+  // ---- @image fields ----
+  (function(){
+    document.querySelectorAll('[data-image-field]').forEach(function(inp){
+      var id=inp.dataset.imageField;
+      var hidden=document.getElementById('note-'+id);
+      var preview=document.getElementById('note-'+id+'-preview');
+      var clearBtn=document.querySelector('[data-image-clear="'+id+'"]');
+      function setImg(dataUri){
+        if(hidden){hidden.value=dataUri||'';}
+        if(preview){if(dataUri){preview.src=dataUri;preview.classList.add('has-img');}else{preview.src='';preview.classList.remove('has-img');}}
+        try{if(dataUri)localStorage.setItem(ns+'note:'+id,dataUri);else localStorage.removeItem(ns+'note:'+id);}catch(e){}
+        if(hidden){tesselValidate(hidden);tesselVisibility();}
+      }
+      try{var s=localStorage.getItem(ns+'note:'+id);if(s)setImg(s);}catch(e){}
+      inp.addEventListener('change',function(){
+        var f=this.files&&this.files[0];if(!f)return;
+        var r=new FileReader();
+        r.onload=function(ev){setImg(ev.target.result);};
+        r.readAsDataURL(f);
+      });
+      if(clearBtn)clearBtn.addEventListener('click',function(){inp.value='';setImg('');});
+    });
+  })();
+
+  // ---- @richtext fields ----
+  (function(){
+    document.querySelectorAll('[data-rt-field]').forEach(function(editor){
+      var id=editor.dataset.rtField;
+      var hidden=document.getElementById('note-'+id);
+      var toolbar=document.querySelector('[data-rt-for="'+id+'"]');
+      function save(){
+        var html=editor.innerHTML;
+        if(hidden)hidden.value=html;
+        try{localStorage.setItem(ns+'note:'+id,html);}catch(e){}
+        if(hidden){tesselValidate(hidden);tesselVisibility();}
+      }
+      try{var s=localStorage.getItem(ns+'note:'+id);if(s)editor.innerHTML=s;}catch(e){}
+      editor.addEventListener('input',save);
+      editor.addEventListener('blur',save);
+      if(toolbar){
+        toolbar.addEventListener('mousedown',function(e){e.preventDefault();});
+        toolbar.addEventListener('click',function(e){
+          var btn=e.target.closest('[data-rt-cmd]');if(!btn)return;
+          editor.focus();
+          document.execCommand(btn.dataset.rtCmd,false,null);
+          save();
+        });
+      }
+    });
+  })();
+
+  // ---- @computed fields ----
+  (function(){
+    function getFieldVal(fieldId){
+      var el=document.getElementById('note-'+fieldId)||document.querySelector('[data-note="'+fieldId+'"]');
+      if(!el)return'';
+      if(el.type==='checkbox')return el.checked?'true':'false';
+      return el.value||'';
+    }
+    function evalExpr(expr){
+      var resolved=expr.replace(/\$\{([^}]+)\}/g,function(_,fid){return JSON.stringify(getFieldVal(fid.trim()));});
+      try{return String(Function('"use strict";return('+resolved+')')());}catch(e){return'';}
+    }
+    function updateAll(){
+      document.querySelectorAll('[data-computed-expr]').forEach(function(hidden){
+        var id=hidden.dataset.note;
+        var expr=hidden.dataset.computedExpr;
+        if(!expr)return;
+        var val=evalExpr(expr);
+        hidden.value=val;
+        var disp=document.getElementById('note-'+id+'-display');
+        if(disp)disp.textContent=val;
+        try{localStorage.setItem(ns+'note:'+id,val);}catch(e){}
+      });
+    }
+    document.addEventListener('input',function(e){if(e.target&&e.target.dataset&&e.target.dataset.note)updateAll();});
+    document.addEventListener('change',function(e){if(e.target&&e.target.dataset&&e.target.dataset.note)updateAll();});
+    setTimeout(updateAll,150);
+  })();
+
 })();
 `;
 
@@ -3868,6 +4031,21 @@ TesselParser.prototype.parse = function(source) {
         }
         else if (dir === 'dir') {
           fieldNode = { type: 'dir_field', label: rest };
+          applyMeta(fieldNode, meta);
+        }
+        else if (dir === 'image') {
+          fieldNode = { type: 'image_field', label: rest };
+          applyMeta(fieldNode, meta);
+        }
+        else if (dir === 'richtext') {
+          fieldNode = { type: 'richtext_field', label: rest };
+          applyMeta(fieldNode, meta);
+        }
+        else if (dir === 'computed') {
+          var cIdx = rest.indexOf(':');
+          var cLabel = cIdx >= 0 ? rest.slice(0, cIdx).trim() : rest;
+          var cExpr  = cIdx >= 0 ? rest.slice(cIdx + 1).trim() : '';
+          fieldNode = { type: 'computed_field', label: cLabel, expr: cExpr };
           applyMeta(fieldNode, meta);
         }
         else {
@@ -4507,6 +4685,74 @@ var TesselFields = (function() {
     ].filter(Boolean).join('\n');
   }
 
+  // ---- @image ----
+  function renderImage(node, docSlug) {
+    var meta = node.meta || {};
+    var id = esc(meta.id || node.id);
+    var label = esc(node.label);
+    var tv = tvAttrs(meta);
+    return [
+      '<div class="image-field notefield"' + (meta.visible_if ? ' data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
+      '  <label for="note-' + id + '-pick">' + label + reqMark(meta) + '</label>',
+      '  <div class="image-controls">',
+      '    <input type="file" accept="image/*" id="note-' + id + '-pick"',
+      '      aria-label="' + label + '" data-image-field="' + id + '" ' + tv + '>',
+      '    <button type="button" class="image-clear-btn" data-image-clear="' + id + '">✕ Clear</button>',
+      '  </div>',
+      '  <img class="image-preview" id="note-' + id + '-preview" alt="' + label + ' preview" role="img">',
+      '  <input type="hidden" id="note-' + id + '" data-note="' + id + '">',
+      fieldFooter(meta),
+      '</div>'
+    ].join('\n');
+  }
+
+  // ---- @richtext ----
+  function renderRichtext(node, docSlug) {
+    var meta = node.meta || {};
+    var id = esc(meta.id || node.id);
+    var label = esc(node.label);
+    var placeholder = esc(meta.placeholder || 'Enter formatted text…');
+    var tv = tvAttrs(meta);
+    return [
+      '<div class="richtext-field notefield"' + (meta.visible_if ? ' data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
+      '  <label id="rtlbl-' + id + '">' + label + reqMark(meta) + '</label>',
+      '  <div class="rt-toolbar" data-rt-for="' + id + '" role="toolbar" aria-label="' + label + ' formatting">',
+      '    <button type="button" data-rt-cmd="bold" title="Bold"><b>B</b></button>',
+      '    <button type="button" data-rt-cmd="italic" title="Italic"><i>I</i></button>',
+      '    <button type="button" data-rt-cmd="insertUnorderedList" title="Bullet list">• List</button>',
+      '    <button type="button" data-rt-cmd="insertOrderedList" title="Numbered list">1. List</button>',
+      '    <button type="button" data-rt-cmd="removeFormat" title="Clear formatting">✕ Fmt</button>',
+      '  </div>',
+      '  <div class="rt-editor" contenteditable="true" id="note-' + id + '-editor"',
+      '    role="textbox" aria-multiline="true" aria-labelledby="rtlbl-' + id + '"',
+      '    data-rt-field="' + id + '"' + (placeholder ? ' data-placeholder="' + placeholder + '"' : '') + '></div>',
+      '  <input type="hidden" id="note-' + id + '" data-note="' + id + '" ' + tv + '>',
+      fieldFooter(meta),
+      '</div>'
+    ].join('\n');
+  }
+
+  // ---- @computed ----
+  function renderComputed(node, docSlug) {
+    var meta = node.meta || {};
+    var id = esc(meta.id || node.id);
+    var label = esc(node.label);
+    var expr = esc(node.expr || meta.expr || '');
+    var placeholder = esc(meta.placeholder || 'computed…');
+    var tv = tvAttrs(meta);
+    return [
+      '<div class="computed-field notefield"' + (meta.visible_if ? ' data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
+      '  <label id="clbl-' + id + '">' + label + '</label>',
+      '  <div class="computed-display" id="note-' + id + '-display"',
+      '    role="status" aria-labelledby="clbl-' + id + '"',
+      '    data-placeholder="' + placeholder + '"></div>',
+      '  <input type="hidden" id="note-' + id + '" data-note="' + id + '"',
+      '    data-computed-expr="' + expr + '" ' + tv + '>',
+      fieldFooter(meta),
+      '</div>'
+    ].join('\n');
+  }
+
   // ---- dispatch ----
   function render(node, docSlug) {
     switch (node.type) {
@@ -4524,6 +4770,9 @@ var TesselFields = (function() {
       case 'parse_field':      return renderParse(node, docSlug);
       case 'filename_field':   return renderFilename(node, docSlug);
       case 'dir_field':        return renderDir(node, docSlug);
+      case 'image_field':      return renderImage(node, docSlug);
+      case 'richtext_field':   return renderRichtext(node, docSlug);
+      case 'computed_field':   return renderComputed(node, docSlug);
       default:
         return '<!-- unknown field type: ' + esc(node.type) + ' -->';
     }
@@ -4544,7 +4793,10 @@ var TesselFields = (function() {
     renderTable: renderTable,
     renderParse: renderParse,
     renderFilename: renderFilename,
-    renderDir: renderDir
+    renderDir: renderDir,
+    renderImage: renderImage,
+    renderRichtext: renderRichtext,
+    renderComputed: renderComputed
   };
 
 })();
@@ -6086,6 +6338,129 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         else renderList();
       }
     }, 250);
+  })();
+
+  // ---- directive palette ----
+  (function() {
+    var btn    = document.getElementById('btn-directives');
+    var panel  = document.getElementById('directive-palette');
+    var body   = document.getElementById('dp-body');
+    var closeBtn = document.getElementById('dp-close');
+    if (!btn || !panel) return;
+
+    var DIRECTIVES = [
+      { group: 'Basic Fields' },
+      { name: '@text',       icon: '✏',  desc: 'Single-line text input',                 tmpl: '@text Label\n' },
+      { name: '@area',       icon: '☰',  desc: 'Multi-line text area',                   tmpl: '@area Label\n' },
+      { name: '@date',       icon: '📅', desc: 'Date picker',                             tmpl: '@date Label\n' },
+      { name: '@image',      icon: '🖼', desc: 'Image upload (stored as data URI)',       tmpl: '@image Label\n' },
+      { name: '@richtext',   icon: '✦',  desc: 'Rich-text editor with formatting toolbar',tmpl: '@richtext Label\n' },
+      { name: '@computed',   icon: '⚙',  desc: 'Read-only value derived from other fields — use ${field_id}', tmpl: '@computed Label: ${field_id}\n' },
+      { name: '@signature',  icon: '✍',  desc: 'Cryptographic RSA-PSS signature field',  tmpl: '@signature Label\n' },
+      { group: 'Choice Fields' },
+      { name: '@radio',      icon: '⦿',  desc: 'Radio buttons — pick exactly one',       tmpl: '@radio Label: Option 1, Option 2, Option 3\n' },
+      { name: '@check',      icon: '☑',  desc: 'Checkboxes — pick any number',           tmpl: '@check Label: Option 1, Option 2\n' },
+      { name: '@select',     icon: '▾',  desc: 'Dropdown select list',                   tmpl: '@select Label: Option 1|Option 2|Option 3\n' },
+      { group: 'Structured' },
+      { name: '@table',      icon: '⊞',  desc: 'Typed columnar table (opens Table Builder)', tmpl: null },
+      { group: 'Secure Fields' },
+      { name: '@credential', icon: '🔑', desc: 'Masked credential — sessionStorage only', tmpl: '@credential Label\n' },
+      { name: '@totp',       icon: '🔐', desc: 'TOTP secret + live one-time code',       tmpl: '@totp Label\n' },
+      { group: 'Utility Fields' },
+      { name: '@parse',      icon: '⌕',  desc: 'Regex-extract value from another field', tmpl: '@parse Label: /regex/\n' },
+      { name: '@filename',   icon: '📄', desc: 'Auto-suggest filename from template',     tmpl: '@filename Label: {{SLUG}}_{{STAMP}}.txt\n' },
+      { name: '@dir',        icon: '📁', desc: 'Directory path input',                   tmpl: '@dir Label\n' },
+      { group: 'Structure' },
+      { name: '@if / @endif',icon: '◇',  desc: 'Conditional block shown when expr is true', tmpl: '@if(field_id == "value")\n\nContent here\n\n@endif\n' },
+      { name: '@section',    icon: '▶',  desc: 'Collapsible section wrapper',            tmpl: '@section Section Title\n\nContent\n\n@endsection\n' },
+    ];
+
+    function buildPalette() {
+      body.innerHTML = '';
+      DIRECTIVES.forEach(function(d) {
+        if (d.group) {
+          var h = document.createElement('div');
+          h.className = 'dp-group-hdr';
+          h.textContent = d.group;
+          body.appendChild(h);
+          return;
+        }
+        var item = document.createElement('div');
+        item.className = 'dp-item';
+        var insertBtn = document.createElement('button');
+        insertBtn.type = 'button';
+        insertBtn.className = 'dp-insert-btn';
+        insertBtn.textContent = 'Insert';
+        insertBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          if (d.name === '@table') {
+            var tbBtn = document.getElementById('btn-insert-table');
+            if (tbBtn) tbBtn.click();
+            closePanel();
+            return;
+          }
+          insertAtCursor(d.tmpl);
+          closePanel();
+        });
+        var iconEl = document.createElement('span');
+        iconEl.className = 'dp-item-icon';
+        iconEl.textContent = d.icon;
+        var infoEl = document.createElement('span');
+        infoEl.className = 'dp-item-info';
+        var nameEl = document.createElement('span');
+        nameEl.className = 'dp-item-name';
+        nameEl.textContent = d.name;
+        var descEl = document.createElement('span');
+        descEl.className = 'dp-item-desc';
+        descEl.textContent = d.desc;
+        infoEl.appendChild(nameEl);
+        infoEl.appendChild(descEl);
+        item.appendChild(iconEl);
+        item.appendChild(infoEl);
+        item.appendChild(insertBtn);
+        body.appendChild(item);
+      });
+    }
+
+    function insertAtCursor(tmpl) {
+      var wyEl = document.getElementById('wysiwyg-editor');
+      if (wyEl && wyEl.style.display !== 'none') {
+        wyEl.focus();
+        document.execCommand('insertText', false, tmpl);
+        return;
+      }
+      var ed = document.getElementById('editor');
+      if (!ed) return;
+      ed.focus();
+      var s = ed.selectionStart, e2 = ed.selectionEnd;
+      var val = ed.value;
+      var before = val.slice(0, s);
+      var after  = val.slice(e2);
+      if (before && !before.endsWith('\n')) before += '\n';
+      ed.value = before + tmpl + after;
+      ed.selectionStart = ed.selectionEnd = before.length + tmpl.length;
+      ed.dispatchEvent(new Event('input'));
+    }
+
+    function closePanel() {
+      panel.classList.remove('open');
+      btn.classList.remove('active');
+    }
+
+    buildPalette();
+
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var open = panel.classList.contains('open');
+      panel.classList.toggle('open', !open);
+      btn.classList.toggle('active', !open);
+    });
+    if (closeBtn) closeBtn.addEventListener('click', closePanel);
+    document.addEventListener('click', function(e) {
+      if (panel.classList.contains('open') && !panel.contains(e.target) && e.target !== btn) {
+        closePanel();
+      }
+    });
   })();
 
   // ---- insert image ----
