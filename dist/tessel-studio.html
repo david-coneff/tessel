@@ -178,6 +178,8 @@ body {
   padding: 0 8px;
   gap: 0;
   min-height: var(--ribbon-tab-h);
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 #ribbon-tabs.dock-bottom {
   border-bottom: none;
@@ -5845,7 +5847,7 @@ var TesselFields = (function() {
     var tv = tvAttrs(meta);
     return [
       '<div class="notefield dir-field" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
-      '  <label>' + label + reqMark(meta) + '</label>',
+      '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <input type="text" class="note-input dir-input" id="note-' + id + '"',
       '    data-note="' + id + '" ' + tv,
       '    placeholder="' + placeholder + '">',
@@ -6880,8 +6882,10 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       if (compileTimer) { clearTimeout(compileTimer); compileTimer = null; }
       compile();
     }
-    // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y → handled by history IIFE (event dispatched globally)
+    // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y → history undo/redo (only in markdown mode)
     if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z' || e.key === 'y' || e.key === 'Y') && !e.altKey) {
+      var wsMode2 = document.getElementById('ws-mode');
+      if (wsMode2 && wsMode2.classList.contains('active')) return; // let visual editor handle it
       e.preventDefault();
       var redo = e.key === 'y' || e.key === 'Y' || (e.shiftKey && (e.key === 'z' || e.key === 'Z'));
       document.dispatchEvent(new CustomEvent('tessel-history-nav', { detail: { redo: redo } }));
@@ -8747,6 +8751,16 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
           if (saveDraftBtn) saveDraftBtn.click();
         }
         // markdown mode Ctrl+S is handled by the editor keydown listener
+      }
+      // Ctrl+Z / Ctrl+Y in visual block editor mode — route to block editor undo/redo
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z' || e.key === 'y' || e.key === 'Y') && !e.altKey) {
+        var wsMode3 = document.getElementById('ws-mode');
+        if (wsMode3 && wsMode3.classList.contains('active')) {
+          e.preventDefault();
+          var isRedo = e.key === 'y' || e.key === 'Y' || (e.shiftKey && (e.key === 'z' || e.key === 'Z'));
+          var btn = document.getElementById(isRedo ? 'ws-btn-redo' : 'ws-btn-undo');
+          if (btn) btn.click();
+        }
       }
     });
   })();
