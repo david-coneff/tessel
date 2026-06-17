@@ -59,7 +59,7 @@ function parseFrontMatter(text) {
       if (val === 'true') result[currentKey] = true;
       else if (val === 'false') result[currentKey] = false;
       else if (/^\d+$/.test(val)) result[currentKey] = parseInt(val, 10);
-      else result[currentKey] = val.replace(/^['"]|['"]$/g, '');
+      else result[currentKey] = val.replace(/^['"]/g, '').replace(/['"]$/g, '');
       continue;
     }
   }
@@ -90,7 +90,7 @@ function parseMetaBlock(text) {
     var eq = part.indexOf('=');
     if (eq < 0) return;
     var k = part.slice(0, eq).trim();
-    var v = part.slice(eq + 1).trim().replace(/^['"]|['"]$/g, '');
+    var v = part.slice(eq + 1).trim().replace(/^['"]/g, '').replace(/['"]$/g, '');
     meta[k] = v;
   });
   return meta;
@@ -563,7 +563,7 @@ TesselParser.prototype.parse = function(source) {
     }
     if (paraLines.length) {
       var paraText = paraLines.join('\n');
-      // Convert inline markdown (bold, italic, code, links) to HTML
+      // Convert inline markdown (bold, code, links) to HTML
       var paraHtml = inlineToHtml(paraText);
       pushAnyBlock({ type: 'paragraph', html: paraHtml });
     }
@@ -605,7 +605,8 @@ TesselParser.prototype.parse = function(source) {
 
 /**
  * Minimal inline markdown → HTML converter.
- * Handles: **bold**, *italic*, `code`, [text](url), {{VAR}} spans.
+ * Handles: **bold**, `code`, [text](url), {{VAR}} spans.
+ * Italic (*text* and _text_) is intentionally NOT converted.
  * Multi-line input: line breaks become <br>.
  */
 function inlineToHtml(text) {
@@ -616,16 +617,13 @@ function inlineToHtml(text) {
   var lines = text.split('\n');
   var parts = lines.map(function(line) {
     var s = esc(line);
-    // inline code (before bold/italic to protect content)
+    // inline code (before bold to protect content)
     s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
     // {{VAR}} → template span
     s = s.replace(/\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}/g, '<span class="tpl" data-var="$1">$1</span>');
     // bold
     s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     s = s.replace(/__([^_]+)__/g, '<strong>$1</strong>');
-    // italic
-    s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-    s = s.replace(/_([^_]+)_/g, '<em>$1</em>');
     // links
     s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
     return s;
