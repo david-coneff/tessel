@@ -655,6 +655,7 @@ tessel/
 │   ├── tessel-cli.js                  ✓ complete (Node CLI wrapper)
 │   ├── tessel-repo-manager.html       ✓ complete (Phase 4)
 │   ├── tessel-vault.html              ✓ complete (Phase 5)
+│   ├── doc-graph.py                   ✓ complete (rhiz-docgraph v1)
 │   └── rollup.js                      — bundle builder
 ├── tests/
 │   ├── run-golden.js              — golden-file test runner
@@ -725,3 +726,5 @@ tessel/
 **Phase 6 — Full WYSIWYG Studio:** `studio/tessel-studio-full.html` exists and provides the compiler-mode and Studio foundation. The remaining work is full WYSIWYG editing (in-browser visual editing of Markdown without switching to raw source) and the visual form designer (drag-and-drop `@directive` insertion and configuration).
 
 Phases 0–5 and Phase 7 are complete. Phase 6 is the final major phase.
+
+**Phase 8 — DocGraph tooling (`doc-graph.py`):** `tools/doc-graph.py` implements the Rhizome DocGraph protocol (rhiz-docgraph v1) for Merkle-tree document decomposition. Large Markdown artifacts (such as this ROADMAP or any Tessel spec file) can be split into independently hash-verified section files with a JSON index. Commands: `split`, `update`, `verify`, `merge`, `status`, `init`. Zero external dependencies; Python 3.8+ stdlib only.
