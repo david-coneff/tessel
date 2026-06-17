@@ -10,13 +10,15 @@
   --bg: #1a1b1e; --surface: #24262b; --border: #3a3c42; --text: #d4d4d4;
   --muted: #7a7d87; --accent: #5b8af0; --green: #4caf50; --red: #e05555;
   --gold: #d4a847; --yellow: #f0c040; --surface2: #2d2f35;
-  --canvas-bg: #ffffff; --canvas-shadow: 0 2px 16px rgba(0,0,0,0.25);
-  --field-bg: #eef2ff; --field-border: #c7d2fe;
+  --canvas-bg: #24262b; --canvas-shadow: 0 2px 16px rgba(0,0,0,0.25);
+  --canvas-text: #d4d4d4; --canvas-muted: #5a5d6b; --para-border-focus: rgba(255,255,255,0.08);
+  --field-bg: #252a42; --field-border: #3d5299;
 }
 body.light {
   --bg: #f0f0f2; --surface: #fff; --border: #d0d2d8; --text: #1a1b1e;
   --surface2: #e8e9ec; --muted: #6b7280;
   --canvas-bg: #ffffff; --canvas-shadow: 0 2px 16px rgba(0,0,0,0.10);
+  --canvas-text: #1a1b1e; --canvas-muted: #6b7280; --para-border-focus: #e0e0e0;
   --field-bg: #eef2ff; --field-border: #c7d2fe;
 }
 body {
@@ -113,10 +115,10 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
   gap: 2px; position: absolute; left: -36px; top: 4px; transition: opacity .15s;
 }
 .drag-handle {
-  cursor: grab; color: #aaa; font-size: 14px; padding: 2px 4px;
+  cursor: grab; color: var(--muted); font-size: 14px; padding: 2px 4px;
   border-radius: 3px; line-height: 1;
 }
-.drag-handle:hover { background: #eee; color: #333; }
+.drag-handle:hover { background: var(--surface2); color: var(--text); }
 .block-add-btn {
   background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer;
   padding: 0 4px; line-height: 1; border-radius: 3px; width: 22px; height: 22px;
@@ -128,7 +130,7 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 
 /* HEADING BLOCKS */
 .block-heading { outline: none; border: none; width: 100%; background: transparent;
-  color: #1a1a1a; font-weight: 700; line-height: 1.25; padding: 4px 0;
+  color: var(--canvas-text); font-weight: 700; line-height: 1.25; padding: 4px 0;
   border-bottom: 1px solid transparent;
 }
 .block-heading:focus { border-bottom-color: var(--accent); outline: none; }
@@ -151,15 +153,15 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 /* PARAGRAPH BLOCKS */
 .block-para {
   outline: none; min-height: 1.6em; width: 100%; padding: 4px 0;
-  line-height: 1.7; color: #333; font-size: 14px;
+  line-height: 1.7; color: var(--canvas-text); font-size: 14px;
   border-bottom: 1px solid transparent;
 }
-.block-para:focus { border-bottom-color: #e0e0e0; outline: none; }
-.block-para:empty::before { content: attr(data-placeholder); color: #aaa; pointer-events: none; }
+.block-para:focus { border-bottom-color: var(--para-border-focus); outline: none; }
+.block-para:empty::before { content: attr(data-placeholder); color: var(--canvas-muted); pointer-events: none; }
 
 /* HR BLOCKS */
 .block-hr-wrap { padding: 8px 0; cursor: pointer; }
-.block-hr-wrap hr { border: none; border-top: 2px solid #e5e7eb; }
+.block-hr-wrap hr { border: none; border-top: 2px solid var(--border); }
 .block-hr-wrap:hover hr { border-top-color: var(--accent); }
 
 /* FIELD CARDS */
@@ -185,11 +187,11 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 .field-card-btn:hover { border-color: var(--border); background: var(--surface); }
 .field-card-btn.del:hover { border-color: var(--red); color: var(--red); }
 .field-label {
-  font-size: 14px; font-weight: 500; color: #1a1a1a; min-height: 1em;
+  font-size: 14px; font-weight: 500; color: var(--canvas-text); min-height: 1em;
   outline: none; border-bottom: 1px solid transparent;
 }
 .field-label:focus { border-bottom-color: var(--accent); }
-.field-label:empty::before { content: 'Field Label'; color: #aaa; pointer-events: none; }
+.field-label:empty::before { content: 'Field Label'; color: var(--canvas-muted); pointer-events: none; }
 .field-meta-row { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
 .field-meta-tag {
   font-size: 10px; background: rgba(91,138,240,.15); color: var(--accent);
@@ -197,7 +199,7 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 }
 .field-options-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
 .field-option-chip {
-  font-size: 11px; background: rgba(91,138,240,.12); color: #4b5563;
+  font-size: 11px; background: rgba(91,138,240,.12); color: var(--text);
   border-radius: 12px; padding: 2px 8px; border: 1px solid var(--field-border);
 }
 
