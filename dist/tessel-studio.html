@@ -3603,26 +3603,37 @@ var TESSEL_RUNTIME_JS = String.raw`
     // field ref
     var el=document.querySelector('[data-tv-id="'+s+'"]')||document.querySelector('[data-note="'+s+'"]')||document.querySelector('[data-var="'+s+'"]');
     if(el) return getFieldValue(el);
-    return s;
+    return ''; // unknown field id → falsy, not the identifier string
   }
   function splitTopLevel(s,sep){
-    var parts=[],depth=0,cur='';
+    var parts=[],depth=0,cur='',inQ=false,qc='';
     for(var i=0;i<s.length;i++){
-      if(s[i]==='(') depth++;
-      else if(s[i]===')') depth--;
-      if(depth===0&&s.slice(i,i+sep.length)===sep){parts.push(cur);cur='';i+=sep.length-1;}
-      else cur+=s[i];
+      var ch=s[i];
+      if(!inQ&&(ch==='"'||ch==="'")){inQ=true;qc=ch;}
+      else if(inQ&&ch===qc){inQ=false;}
+      else if(!inQ&&ch==='(') depth++;
+      else if(!inQ&&ch===')') depth--;
+      if(!inQ&&depth===0&&s.slice(i,i+sep.length)===sep){parts.push(cur);cur='';i+=sep.length-1;}
+      else cur+=ch;
     }
     parts.push(cur);
     return parts.length>1?parts:[s];
   }
   function findOp(s,op){
-    // find op not inside quotes
+    // find op not inside quotes; word-based ops require surrounding whitespace
+    var wordOp=/^[a-z]/.test(op);
     var inQ=false,qc='';
     for(var i=0;i<s.length;i++){
       if(!inQ&&(s[i]==='"'||s[i]==="'")){inQ=true;qc=s[i];}
       else if(inQ&&s[i]===qc) inQ=false;
-      else if(!inQ&&s.slice(i,i+op.length)===op) return i;
+      else if(!inQ&&s.slice(i,i+op.length)===op){
+        if(wordOp){
+          var before=i===0||s[i-1]===' ';
+          var after=i+op.length>=s.length||s[i+op.length]===' ';
+          if(!before||!after) continue;
+        }
+        return i;
+      }
     }
     return -1;
   }
@@ -3691,7 +3702,8 @@ var TESSEL_RUNTIME_JS = String.raw`
       var notes=[];
       document.querySelectorAll('.note-input,.note-area').forEach(function(inp){
         var slug=inp.dataset.note||inp.id||'';if(!slug)return;
-        var label=inp.closest('.notefield')?.querySelector('label')?.textContent||slug;
+        var _wrap=inp.closest('.notefield');
+        var label=(_wrap&&(_wrap.querySelector('legend')?.textContent?.trim()||_wrap.querySelector('label')?.textContent?.trim()))||slug;
         notes.push({id:slug,label:label,value:inp.value,type:inp.tagName==='TEXTAREA'?'area':'field'});
       });
       document.querySelectorAll('.date-field').forEach(function(div){
@@ -5026,6 +5038,7 @@ function applyMeta(node, meta) {
   if (meta.multiline !== undefined) fieldMeta.multiline = meta.multiline === 'true' || meta.multiline === true;
   if (meta.min !== undefined) fieldMeta.min = meta.min;
   if (meta.max !== undefined) fieldMeta.max = meta.max;
+  if (meta.step !== undefined) fieldMeta.step = meta.step;
   if (meta.format) fieldMeta.format = meta.format;
   if (meta.rows !== undefined) fieldMeta.rows = parseInt(meta.rows, 10) || 4;
   if (meta.preset_rows) fieldMeta.preset_rows = meta.preset_rows.split('|').map(function(s) { return s.trim(); }).filter(Boolean);
@@ -5129,6 +5142,7 @@ TesselParser.prototype.parse = function(source) {
       var depth = 0;
       var start = j;
       while (j < lines.length) {
+        if (j - start > 30) break; // guard against unterminated { block
         var seg = lines[j];
         for (var c = 0; c < seg.length; c++) {
           if (seg[c] === '{') depth++;
@@ -5647,12 +5661,13 @@ var TesselFields = (function() {
     var label = esc(node.label);
     var minVal = esc(meta.min || '');
     var maxVal = esc(meta.max || '');
+    var defVal = meta.default_value ? ' value="' + esc(String(meta.default_value)) + '"' : '';
     var tv = tvAttrs(meta);
     return [
       '<div class="date-field notefield" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
       '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <input type="date" id="note-' + id + '"',
-      '    data-note="' + id + '" ' + tv,
+      '    data-note="' + id + '" ' + tv + defVal,
       (minVal ? '    min="' + minVal + '"' : ''),
       (maxVal ? '    max="' + maxVal + '"' : ''),
       '  >',
@@ -5667,12 +5682,13 @@ var TesselFields = (function() {
     var meta = node.meta || {};
     var id = esc(meta.id || node.id);
     var label = esc(node.label);
+    var defVal = meta.default_value ? ' value="' + esc(String(meta.default_value)) + '"' : '';
     var tv = tvAttrs(meta);
     return [
       '<div class="datetime-field notefield" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
       '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <input type="datetime-local" id="note-' + id + '"',
-      '    data-note="' + id + '" data-field-type="datetime" ' + tv + '>',
+      '    data-note="' + id + '" data-field-type="datetime" ' + tv + defVal + '>',
       '  <span class="datetime-display" id="dtdisp-' + id + '"></span>',
       fieldFooter(meta),
       '</div>'
@@ -5706,13 +5722,14 @@ var TesselFields = (function() {
     var id = esc(meta.id || node.id);
     var label = esc(node.label);
     var placeholder = esc(meta.placeholder || 'user@example.com');
+    var defVal = meta.default_value ? ' value="' + esc(String(meta.default_value)) + '"' : '';
     var tv = tvAttrs(meta);
     return [
       '<div class="notefield email-field" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
       '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <input type="email" class="note-input" id="note-' + id + '"',
       '    data-note="' + id + '" data-validate="email" ' + tv,
-      '    placeholder="' + placeholder + '" autocomplete="email">',
+      '    placeholder="' + placeholder + '" autocomplete="email"' + defVal + '>',
       fieldFooter(meta),
       '</div>'
     ].filter(Boolean).join('\n');
@@ -5725,13 +5742,14 @@ var TesselFields = (function() {
     var label = esc(node.label);
     var placeholder = esc(meta.placeholder || '+1 (555) 000-0000');
     var pattern = meta.pattern ? esc(meta.pattern) : '';
+    var defVal = meta.default_value ? ' value="' + esc(String(meta.default_value)) + '"' : '';
     var tv = tvAttrs(meta);
     return [
       '<div class="notefield phone-field" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
       '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <input type="tel" class="note-input" id="note-' + id + '"',
       '    data-note="' + id + '" data-validate="phone" ' + tv,
-      '    placeholder="' + placeholder + '"' + (pattern ? ' pattern="' + pattern + '"' : '') + ' autocomplete="tel">',
+      '    placeholder="' + placeholder + '"' + (pattern ? ' pattern="' + pattern + '"' : '') + ' autocomplete="tel"' + defVal + '>',
       fieldFooter(meta),
       '</div>'
     ].filter(Boolean).join('\n');
@@ -5743,13 +5761,14 @@ var TesselFields = (function() {
     var id = esc(meta.id || node.id);
     var label = esc(node.label);
     var placeholder = esc(meta.placeholder || 'https://example.com');
+    var defVal = meta.default_value ? ' value="' + esc(String(meta.default_value)) + '"' : '';
     var tv = tvAttrs(meta);
     return [
       '<div class="notefield url-field" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
       '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <input type="url" class="note-input" id="note-' + id + '"',
       '    data-note="' + id + '" data-validate="url" ' + tv,
-      '    placeholder="' + placeholder + '" autocomplete="url">',
+      '    placeholder="' + placeholder + '" autocomplete="url"' + defVal + '>',
       fieldFooter(meta),
       '</div>'
     ].filter(Boolean).join('\n');
@@ -6000,7 +6019,7 @@ var TesselFields = (function() {
     return [
       '<div class="filename-field notefield" data-slug="' + id + '" data-template="' + template + '"',
       '  ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
-      '  <label>' + label + reqMark(meta) + '</label>',
+      '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <div class="filename-row">',
       '    <input type="text" class="note-input filename-input" id="note-' + id + '"',
       '      data-note="' + id + '" ' + tv + ' readonly aria-describedby="fname-warn-' + id + '">',
