@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tessel Studio</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='8,60 34,60 47,82.5 73,82.5 86,105 99,82.5 86,60 99,37.5 86,15 60,15 47,37.5 21,37.5' fill='%235b8af0' stroke='%235b8af0' stroke-width='1' stroke-linejoin='round'/%3E%3C/svg%3E">
 <script>try{if(localStorage.getItem('tessel-studio:theme')==='light')document.documentElement.classList.add('light');}catch(e){}</script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -226,9 +227,11 @@ body {
 #ribbon-tabs.dock-right .rt-globals { flex-direction: column; padding: 4px 0; }
 #ribbon-tabs.dock-left .rt-globals .sep,
 #ribbon-tabs.dock-right .rt-globals .sep { width: 16px; height: 1px; margin: 2px 0; }
-/* Mode toggle in vertical */
-#ribbon-tabs.dock-left #btn-mode-toggle,
-#ribbon-tabs.dock-right #btn-mode-toggle { writing-mode: vertical-rl; padding: 8px 3px; font-size: .68em; }
+/* Mode toggle pill in vertical dock */
+#ribbon-tabs.dock-left #mode-toggle-pill,
+#ribbon-tabs.dock-right #mode-toggle-pill { flex-direction: column; }
+#ribbon-tabs.dock-left .mode-pill-opt,
+#ribbon-tabs.dock-right .mode-pill-opt { writing-mode: vertical-rl; padding: 8px 3px; font-size: .68em; }
 
 /* ---- Secondary ribbon layout ---- */
 #ribbon-row {
@@ -833,9 +836,10 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
 .ws-opt-add{font-size:11px;color:var(--accent);cursor:pointer;background:none;border:none;padding:2px 0;text-align:left;font-family:inherit}
 .ws-opt-add:hover{text-decoration:underline}
 /* mode toggle button */
-#btn-mode-toggle{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:3px 10px;font-size:.78em;font-weight:600;cursor:pointer;color:var(--text);white-space:nowrap;transition:background .12s}
-#btn-mode-toggle:hover{border-color:var(--accent);color:var(--accent)}
-#btn-mode-toggle.ws-active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+#mode-toggle-pill{display:flex;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:2px;gap:0;align-self:center}
+.mode-pill-opt{background:transparent;border:none;border-radius:4px;padding:3px 12px;font-size:.78em;font-weight:600;cursor:pointer;color:var(--muted);white-space:nowrap;transition:background .12s,color .12s;font-family:inherit}
+.mode-pill-opt.active{background:var(--accent);color:var(--bg)}
+.mode-pill-opt:hover:not(.active){color:var(--text)}
 /* ribbon panels shown/hidden per mode */
 .md-panel{display:none}
 .md-panel.active{display:flex}
@@ -882,7 +886,10 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
     <button class="ribbon-tab" data-tab="format">Format</button>
     <button class="ribbon-tab" data-tab="design" id="tab-design">Design</button>
     <div class="rt-spacer"></div>
-    <button id="btn-mode-toggle" title="Switch between Markdown and Visual block editor">✎ Visual</button>
+    <div id="mode-toggle-pill" role="group" aria-label="Editing mode" title="Switch between Markdown and Visual block editor">
+      <button class="mode-pill-opt active" id="mode-pill-md" aria-pressed="true">Markdown</button>
+      <button class="mode-pill-opt" id="mode-pill-vs" aria-pressed="false">Visual</button>
+    </div>
     <div class="rt-globals">
       <button id="btn-doc-settings" title="Document defaults — applied to newly compiled documents">⚙ Settings</button>
       <button id="btn-history" title="Edit history — undo/redo (Ctrl+Z / Ctrl+Y)">⏳ History</button>
@@ -1253,17 +1260,6 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
           <option value="x">X mark (✕)</option>
           <option value="square">Filled square (■)</option>
         </select>
-      </div>
-    </div>
-    <div class="ds-group">
-      <span class="ds-group-label">Tables</span>
-      <div class="ds-row">
-        <label for="ds-tbl-min">Default min rows</label>
-        <input type="number" id="ds-tbl-min" min="1" max="20" value="1" style="width:56px">
-      </div>
-      <div class="ds-row">
-        <label for="ds-tbl-max">Default max rows (0 = unlimited)</label>
-        <input type="number" id="ds-tbl-max" min="0" max="100" value="0" style="width:56px">
       </div>
     </div>
     <div class="ds-group">
@@ -6741,12 +6737,12 @@ TesselCompiler.prototype.compile = function(ast) {
     // source embed
     '<script type="text/tessel-source" data-encoding="base64">',
     sourceB64,
-    '</script>',
+    '<\/script>',
 
     // runtime
     '<script>',
     this._runtime,
-    '</script>',
+    '<\/script>',
 
     '</body>',
     '</html>'
@@ -7202,7 +7198,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
 
   // ---- document settings ----
   var DOC_SETTINGS_KEY = 'tessel-studio:doc-settings';
-  var DOC_SETTINGS_DEFAULTS = { padH: 20, font: '', fontSize: 14, dateFmt: 'YYYY-MM-DD', timeFmt: '24', checkStyle: 'check', tableMinRows: 1, tableMaxRows: 0, accentDark: '#89b4fa', accentLight: '#0969da', borderContrast: 100, a11yStd: 'wcag21' };
+  var DOC_SETTINGS_DEFAULTS = { padH: 20, font: '', fontSize: 14, dateFmt: 'YYYY-MM-DD', timeFmt: '24', checkStyle: 'check', accentDark: '#89b4fa', accentLight: '#0969da', borderContrast: 100, a11yStd: 'wcag21' };
 
   function getDocSettings() {
     try {
@@ -7228,8 +7224,6 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     var dateFmtSel      = document.getElementById('ds-date-fmt');
     var timeFmtSel      = document.getElementById('ds-time-fmt');
     var checkStyleSel   = document.getElementById('ds-check-style');
-    var tblMinEl        = document.getElementById('ds-tbl-min');
-    var tblMaxEl        = document.getElementById('ds-tbl-max');
     var accentDarkEl    = document.getElementById('ds-accent-dark');
     var accentLightEl   = document.getElementById('ds-accent-light');
     var borderContrastEl = document.getElementById('ds-border-contrast');
@@ -7248,8 +7242,6 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       if (dateFmtSel)     { dateFmtSel.value = s.dateFmt; }
       if (timeFmtSel)     { timeFmtSel.value = s.timeFmt; }
       if (checkStyleSel)  { checkStyleSel.value = s.checkStyle || 'check'; }
-      if (tblMinEl)       { tblMinEl.value = s.tableMinRows != null ? s.tableMinRows : 1; }
-      if (tblMaxEl)       { tblMaxEl.value = s.tableMaxRows != null ? s.tableMaxRows : 0; }
       if (accentDarkEl)   { accentDarkEl.value = s.accentDark || '#89b4fa'; }
       if (accentLightEl)  { accentLightEl.value = s.accentLight || '#0969da'; }
       if (borderContrastEl){ borderContrastEl.value = s.borderContrast != null ? s.borderContrast : 100; }
@@ -7275,8 +7267,6 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         dateFmt:       dateFmtSel     ? dateFmtSel.value     : 'YYYY-MM-DD',
         timeFmt:       timeFmtSel     ? timeFmtSel.value     : '24',
         checkStyle:    checkStyleSel  ? checkStyleSel.value  : 'check',
-        tableMinRows:  parseInt(tblMinEl ? tblMinEl.value : 1, 10),
-        tableMaxRows:  parseInt(tblMaxEl ? tblMaxEl.value : 0, 10),
         accentDark:    accentDarkEl   ? accentDarkEl.value   : '#89b4fa',
         accentLight:   accentLightEl  ? accentLightEl.value  : '#0969da',
         borderContrast: parseInt(borderContrastEl ? borderContrastEl.value : 100, 10),
@@ -7299,8 +7289,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     if (dateFmtSel)     dateFmtSel.addEventListener('change',    function() { persist(); });
     if (timeFmtSel)     timeFmtSel.addEventListener('change',    function() { persist(); });
     if (checkStyleSel)  checkStyleSel.addEventListener('change', function() { persist(); });
-    if (tblMinEl)       tblMinEl.addEventListener('input',       function() { persist(); });
-    if (tblMaxEl)       tblMaxEl.addEventListener('input',       function() { persist(); });
+
     if (accentDarkEl)   accentDarkEl.addEventListener('input',   function() { updateContrastBadges(); persist(); });
     if (accentLightEl)  accentLightEl.addEventListener('input',  function() { updateContrastBadges(); persist(); });
 
@@ -10316,7 +10305,8 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       var wsMode = document.getElementById('ws-mode');
       var mdPanels = document.querySelectorAll('.ribbon-panel:not(.ws-panel)');
       var wsPanels = document.querySelectorAll('.ribbon-panel.ws-panel');
-      var toggleBtn = document.getElementById('btn-mode-toggle');
+      var pillMd = document.getElementById('mode-pill-md');
+      var pillVs = document.getElementById('mode-pill-vs');
 
       if (mode === 'visual') {
         // Save the currently active tab before hiding it
@@ -10355,8 +10345,8 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         document.getElementById('rp-ws-edit').classList.add('active');
         document.getElementById('rp-ws-insert').classList.remove('active');
         document.querySelectorAll('.ribbon-tab').forEach(function(t){ t.classList.remove('active'); });
-        toggleBtn.classList.add('ws-active');
-        toggleBtn.textContent = '✎ Markdown';
+        if (pillMd) { pillMd.classList.remove('active'); pillMd.setAttribute('aria-pressed','false'); }
+        if (pillVs) { pillVs.classList.add('active');    pillVs.setAttribute('aria-pressed','true'); }
       } else {
         workspace.style.display = '';
         wsMode.classList.remove('active');
@@ -10386,13 +10376,16 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
           var fileTab = document.querySelector('.ribbon-tab[data-tab="file"]');
           if (fileTab) fileTab.classList.add('active');
         }
-        toggleBtn.classList.remove('ws-active');
-        toggleBtn.textContent = '✎ Visual';
+        if (pillMd) { pillMd.classList.add('active');    pillMd.setAttribute('aria-pressed','true'); }
+        if (pillVs) { pillVs.classList.remove('active'); pillVs.setAttribute('aria-pressed','false'); }
       }
     }
 
-    document.getElementById('btn-mode-toggle').addEventListener('click', function() {
-      wsSwitchMode(wsCurrentMode === 'visual' ? 'markdown' : 'visual');
+    document.getElementById('mode-pill-md').addEventListener('click', function() {
+      if (wsCurrentMode !== 'markdown') wsSwitchMode('markdown');
+    });
+    document.getElementById('mode-pill-vs').addEventListener('click', function() {
+      if (wsCurrentMode !== 'visual') wsSwitchMode('visual');
     });
 
     // Ribbon insert buttons
