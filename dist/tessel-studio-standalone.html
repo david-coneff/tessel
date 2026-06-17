@@ -520,6 +520,7 @@ button:disabled { opacity: .4; cursor: default; }
     <div class="rt-globals">
       <button id="btn-doc-settings" title="Document defaults — applied to newly compiled documents">⚙ Settings</button>
       <button id="btn-history" title="Edit history — undo/redo (Ctrl+Z / Ctrl+Y)">⏳ History</button>
+      <button id="btn-a11y-audit" title="Accessibility compliance audit — check compiled document for WCAG issues">♿ Audit</button>
       <div class="sep"></div>
       <button id="btn-studio-theme" title="Studio theme customization">🎨</button>
       <button id="btn-theme" title="Toggle light/dark mode">☀</button>
@@ -667,6 +668,19 @@ button:disabled { opacity: .4; cursor: default; }
   </div>
 </div>
 
+<!-- Accessibility audit panel -->
+<div id="a11y-panel">
+  <div id="a11y-hdr">
+    <span>Accessibility Audit</span>
+    <div id="a11y-hdr-btns">
+      <button type="button" id="a11y-run-btn" title="Re-run audit">↺ Re-run</button>
+      <button type="button" id="a11y-close" title="Close">✕</button>
+    </div>
+  </div>
+  <div id="a11y-summary"></div>
+  <div id="a11y-list"></div>
+</div>
+
 <!-- Directive palette panel -->
 <div id="directive-palette">
   <div id="dp-hdr">
@@ -790,13 +804,20 @@ button:disabled { opacity: .4; cursor: default; }
     </div>
     <div class="ds-group">
       <span class="ds-group-label">Accessibility</span>
-      <p class="ds-hint" style="margin:0 0 8px">Controls whether compiled documents include WCAG 2.1 accessibility structures (skip-nav, landmark roles, aria-required, aria-labelledby, aria-live).</p>
-      <div class="ds-row" style="align-items:flex-start;gap:8px">
-        <input type="checkbox" id="ds-wcag" checked style="margin-top:2px;flex-shrink:0">
-        <label for="ds-wcag" style="cursor:pointer;font-weight:500">WCAG 2.1 compliance mode<br>
-          <span style="font-weight:400;color:var(--muted);font-size:.85em">On: skip-nav, landmark roles, full aria-* attributes on fields, focus-visible rings.<br>Off: freeform — standard HTML labels only, no aria layer, no skip-nav.</span>
-        </label>
+      <p class="ds-hint" style="margin:0 0 8px">Select the compliance standard applied when compiling documents. Determines which ARIA structures, skip-nav, landmark roles, and field annotations are emitted. "None" produces standard HTML labels only.</p>
+      <div class="ds-row" style="gap:8px;align-items:center">
+        <label for="ds-a11y-std" style="white-space:nowrap;font-weight:500;font-size:.85em">Standard</label>
+        <select id="ds-a11y-std" class="rb-select" style="flex:1;min-width:0">
+          <option value="none">None — freeform (no accessibility layer)</option>
+          <option value="wcag21" selected>WCAG 2.1 AA (W3C, 2018 / ISO 40500)</option>
+          <option value="wcag22">WCAG 2.2 AA (W3C, 2023 / ISO 40500:2025)</option>
+          <option value="section508">Section 508 (US federal — WCAG 2.0 AA baseline)</option>
+          <option value="en301549">EN 301 549 (EU Accessibility Act — WCAG 2.1 AA)</option>
+          <option value="pdfua1">PDF/UA-1 (ISO 14289-1:2014 — accessible PDF export, PDF 1.7)</option>
+          <option value="pdfua2">PDF/UA-2 (ISO 14289-2:2024 — accessible PDF export, PDF 2.0)</option>
+        </select>
       </div>
+      <p class="ds-hint" id="ds-a11y-hint" style="margin:6px 0 0"></p>
     </div>
     <button class="ds-reset" id="ds-reset" type="button">Reset to defaults</button>
   </div>
@@ -1616,6 +1637,39 @@ var TESSEL_CSS = `
   #hist-clear-btn:hover{border-color:var(--red);color:var(--red)}
   .hist-count{font-size:.72em;color:var(--muted);margin-left:auto}
   #btn-history.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  /* ---- a11y audit panel ---- */
+  #a11y-panel{position:fixed;top:var(--toolbar-h);right:0;width:360px;background:var(--bg2);
+    border-left:1px solid var(--border);border-bottom:1px solid var(--border);
+    z-index:200;display:none;flex-direction:column;max-height:calc(100vh - var(--toolbar-h));
+    box-shadow:-4px 4px 16px rgba(0,0,0,.25)}
+  #a11y-panel.open{display:flex}
+  #a11y-hdr{display:flex;align-items:center;justify-content:space-between;
+    padding:8px 12px;border-bottom:1px solid var(--border);background:var(--bg3);flex-shrink:0}
+  #a11y-hdr span{font-size:.82em;font-weight:600;color:var(--text)}
+  #a11y-hdr-btns{display:flex;gap:6px;align-items:center}
+  #a11y-run-btn{background:none;border:1px solid var(--border);border-radius:3px;
+    color:var(--muted);cursor:pointer;padding:2px 8px;font-size:.78em;font-family:inherit;line-height:1.4}
+  #a11y-run-btn:hover{background:var(--bg);color:var(--text)}
+  #a11y-close{background:none;border:none;color:var(--muted);cursor:pointer;
+    font-size:.9em;padding:2px 6px;border-radius:3px;line-height:1}
+  #a11y-close:hover{color:var(--text);background:var(--bg)}
+  #a11y-summary{padding:8px 12px;font-size:.78em;border-bottom:1px solid var(--border);
+    flex-shrink:0;color:var(--muted)}
+  #a11y-list{overflow-y:auto;flex:1;min-height:0;padding:4px 0}
+  .a11y-item{padding:8px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:flex-start}
+  .a11y-item:last-child{border-bottom:none}
+  .a11y-badge{font-size:.68em;font-weight:700;border-radius:3px;padding:2px 6px;
+    flex-shrink:0;margin-top:1px;letter-spacing:.03em;text-transform:uppercase}
+  .a11y-badge.error{background:#f38ba8;color:#1e1e2e}
+  .a11y-badge.warn{background:#fab387;color:#1e1e2e}
+  .a11y-badge.info{background:#89b4fa;color:#1e1e2e}
+  .a11y-body{flex:1;min-width:0}
+  .a11y-title{font-size:.8em;font-weight:600;color:var(--text);display:block;margin-bottom:2px}
+  .a11y-detail{font-size:.75em;color:var(--muted);display:block;line-height:1.4}
+  .a11y-empty{padding:24px 16px;text-align:center;color:var(--muted);font-size:.82em}
+  #btn-a11y-audit.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  #btn-a11y-audit.has-errors{background:#f38ba8;color:#1e1e2e;border-color:#f38ba8}
+  #btn-a11y-audit.has-warns{background:#fab387;color:#1e1e2e;border-color:#fab387}
   /* ---- directive palette ---- */
   #directive-palette{position:fixed;top:var(--toolbar-h);right:0;width:300px;
     background:var(--bg2);border-left:1px solid var(--border);z-index:200;
@@ -4651,7 +4705,8 @@ TesselParser.inlineToHtml = inlineToHtml;
 
 var TesselFields = (function() {
 
-  var _wcag = true; // toggled by setWCAG() before each compile
+  var _wcag = true;   // toggled by setWCAG() before each compile
+  var _pdfua = false; // toggled by setPdfUa() before each compile
 
   function esc(s) {
     return (s == null ? '' : String(s))
@@ -5114,7 +5169,12 @@ var TesselFields = (function() {
       '      aria-label="' + label + '" data-image-field="' + id + '" ' + tv + '>',
       '    <button type="button" class="image-clear-btn" data-image-clear="' + id + '">✕ Clear</button>',
       '  </div>',
-      '  <img class="image-preview" id="note-' + id + '-preview" alt="' + label + ' preview" role="img">',
+      (_pdfua
+        ? '  <figure role="figure" aria-label="' + label + '">'
+        + '\n    <img class="image-preview" id="note-' + id + '-preview" alt="' + label + ' preview">'
+        + '\n    <figcaption class="sr-only" id="note-' + id + '-caption">' + label + '</figcaption>'
+        + '\n  </figure>'
+        : '  <img class="image-preview" id="note-' + id + '-preview" alt="' + label + ' preview" role="img">'),
       '  <input type="hidden" id="note-' + id + '" data-note="' + id + '">',
       fieldFooter(meta),
       '</div>'
@@ -5194,7 +5254,8 @@ var TesselFields = (function() {
   }
 
   return {
-    setWCAG: function(v) { _wcag = !!v; },
+    setWCAG:  function(v) { _wcag  = !!v; },
+    setPdfUa: function(v) { _pdfua = !!v; },
     render: render,
     renderText: renderText,
     renderArea: renderArea,
@@ -5763,16 +5824,52 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     if (!md.trim()) { setStatus('Empty document', ''); return; }
     var t0 = Date.now();
     try {
-      // WCAG mode — must gate TesselFields before compile() renders fields
+      // Accessibility mode — must gate TesselFields before compile() renders fields
       var ds = getDocSettings();
+      var a11yStd = ds.a11yStd || 'wcag21';
+      var a11yActive = a11yStd !== 'none';
+      var isPdfUa = a11yStd === 'pdfua1' || a11yStd === 'pdfua2';
       if (typeof TesselFields !== 'undefined' && TesselFields.setWCAG) {
-        TesselFields.setWCAG(ds.wcag !== false);
+        TesselFields.setWCAG(a11yActive);
+      }
+      if (typeof TesselFields !== 'undefined' && TesselFields.setPdfUa) {
+        TesselFields.setPdfUa(isPdfUa);
       }
       var html = T.compile(md);
-      // post-process: skip-nav + role="main" only in WCAG mode
-      if (ds.wcag !== false) {
+      // post-process: skip-nav + role="main" when any a11y standard is active
+      if (a11yActive) {
         html = html.replace('<div id="bf-layout">', '<a class="bf-skip-nav" href="#bf-main">Skip to main content</a>\n<div id="bf-layout">');
         html = html.replace('<main id="bf-main">', '<main id="bf-main" role="main">');
+        // embed active standard as data attribute for auditors / AT detection
+        html = html.replace('<body ', '<body data-a11y-std="' + a11yStd + '" ');
+      }
+      // PDF/UA post-processing: structural compositing for tagged-PDF export
+      if (isPdfUa) {
+        // Wrap bare <img> elements in <figure> so the browser print engine emits /Figure tags
+        html = html.replace(/<img(\s[^>]*alt="([^"]*)"[^>]*)>/g, function(match, attrs, alt) {
+          // only wrap if not already inside a figure
+          return '<figure role="figure" aria-label="' + alt.replace(/"/g, '&quot;') + '">' + match + (alt ? '<figcaption>' + alt + '</figcaption>' : '') + '</figure>';
+        });
+        // Add scope to <th> cells that lack it (column headers by default)
+        html = html.replace(/<th(?![^>]*\bscope=)([^>]*)>/g, '<th scope="col"$1>');
+        // Mark decorative images (empty alt) as artifacts
+        html = html.replace(/<img([^>]*)\balt=""([^>]*)>/g, '<img$1 alt="" role="presentation" aria-hidden="true"$2>');
+        // Inject PDF/UA print CSS and document metadata
+        var docTitleMatch = html.match(/<title>([^<]*)<\/title>/);
+        var docTitle = docTitleMatch ? docTitleMatch[1] : '';
+        var pdfuaCSS = '<style id="bf-pdfua-print">@media print{'
+          + '@page{margin:2cm}'
+          + 'body{font-size:11pt;line-height:1.5}'
+          + 'h1,h2,h3,h4,h5,h6{page-break-after:avoid;orphans:3;widows:3}'
+          + 'figure,table,pre{page-break-inside:avoid}'
+          + 'a[href]::after{content:" (" attr(href) ")"}'
+          + 'a[href^="#"]::after{content:""}'
+          + '.bf-skip-nav{display:none}'
+          + '}</style>';
+        var pdfuaMeta = '<meta name="DC.format" content="text/html">'
+          + (docTitle ? '<meta name="DC.title" content="' + docTitle.replace(/"/g, '&quot;') + '">' : '')
+          + (a11yStd === 'pdfua2' ? '<meta name="pdfua" content="pdfua2">' : '<meta name="pdfua" content="pdfua1">');
+        html = html.replace('</head>', pdfuaCSS + '\n' + pdfuaMeta + '\n</head>');
       }
       var bc = ds.borderContrast != null ? ds.borderContrast : 100;
       var overrideCSS = '<style id="bf-doc-defaults">:root{--doc-pad-h:' + ds.padH + 'px;--border-mult:' + (bc/100).toFixed(2) + '}'
@@ -5785,6 +5882,10 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       // embed date/time/form prefs as data attributes on body for runtime use
       html = html.replace('<body ', '<body data-date-fmt="' + ds.dateFmt + '" data-time-fmt="' + ds.timeFmt + '" data-check-style="' + (ds.checkStyle||'check') + '" ');
       lastHtml = html;
+      // auto-run a11y audit after each compile
+      setTimeout(function() {
+        if (typeof runA11yAudit === 'function') runA11yAudit(false);
+      }, 0);
       var elapsed = Date.now() - t0;
       var kb = (html.length / 1024).toFixed(1);
 
@@ -5998,7 +6099,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
 
   // ---- document settings ----
   var DOC_SETTINGS_KEY = 'tessel-studio:doc-settings';
-  var DOC_SETTINGS_DEFAULTS = { padH: 20, font: '', fontSize: 14, dateFmt: 'YYYY-MM-DD', timeFmt: '24', checkStyle: 'check', tableMinRows: 1, tableMaxRows: 0, accentDark: '#89b4fa', accentLight: '#0969da', borderContrast: 100, wcag: true };
+  var DOC_SETTINGS_DEFAULTS = { padH: 20, font: '', fontSize: 14, dateFmt: 'YYYY-MM-DD', timeFmt: '24', checkStyle: 'check', tableMinRows: 1, tableMaxRows: 0, accentDark: '#89b4fa', accentLight: '#0969da', borderContrast: 100, a11yStd: 'wcag21' };
 
   function getDocSettings() {
     try {
@@ -6030,7 +6131,8 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     var accentLightEl   = document.getElementById('ds-accent-light');
     var borderContrastEl = document.getElementById('ds-border-contrast');
     var borderContrastVal = document.getElementById('ds-border-contrast-val');
-    var wcagEl          = document.getElementById('ds-wcag');
+    var a11yStdEl       = document.getElementById('ds-a11y-std');
+    var a11yHintEl      = document.getElementById('ds-a11y-hint');
     var resetBtn        = document.getElementById('ds-reset');
 
     function load() {
@@ -6049,7 +6151,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       if (accentLightEl)  { accentLightEl.value = s.accentLight || '#0969da'; }
       if (borderContrastEl){ borderContrastEl.value = s.borderContrast != null ? s.borderContrast : 100; }
       if (borderContrastVal){ borderContrastVal.textContent = (s.borderContrast != null ? s.borderContrast : 100) + '%'; }
-      if (wcagEl)           { wcagEl.checked = s.wcag !== false; }
+      if (a11yStdEl)        { a11yStdEl.value = s.a11yStd || 'wcag21'; updateA11yHint(); }
     }
     function persist() {
       saveDocSettings({
@@ -6064,7 +6166,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         accentDark:    accentDarkEl   ? accentDarkEl.value   : '#89b4fa',
         accentLight:   accentLightEl  ? accentLightEl.value  : '#0969da',
         borderContrast: parseInt(borderContrastEl ? borderContrastEl.value : 100, 10),
-        wcag:           wcagEl ? wcagEl.checked : true
+        a11yStd:        a11yStdEl ? a11yStdEl.value : 'wcag21'
       });
     }
 
@@ -6085,7 +6187,21 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     if (tblMaxEl)       tblMaxEl.addEventListener('input',       function() { persist(); });
     if (accentDarkEl)   accentDarkEl.addEventListener('input',   function() { persist(); });
     if (accentLightEl)  accentLightEl.addEventListener('input',  function() { persist(); });
-    if (wcagEl)         wcagEl.addEventListener('change',        function() { persist(); });
+    if (a11yStdEl)      a11yStdEl.addEventListener('change',     function() { updateA11yHint(); persist(); });
+    function updateA11yHint() {
+      if (!a11yHintEl || !a11yStdEl) return;
+      var hints = {
+        'none':      'Standard HTML labels only. No ARIA layer, no skip-nav, no landmark roles.',
+        'wcag21':    'WCAG 2.1 AA (78 criteria). Widely mandated globally; baseline for Section 508 and EN 301 549 compliance. Adds mobile/cognitive criteria over 2.0.',
+        'wcag22':    'WCAG 2.2 AA (87 criteria). Current W3C recommendation (Oct 2023 / ISO 2025). Adds focus appearance, dragging alternatives, accessible authentication, and consistent help.',
+        'section508':'US federal ICT law (Rehabilitation Act §508). References WCAG 2.0 AA; WCAG 2.1 is a full superset. Required for US government procurement.',
+        'en301549':  'EU Accessibility Act standard (ETSI EN 301 549 v3.2.1). References WCAG 2.1 AA. Legally binding in the EU from June 2025. v4.1.1 (WCAG 2.2) expected 2026.',
+        'pdfua1':    'PDF/UA-1 (ISO 14289-1:2014). Emits figure/figcaption wrappers, th[scope], print CSS, and document title metadata to maximise tagged-PDF quality when exported via browser Print → Save as PDF. Based on PDF 1.7; supported by all modern PDF readers and validators.',
+        'pdfua2':    'PDF/UA-2 (ISO 14289-2:2024). As PDF/UA-1 plus MathML alt-text, artifact marking, and WTPDF notes. Based on PDF 2.0; expanding reader support (PAC 2024+, Acrobat 2024+). Choose this for new documents targeting the latest standard.'
+      };
+      a11yHintEl.textContent = hints[a11yStdEl.value] || '';
+    }
+    updateA11yHint();
 
     if (resetBtn) resetBtn.addEventListener('click', function() {
       saveDocSettings(DOC_SETTINGS_DEFAULTS);
@@ -6766,6 +6882,378 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         else renderList();
       }
     }, 250);
+  })();
+
+  // ---- accessibility audit ----
+  var runA11yAudit = (function() {
+    var auditBtn  = document.getElementById('btn-a11y-audit');
+    var panel     = document.getElementById('a11y-panel');
+    var closeBtn  = document.getElementById('a11y-close');
+    var rerunBtn  = document.getElementById('a11y-run-btn');
+    var listEl    = document.getElementById('a11y-list');
+    var summaryEl = document.getElementById('a11y-summary');
+    var panelOpen = false;
+
+    function togglePanel(open) {
+      panelOpen = (open !== undefined) ? open : !panelOpen;
+      if (panel) panel.classList.toggle('open', panelOpen);
+      if (auditBtn) auditBtn.classList.toggle('active', panelOpen);
+    }
+
+    function severity(sev) {
+      var b = document.createElement('span');
+      b.className = 'a11y-badge ' + sev;
+      b.textContent = sev === 'error' ? 'Error' : sev === 'warn' ? 'Warn' : 'Info';
+      return b;
+    }
+
+    function addIssue(sev, title, detail) {
+      var item = document.createElement('div');
+      item.className = 'a11y-item';
+      var body = document.createElement('div');
+      body.className = 'a11y-body';
+      var t = document.createElement('span');
+      t.className = 'a11y-title';
+      t.textContent = title;
+      var d = document.createElement('span');
+      d.className = 'a11y-detail';
+      d.textContent = detail;
+      body.appendChild(t);
+      body.appendChild(d);
+      item.appendChild(severity(sev));
+      item.appendChild(body);
+      listEl.appendChild(item);
+    }
+
+    function runAudit(openPanel) {
+      if (!listEl || !summaryEl) return;
+      listEl.innerHTML = '';
+      summaryEl.textContent = '';
+      if (auditBtn) {
+        auditBtn.classList.remove('has-errors', 'has-warns');
+      }
+
+      if (!lastHtml) {
+        summaryEl.textContent = 'No compiled document — compile first.';
+        if (openPanel) togglePanel(true);
+        return;
+      }
+
+      var parser = new DOMParser();
+      var doc = parser.parseFromString(lastHtml, 'text/html');
+      var errors = 0, warns = 0, infos = 0;
+
+      // Determine active standard from compiled doc or current settings
+      var ds = (typeof getDocSettings === 'function') ? getDocSettings() : {};
+      var activeStd = doc.body && doc.body.getAttribute('data-a11y-std') || ds.a11yStd || 'wcag21';
+      var stdLabels = {
+        'none':      'None',
+        'wcag21':    'WCAG 2.1 AA',
+        'wcag22':    'WCAG 2.2 AA',
+        'section508':'Section 508',
+        'en301549':  'EN 301 549'
+      };
+      summaryEl.textContent = 'Standard: ' + (stdLabels[activeStd] || activeStd) + ' — scanning…';
+
+      if (activeStd === 'none') {
+        var msg = document.createElement('div');
+        msg.className = 'a11y-empty';
+        msg.textContent = 'Accessibility mode is off. Select a standard in Document Settings to enable compliance checking.';
+        listEl.appendChild(msg);
+        summaryEl.textContent = 'No standard selected.';
+        if (openPanel) togglePanel(true);
+        return;
+      }
+
+      // 1. html[lang]
+      var htmlEl = doc.documentElement;
+      if (!htmlEl.getAttribute('lang') || !htmlEl.getAttribute('lang').trim()) {
+        addIssue('error', 'Missing language declaration', 'The <html> element has no lang attribute. Screen readers need this to select the correct language.');
+        errors++;
+      }
+
+      // 2. Skip navigation link
+      var skipNav = doc.querySelector('a.bf-skip-nav, a[href="#bf-main"], a[href="#main"]');
+      if (!skipNav) {
+        addIssue('warn', 'No skip-navigation link', 'Add a skip-to-content link at the top so keyboard users can bypass the header.');
+        warns++;
+      }
+
+      // 3. Images: missing alt
+      var imgs = doc.querySelectorAll('img');
+      imgs.forEach(function(img) {
+        var alt = img.getAttribute('alt');
+        if (alt === null) {
+          var src = img.getAttribute('src') || '(no src)';
+          addIssue('error', 'Image missing alt attribute', 'src="' + src.slice(0, 60) + '" — all images must have an alt attribute (use alt="" for decorative images).');
+          errors++;
+        } else if (alt.trim() === '' && !img.hasAttribute('role')) {
+          // empty alt is OK for decorative, just info
+        } else if (alt.trim().length > 0 && /^(image|photo|picture|img|graphic)\b/i.test(alt.trim())) {
+          addIssue('warn', 'Alt text starts with redundant word', 'alt="' + alt + '" — avoid beginning alt text with "image", "photo", etc. Screen readers already announce the element as an image.');
+          warns++;
+        }
+      });
+
+      // 4. Input elements without associated labels
+      var inputs = doc.querySelectorAll('input, textarea, select');
+      inputs.forEach(function(inp) {
+        var id = inp.getAttribute('id');
+        var hasLabel = false;
+        if (id) {
+          hasLabel = !!doc.querySelector('label[for="' + id + '"]');
+        }
+        if (!hasLabel) {
+          hasLabel = !!inp.closest('label');
+        }
+        if (!hasLabel) {
+          hasLabel = !!(inp.getAttribute('aria-label') || inp.getAttribute('aria-labelledby') || inp.getAttribute('title'));
+        }
+        if (!hasLabel) {
+          var type = inp.getAttribute('type') || inp.tagName.toLowerCase();
+          var name = inp.getAttribute('name') || inp.getAttribute('id') || '(unnamed)';
+          addIssue('error', 'Form control without label', type + ' "' + name + '" has no associated <label>, aria-label, or aria-labelledby.');
+          errors++;
+        }
+      });
+
+      // 5. Empty labels
+      var labels = doc.querySelectorAll('label');
+      labels.forEach(function(lbl) {
+        if (!lbl.textContent.trim() && !lbl.querySelector('img[alt]')) {
+          addIssue('warn', 'Empty <label> element', 'A label element has no visible text. This will not be read meaningfully by screen readers.');
+          warns++;
+        }
+      });
+
+      // 6. Heading level continuity
+      var headings = doc.querySelectorAll('h1,h2,h3,h4,h5,h6');
+      var prevLevel = 0;
+      headings.forEach(function(h) {
+        var level = parseInt(h.tagName[1]);
+        if (prevLevel > 0 && level > prevLevel + 1) {
+          addIssue('warn', 'Heading level skipped', 'Jumped from h' + prevLevel + ' to h' + level + ': "' + h.textContent.trim().slice(0, 60) + '". Use sequential heading levels.');
+          warns++;
+        }
+        prevLevel = level;
+      });
+
+      // 7. Buttons without accessible names
+      var buttons = doc.querySelectorAll('button');
+      buttons.forEach(function(btn) {
+        var hasName = btn.textContent.trim() ||
+          btn.getAttribute('aria-label') ||
+          btn.getAttribute('aria-labelledby') ||
+          btn.getAttribute('title');
+        if (!hasName) {
+          addIssue('error', 'Button without accessible name', 'A <button> has no text content, aria-label, or title. Users with screen readers cannot identify its purpose.');
+          errors++;
+        }
+      });
+
+      // 8. contenteditable richtext areas without aria
+      var editables = doc.querySelectorAll('[contenteditable="true"]');
+      editables.forEach(function(el) {
+        if (!el.getAttribute('aria-label') && !el.getAttribute('aria-labelledby')) {
+          addIssue('warn', 'Rich text editor has no ARIA label', 'A contenteditable region lacks aria-label or aria-labelledby. Enable WCAG mode to add these automatically.');
+          warns++;
+        }
+      });
+
+      // 9. Links with non-descriptive text
+      var links = doc.querySelectorAll('a[href]');
+      links.forEach(function(a) {
+        var text = a.textContent.trim().toLowerCase();
+        if (['click here', 'here', 'read more', 'more', 'link'].indexOf(text) >= 0) {
+          addIssue('warn', 'Non-descriptive link text', '"' + a.textContent.trim() + '" — use descriptive link text that makes sense out of context.');
+          warns++;
+        }
+      });
+
+      // 10. Tables without captions or headers
+      var tables = doc.querySelectorAll('table');
+      tables.forEach(function(tbl) {
+        var hasCaption = !!tbl.querySelector('caption');
+        var hasHeaders = !!tbl.querySelector('th');
+        if (!hasCaption && !hasHeaders) {
+          addIssue('info', 'Table without caption or headers', 'A data table has no <caption> and no <th> elements. Add headers to help screen reader users understand the data structure.');
+          infos++;
+        } else if (!hasCaption) {
+          addIssue('info', 'Table without caption', 'Consider adding a <caption> to describe the table\'s purpose.');
+          infos++;
+        }
+      });
+
+      // WCAG 2.2-specific checks (new criteria beyond 2.1)
+      if (activeStd === 'wcag22') {
+        // 2.4.11 Focus Not Obscured (Minimum) — check for sticky/fixed elements that could hide focus
+        var stickyEls = doc.querySelectorAll('[style*="position:sticky"],[style*="position: sticky"],[style*="position:fixed"],[style*="position: fixed"]');
+        if (stickyEls.length > 0) {
+          addIssue('info', 'WCAG 2.2 — Sticky/fixed elements detected', stickyEls.length + ' fixed or sticky element' + (stickyEls.length > 1 ? 's' : '') + ' found. Verify focused components are not fully obscured (SC 2.4.11 Focus Not Obscured).');
+          infos++;
+        }
+        // 2.5.3 Label in Name — check inputs where visible label text is not contained in accessible name
+        // (heuristic: warn if aria-label exists but doesn't include the label text)
+        var ariaLabelledInputs = doc.querySelectorAll('[aria-label]');
+        ariaLabelledInputs.forEach(function(el) {
+          var ariaLabel = (el.getAttribute('aria-label') || '').toLowerCase();
+          var id = el.getAttribute('id');
+          var visibleLabel = '';
+          if (id) {
+            var lbl = doc.querySelector('label[for="' + id + '"]');
+            if (lbl) visibleLabel = lbl.textContent.trim().toLowerCase();
+          }
+          if (visibleLabel && ariaLabel && ariaLabel.indexOf(visibleLabel) < 0) {
+            addIssue('warn', 'WCAG 2.2 — Label in Name mismatch', '"' + el.getAttribute('aria-label') + '" does not contain the visible label text "' + visibleLabel + '". SC 2.5.3 requires the accessible name to include the visible label.');
+            warns++;
+          }
+        });
+        // 3.2.6 Consistent Help — note if help/contact elements exist to verify consistency
+        var helpLinks = doc.querySelectorAll('a[href*="help"], a[href*="support"], a[href*="contact"], [aria-label*="help" i], [title*="help" i]');
+        if (helpLinks.length > 0) {
+          addIssue('info', 'WCAG 2.2 — Consistent Help (SC 3.2.6)', helpLinks.length + ' help/support link' + (helpLinks.length > 1 ? 's' : '') + ' found. Verify they appear in the same location on every page of a multi-page document.');
+          infos++;
+        }
+        // 2.5.7 Dragging Movements — flag any drag-and-drop usage
+        var draggable = doc.querySelectorAll('[draggable="true"]');
+        if (draggable.length > 0) {
+          addIssue('warn', 'WCAG 2.2 — Dragging Movements (SC 2.5.7)', draggable.length + ' draggable element' + (draggable.length > 1 ? 's' : '') + ' found. All drag operations must have a single-pointer alternative (SC 2.5.7).');
+          warns++;
+        }
+      }
+
+      // Section 508 / EN 301 549: note scope
+      if (activeStd === 'section508') {
+        addIssue('info', 'Section 508 scope', 'Section 508 (2017 refresh) mandates WCAG 2.0 AA for electronic documents. All WCAG 2.0 criteria apply. Additional §508 provisions cover hardware, telecom, and real-time text — not applicable to compiled HTML documents.');
+        infos++;
+      }
+      if (activeStd === 'en301549') {
+        addIssue('info', 'EN 301 549 scope', 'EN 301 549 v3.2.1 references WCAG 2.1 AA for web content and electronic documents. These checks cover the web content clauses (9.x). Clauses 10–13 (non-web documents, software, closed systems) require separate review.');
+        infos++;
+      }
+
+      // PDF/UA-specific checks (ISO 14289-1 / 14289-2)
+      if (activeStd === 'pdfua1' || activeStd === 'pdfua2') {
+        // Matterhorn Protocol automatable checks (subset applicable to HTML-sourced PDFs)
+
+        // P1: Document title in <title> (maps to PDF /Title)
+        var titleEl = doc.querySelector('title');
+        if (!titleEl || !titleEl.textContent.trim()) {
+          addIssue('error', 'PDF/UA — Missing document title', 'The <title> element is empty or absent. Browsers set the PDF /Title metadata from this. Use a @text or heading field to populate it, or set it in Document Settings.');
+          errors++;
+        }
+
+        // P2: Language on <html> (already checked above, add PDF context)
+        // (already caught by the general lang check, no duplicate needed)
+
+        // P3: Images — all must have non-empty alt OR role=presentation for decorative
+        var pdfImgs = doc.querySelectorAll('img');
+        pdfImgs.forEach(function(img) {
+          var alt = img.getAttribute('alt');
+          var isDecorative = img.getAttribute('role') === 'presentation' || img.getAttribute('aria-hidden') === 'true';
+          if (!isDecorative && (alt === null || alt.trim() === '')) {
+            addIssue('error', 'PDF/UA — Image without alt text', 'src="' + (img.getAttribute('src') || '').slice(0, 60) + '" — non-decorative images require alt text for the PDF /Alt entry (Matterhorn 13-004). Mark decorative images with role="presentation".');
+            errors++;
+          }
+        });
+
+        // P4: <figure> wrapping for image fields
+        var unwrappedImgs = doc.querySelectorAll('img:not(figure img)');
+        if (unwrappedImgs.length > 0) {
+          addIssue('warn', 'PDF/UA — Images not wrapped in <figure>', unwrappedImgs.length + ' image' + (unwrappedImgs.length > 1 ? 's' : '') + ' not inside a <figure> element. The PDF/UA mode wraps @image fields automatically, but inline images in rich text may not be wrapped (Matterhorn 13-001).');
+          warns++;
+        }
+
+        // P5: Tables — <th> must have scope
+        var thNoScope = doc.querySelectorAll('th:not([scope])');
+        if (thNoScope.length > 0) {
+          addIssue('error', 'PDF/UA — Table headers missing scope', thNoScope.length + ' <th> element' + (thNoScope.length > 1 ? 's' : '') + ' lack a scope attribute. PDF/UA requires explicit scope="col" or scope="row" for the /TH tag (Matterhorn 15-003).');
+          errors++;
+        }
+
+        // P6: Form fields must have accessible names (for /TU tooltip entry)
+        var pdfInputs = doc.querySelectorAll('input:not([type=hidden]), textarea, select');
+        pdfInputs.forEach(function(inp) {
+          var hasName = inp.getAttribute('aria-label') || inp.getAttribute('title');
+          if (!hasName) {
+            var id2 = inp.getAttribute('id');
+            if (id2) hasName = !!doc.querySelector('label[for="' + id2 + '"]');
+          }
+          if (!hasName) {
+            addIssue('error', 'PDF/UA — Form field without accessible name', (inp.getAttribute('name') || inp.getAttribute('id') || inp.tagName.toLowerCase()) + ' — PDF form fields require a /TU (tooltip) entry derived from the label or aria-label (Matterhorn 09-001).');
+            errors++;
+          }
+        });
+
+        // P7: Heading structure — H1 should exist
+        var h1s = doc.querySelectorAll('h1');
+        if (h1s.length === 0) {
+          addIssue('warn', 'PDF/UA — No H1 heading', 'Document has no <h1> element. PDF/UA requires a clear heading structure starting at level 1 to define reading order (Matterhorn 14-002).');
+          warns++;
+        }
+
+        // P8: Print CSS present (injected by PDF/UA mode)
+        if (!html.includes('bf-pdfua-print') && !lastHtml.includes('bf-pdfua-print')) {
+          addIssue('warn', 'PDF/UA — Print stylesheet not found', 'PDF/UA mode injects @media print CSS for proper pagination and margins. Re-compile with PDF/UA-1 or PDF/UA-2 selected to apply it.');
+          warns++;
+        }
+
+        // P9: Links — URLs should be meaningful (already checked by general link text check)
+
+        // P10: PDF/UA-2 additional note
+        if (activeStd === 'pdfua2') {
+          addIssue('info', 'PDF/UA-2 note', 'PDF/UA-2 (ISO 14289-2:2024) requires PDF 2.0 output. Browser-generated PDFs are currently PDF 1.7 (Chromium) or PDF 1.4–1.7 (Safari). For full PDF/UA-2 compliance, post-process the exported PDF with a PDF 2.0-capable tool (e.g. Acrobat 2024, pdfcpu, or veraPDF remediation).');
+          infos++;
+        } else {
+          addIssue('info', 'PDF/UA-1 export workflow', 'Export: File → Print → Save as PDF (or "Microsoft Print to PDF"). Use PAC 2024 (PDF Accessibility Checker) or veraPDF to validate the exported file against ISO 14289-1. The Matterhorn Protocol lists 108 failure conditions; ~31 are checkable automatically.');
+          infos++;
+        }
+      }
+
+      // Summary
+      var total = errors + warns + infos;
+      if (total === 0) {
+        var empty = document.createElement('div');
+        empty.className = 'a11y-empty';
+        empty.textContent = '✓ No accessibility issues found.';
+        listEl.appendChild(empty);
+        summaryEl.textContent = (stdLabels[activeStd] || activeStd) + ' — all checks passed.';
+      } else {
+        summaryEl.textContent = (stdLabels[activeStd] || activeStd) + ' — ' +
+          total + ' issue' + (total !== 1 ? 's' : '') +
+          ': ' + errors + ' error' + (errors !== 1 ? 's' : '') +
+          ', ' + warns + ' warning' + (warns !== 1 ? 's' : '') +
+          ', ' + infos + ' info';
+      }
+
+      if (auditBtn) {
+        if (errors > 0) auditBtn.classList.add('has-errors');
+        else if (warns > 0) auditBtn.classList.add('has-warns');
+      }
+
+      if (openPanel) togglePanel(true);
+    }
+
+    if (auditBtn) {
+      auditBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (!panelOpen) {
+          runAudit(true);
+        } else {
+          togglePanel(false);
+        }
+      });
+    }
+    if (closeBtn) closeBtn.addEventListener('click', function() { togglePanel(false); });
+    if (rerunBtn) rerunBtn.addEventListener('click', function() { runAudit(false); });
+
+    document.addEventListener('click', function(e) {
+      if (panelOpen && panel && !panel.contains(e.target) && e.target !== auditBtn) {
+        togglePanel(false);
+      }
+    });
+
+    return runAudit;
   })();
 
   // ---- ribbon toolbar ----
