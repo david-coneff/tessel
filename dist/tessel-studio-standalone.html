@@ -5870,7 +5870,8 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
 
   // ---- edit history (undo/redo + visual time-travel panel) ----
   (function() {
-    var HIST_KEY = 'tessel-studio:history-settings';
+    var HIST_SETTINGS_KEY = 'tessel-studio:history-settings';
+    var HIST_STORE_KEY    = 'tessel-studio:history';
     var histBtn  = document.getElementById('btn-history');
     var panel    = document.getElementById('history-panel');
     var closeBtn = document.getElementById('history-close');
@@ -5885,7 +5886,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     var snapshotInterval = 2000;
     var maxSnapshots = 100;
     try {
-      var sc = localStorage.getItem(HIST_KEY);
+      var sc = localStorage.getItem(HIST_SETTINGS_KEY);
       if (sc) { var sp = JSON.parse(sc); snapshotInterval = sp.interval || 2000; maxSnapshots = sp.maxSnapshots || 100; }
     } catch(e) {}
 
@@ -5894,6 +5895,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       maxSnapshots = e.detail.maxSnapshots || 100;
       while (snapshots.length > maxSnapshots) snapshots.shift();
       if (ptr >= snapshots.length) ptr = snapshots.length - 1;
+      saveHistory();
       renderList();
     });
 
@@ -5908,6 +5910,39 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     }
 
+    function saveHistory() {
+      try {
+        localStorage.setItem(HIST_STORE_KEY, JSON.stringify({ snapshots: snapshots, ptr: ptr }));
+      } catch(e) {
+        // If storage quota exceeded, drop the oldest half and retry
+        try {
+          snapshots = snapshots.slice(Math.floor(snapshots.length / 2));
+          ptr = Math.min(ptr, snapshots.length - 1);
+          localStorage.setItem(HIST_STORE_KEY, JSON.stringify({ snapshots: snapshots, ptr: ptr }));
+        } catch(e2) {}
+      }
+    }
+
+    function loadHistory() {
+      try {
+        var raw = localStorage.getItem(HIST_STORE_KEY);
+        if (!raw) return false;
+        var data = JSON.parse(raw);
+        if (Array.isArray(data.snapshots) && data.snapshots.length > 0) {
+          snapshots = data.snapshots;
+          ptr = typeof data.ptr === 'number' ? Math.min(data.ptr, snapshots.length - 1) : snapshots.length - 1;
+          // Restore editor to the snapshot at ptr (most recent current position)
+          editor.value = snapshots[ptr].content;
+          try { localStorage.setItem('tessel-studio:draft', editor.value); } catch(e) {}
+          updateEditorMeta();
+          btnCompile.disabled = editor.value.trim() === '';
+          renderList();
+          return true;
+        }
+      } catch(e) {}
+      return false;
+    }
+
     function pushSnapshot(content) {
       // Don't push if identical to current
       if (ptr >= 0 && snapshots[ptr] && snapshots[ptr].content === content) return;
@@ -5917,6 +5952,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       // Trim to max
       while (snapshots.length > maxSnapshots) snapshots.shift();
       ptr = snapshots.length - 1;
+      saveHistory();
       renderList();
     }
 
@@ -5935,7 +5971,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       try { localStorage.setItem('tessel-studio:draft', editor.value); } catch(e) {}
       updateEditorMeta();
       btnCompile.disabled = editor.value.trim() === '';
-      // If a compile timer is pending, let it fire with new content
+      saveHistory();
       renderList();
     }
 
@@ -6038,14 +6074,18 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       var cur = snapshots[ptr] ? snapshots[ptr].content : editor.value;
       snapshots = [{ ts: timestamp(), content: cur }];
       ptr = 0;
+      saveHistory();
       renderList();
     });
 
-    // Seed with initial content (after a tick so editor may be restored first)
+    // On load: restore persisted history, or seed with current draft
     setTimeout(function() {
-      if (editor.value.trim()) pushSnapshot(editor.value);
-      else renderList();
-    }, 200);
+      if (!loadHistory()) {
+        // No persisted history — seed from whatever is in the editor now
+        if (editor.value.trim()) pushSnapshot(editor.value);
+        else renderList();
+      }
+    }, 250);
   })();
 
   // ---- insert image ----
