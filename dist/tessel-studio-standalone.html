@@ -18,7 +18,9 @@
   --green:    #4caf50;
   --yellow:   #f0c040;
   --red:      #e05555;
-  --toolbar-h: 44px;
+  --toolbar-h: 80px;
+  --ribbon-tab-h: 40px;
+  --ribbon-row-h: 40px;
   --status-h:  26px;
   --gutter:    4px;
 }
@@ -41,24 +43,125 @@ body {
   overflow: hidden;
 }
 
-/* ---- Toolbar ---- */
+/* ---- Ribbon Toolbar ---- */
 #toolbar {
   flex: 0 0 var(--toolbar-h);
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 10px;
+  flex-direction: column;
 }
-#toolbar .logo {
+#ribbon-tabs {
+  flex: 0 0 var(--ribbon-tab-h);
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+#ribbon-tabs .logo {
   font-weight: 700;
-  font-size: 14px;
-  letter-spacing: .5px;
+  font-size: 13px;
+  letter-spacing: .4px;
   color: var(--accent);
-  margin-right: 8px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px 0 2px;
+  margin-right: 4px;
   white-space: nowrap;
+  border-right: 1px solid var(--border);
 }
+.ribbon-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 0 13px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color .12s, border-color .12s;
+  letter-spacing: .2px;
+  border-radius: 0;
+}
+.ribbon-tab:hover { color: var(--text); background: none; border-bottom-color: var(--border); }
+.ribbon-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+#ribbon-tabs .rt-spacer { flex: 1; }
+#ribbon-tabs .rt-globals { display: flex; align-items: center; gap: 4px; }
+#ribbon-tabs .rt-globals button {
+  background: none; border: none; color: var(--muted); font-size: 12px;
+  padding: 4px 8px; cursor: pointer; font-family: inherit; border-radius: 4px;
+}
+#ribbon-tabs .rt-globals button:hover { color: var(--text); background: var(--btn-bg); }
+#ribbon-tabs .rt-globals .sep { width: 1px; height: 18px; background: var(--border); margin: 0 2px; }
+#ribbon-row {
+  flex: 0 0 var(--ribbon-row-h);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+#ribbon-row::-webkit-scrollbar { display: none; }
+.ribbon-panel { display: none; align-items: center; gap: 2px; width: 100%; }
+.ribbon-panel.active { display: flex; }
+.rb-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px 0 0;
+  margin: 0 2px 0 0;
+  border-right: 1px solid var(--border);
+}
+.rb-group:last-child { border-right: none; }
+.rb-group-label {
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  writing-mode: vertical-lr;
+  padding: 0 2px;
+  opacity: .6;
+  display: none; /* hide vertical labels — too cramped */
+}
+.rb-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 11px;
+  padding: 3px 7px;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  line-height: 1.3;
+}
+.rb-btn:hover { background: var(--btn-bg); border-color: var(--border); color: var(--accent); }
+.rb-btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.rb-btn.primary:hover { opacity: .88; color: var(--bg); }
+.rb-btn .rb-icon { font-size: 13px; line-height: 1; }
+.rb-sep { width: 1px; height: 22px; background: var(--border); margin: 0 3px; flex-shrink: 0; }
+.rb-select {
+  background: var(--btn-bg); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); font-size: 11px; padding: 3px 5px; font-family: inherit; cursor: pointer;
+}
+.rb-select:focus { outline: none; border-color: var(--accent); }
+#rb-filename {
+  font-size: 11px; color: var(--muted); max-width: 180px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 6px;
+}
+/* Format tab: color pickers inline */
+.rb-color-wrap { display: flex; align-items: center; gap: 4px; }
+.rb-color-wrap label { font-size: 10px; color: var(--muted); }
+.rb-color-wrap input[type=color] { width: 26px; height: 22px; padding: 1px; border-radius: 3px; border: 1px solid var(--border); cursor: pointer; background: var(--btn-bg); }
+#rb-font-size-val { font-size: 10px; color: var(--muted); min-width: 28px; }
+/* Preserve existing toolbar sep/spacer refs that might still exist */
 #toolbar .sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
 #toolbar .spacer { flex: 1; }
 
@@ -404,31 +507,148 @@ button:disabled { opacity: .4; cursor: default; }
 </head>
 <body>
 
-<!-- Toolbar -->
+<!-- Ribbon Toolbar -->
 <div id="toolbar">
-  <span class="logo">⬡ Tessel Studio</span>
-  <div class="sep"></div>
-  <button id="btn-open-md" title="Open a Markdown (.md) file">Open .md</button>
-  <button id="btn-open-html" title="Re-open a compiled .html to extract its Markdown source">Open .html</button>
-  <button id="btn-compile" class="primary" title="Compile now (Ctrl+Enter)" disabled>Compile</button>
-  <button id="btn-download" title="Download compiled HTML" disabled>↓ Download .html</button>
-  <div class="sep"></div>
-  <span id="filename-display">No file open</span>
-  <div class="spacer"></div>
-  <button id="btn-insert-table" title="Insert a typed table field">⊞ Table</button>
-  <button id="btn-directives" title="Directive palette — insert any field type at cursor">⊕ Directives</button>
-  <div class="sep"></div>
-  <button id="btn-doc-settings" title="Document defaults — applied to newly compiled documents">⚙ Document Settings</button>
-  <button id="btn-studio-theme" title="Studio theme customization">🎨 Theme</button>
-  <div class="sep"></div>
-  <button id="btn-wysiwyg" title="Toggle WYSIWYG / Markdown editing mode">✎ WYSIWYG</button>
-  <button id="btn-insert-img" title="Insert image (embedded as data URI)">⬡ Image</button>
-  <input type="file" id="pick-img" accept="image/*" style="display:none">
-  <div class="sep"></div>
-  <button id="btn-history" title="Edit history — undo/redo and jump to past versions (Ctrl+Z / Ctrl+Y)">⏳ History</button>
-  <div class="sep"></div>
-  <button id="btn-theme">☀ Light</button>
-</div>
+  <!-- Row 1: Tab strip -->
+  <div id="ribbon-tabs">
+    <span class="logo">⬡ Tessel</span>
+    <button class="ribbon-tab active" data-tab="file">File</button>
+    <button class="ribbon-tab" data-tab="fields">Fields</button>
+    <button class="ribbon-tab" data-tab="content">Content</button>
+    <button class="ribbon-tab" data-tab="format">Format</button>
+    <div class="rt-spacer"></div>
+    <div class="rt-globals">
+      <button id="btn-doc-settings" title="Document defaults — applied to newly compiled documents">⚙ Settings</button>
+      <button id="btn-history" title="Edit history — undo/redo (Ctrl+Z / Ctrl+Y)">⏳ History</button>
+      <div class="sep"></div>
+      <button id="btn-studio-theme" title="Studio theme customization">🎨</button>
+      <button id="btn-theme" title="Toggle light/dark mode">☀</button>
+    </div>
+  </div>
+
+  <!-- Row 2: Ribbon panel (context-sensitive) -->
+  <div id="ribbon-row">
+
+    <!-- FILE panel -->
+    <div class="ribbon-panel active" id="rp-file">
+      <div class="rb-group">
+        <button class="rb-btn" id="btn-open-md" title="Open a Tessel Markdown file"><span class="rb-icon">📂</span>Open .md</button>
+        <button class="rb-btn" id="btn-open-html" title="Re-open a compiled .html to extract source"><span class="rb-icon">📄</span>Open .html</button>
+      </div>
+      <div class="rb-group">
+        <button class="rb-btn primary" id="btn-compile" title="Compile (Ctrl+Enter)" disabled><span class="rb-icon">▶</span>Compile</button>
+        <button class="rb-btn" id="btn-download" title="Download compiled HTML" disabled><span class="rb-icon">↓</span>Download</button>
+      </div>
+      <div class="rb-group">
+        <button class="rb-btn" id="btn-wysiwyg" title="Toggle WYSIWYG / Markdown editing mode"><span class="rb-icon">✎</span>WYSIWYG</button>
+      </div>
+      <div class="rb-group">
+        <span id="filename-display" id="rb-filename">No file open</span>
+      </div>
+    </div>
+
+    <!-- FIELDS panel -->
+    <div class="ribbon-panel" id="rp-fields">
+      <div class="rb-group">
+        <button class="rb-btn rb-insert" data-insert="@text " title="Single-line text input"><span class="rb-icon">✏</span>Text</button>
+        <button class="rb-btn rb-insert" data-insert="@area " title="Multi-line textarea"><span class="rb-icon">☰</span>Area</button>
+        <button class="rb-btn rb-insert" data-insert="@date " title="Date picker"><span class="rb-icon">📅</span>Date</button>
+      </div>
+      <div class="rb-group">
+        <button class="rb-btn rb-insert" data-insert="@image " title="Image upload field"><span class="rb-icon">🖼</span>Image</button>
+        <button class="rb-btn rb-insert" data-insert="@richtext " title="Rich-text editor"><span class="rb-icon">✦</span>Richtext</button>
+        <button class="rb-btn rb-insert" data-insert="@computed : " title="Computed / derived field"><span class="rb-icon">⚙</span>Computed</button>
+      </div>
+      <div class="rb-group">
+        <button class="rb-btn rb-insert" data-insert="@radio : opt1, opt2" title="Radio button group"><span class="rb-icon">⦿</span>Radio</button>
+        <button class="rb-btn rb-insert" data-insert="@check : opt1, opt2" title="Checkbox group"><span class="rb-icon">☑</span>Check</button>
+        <button class="rb-btn rb-insert" data-insert="@select : opt1 | opt2" title="Dropdown select"><span class="rb-icon">▼</span>Select</button>
+      </div>
+      <div class="rb-group">
+        <button class="rb-btn rb-insert" data-insert="@totp " title="TOTP secret + QR code"><span class="rb-icon">🔐</span>TOTP</button>
+        <button class="rb-btn rb-insert" data-insert="@credential " title="Password / credential field"><span class="rb-icon">🗝</span>Credential</button>
+        <button class="rb-btn rb-insert" data-insert="@signature " title="Cryptographic signature field"><span class="rb-icon">✍</span>Signature</button>
+      </div>
+      <div class="rb-group">
+        <button class="rb-btn" id="btn-insert-table" title="Insert a typed table field (opens Table Builder)"><span class="rb-icon">⊞</span>Table</button>
+        <button class="rb-btn rb-insert" data-insert="@parse : /regex/" title="Regex-parsed input"><span class="rb-icon">⊂</span>Parse</button>
+        <button class="rb-btn rb-insert" data-insert="@filename : {{SLUG}}_{{STAMP}}.txt" title="Filename template"><span class="rb-icon">📎</span>Filename</button>
+        <button class="rb-btn rb-insert" data-insert="@dir " title="Directory path field"><span class="rb-icon">📁</span>Dir</button>
+      </div>
+    </div>
+
+    <!-- CONTENT panel -->
+    <div class="ribbon-panel" id="rp-content">
+      <div class="rb-group">
+        <button class="rb-btn rb-insert" data-insert="@section &#10;{id=}&#10;" title="Collapsible section"><span class="rb-icon">§</span>Section</button>
+        <button class="rb-btn rb-insert" data-insert="@endsection&#10;" title="End section">@endsection</button>
+        <button class="rb-btn rb-insert" data-insert="@subsection &#10;" title="Subsection"><span class="rb-icon">⊂</span>Subsection</button>
+        <button class="rb-btn rb-insert" data-insert="@endsubsection&#10;" title="End subsection">@endsubsection</button>
+      </div>
+      <div class="rb-group">
+        <button class="rb-btn rb-insert-heading" data-level="1" title="Heading 1">H1</button>
+        <button class="rb-btn rb-insert-heading" data-level="2" title="Heading 2">H2</button>
+        <button class="rb-btn rb-insert-heading" data-level="3" title="Heading 3">H3</button>
+        <button class="rb-btn rb-insert-heading" data-level="4" title="Heading 4">H4</button>
+      </div>
+      <div class="rb-group">
+        <button class="rb-btn rb-insert" data-insert="&#10;---&#10;&#10;" title="Horizontal rule"><span class="rb-icon">―</span>HR</button>
+        <button class="rb-btn rb-insert" data-insert="&#10;> " title="Blockquote"><span class="rb-icon">❝</span>Quote</button>
+        <button class="rb-btn rb-insert" data-insert="&#10;```&#10;&#10;```&#10;" title="Code block"><span class="rb-icon">⌥</span>Code</button>
+      </div>
+      <div class="rb-group">
+        <button class="rb-btn" id="btn-insert-img" title="Insert inline image (embedded as data URI)"><span class="rb-icon">⬡</span>Embed Image</button>
+        <input type="file" id="pick-img" accept="image/*" style="display:none">
+        <button class="rb-btn rb-insert" data-insert="@if {{VAR}}&#10;&#10;@endif&#10;" title="Conditional block"><span class="rb-icon">⁇</span>If/Endif</button>
+        <button class="rb-btn rb-insert" data-insert="@param &#10;{type=text}" title="Template parameter declaration"><span class="rb-icon">$</span>Param</button>
+      </div>
+    </div>
+
+    <!-- FORMAT panel -->
+    <div class="ribbon-panel" id="rp-format">
+      <div class="rb-group">
+        <span style="font-size:10px;color:var(--muted);margin-right:3px">Font</span>
+        <select class="rb-select" id="rb-font" title="Document body font">
+          <option value="">System default</option>
+          <option value="'Segoe UI',system-ui,sans-serif">Segoe UI</option>
+          <option value="Georgia,'Times New Roman',serif">Serif</option>
+          <option value="'Cascadia Code','Fira Code',Consolas,monospace">Monospace</option>
+          <option value="'Inter',system-ui,sans-serif">Inter</option>
+          <option value="'Arial',Helvetica,sans-serif">Arial</option>
+        </select>
+      </div>
+      <div class="rb-group">
+        <span style="font-size:10px;color:var(--muted);margin-right:3px">Size</span>
+        <input type="range" id="rb-font-size" min="10" max="22" step="1" value="14" style="width:72px">
+        <span id="rb-font-size-val">14px</span>
+      </div>
+      <div class="rb-group">
+        <span style="font-size:10px;color:var(--muted);margin-right:3px">Accent</span>
+        <div class="rb-color-wrap">
+          <label title="Dark mode accent">🌙</label>
+          <input type="color" id="rb-accent-dark" value="#89b4fa" title="Accent colour (dark mode)">
+        </div>
+        <div class="rb-color-wrap">
+          <label title="Light mode accent">☀</label>
+          <input type="color" id="rb-accent-light" value="#0969da" title="Accent colour (light mode)">
+        </div>
+      </div>
+      <div class="rb-group">
+        <span style="font-size:10px;color:var(--muted);margin-right:3px">Borders</span>
+        <input type="range" id="rb-border-contrast" min="50" max="200" step="5" value="100" style="width:60px">
+        <span id="rb-border-val" style="font-size:10px;color:var(--muted);min-width:32px">100%</span>
+      </div>
+      <div class="rb-group">
+        <span style="font-size:10px;color:var(--muted);margin-right:3px">Heading</span>
+        <button class="rb-btn rb-insert-heading" data-level="1" title="Insert H1 at cursor">H1</button>
+        <button class="rb-btn rb-insert-heading" data-level="2" title="Insert H2 at cursor">H2</button>
+        <button class="rb-btn rb-insert-heading" data-level="3" title="Insert H3 at cursor">H3</button>
+        <button class="rb-btn rb-insert-heading" data-level="4" title="Insert H4 at cursor">H4</button>
+      </div>
+    </div>
+
+  </div><!-- #ribbon-row -->
+</div><!-- #toolbar -->
 
 <!-- History panel -->
 <div id="history-panel">
@@ -6517,6 +6737,118 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         else renderList();
       }
     }, 250);
+  })();
+
+  // ---- ribbon toolbar ----
+  (function() {
+    // Tab switching
+    var tabs = document.querySelectorAll('.ribbon-tab');
+    var panels = document.querySelectorAll('.ribbon-panel');
+    tabs.forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        tabs.forEach(function(t) { t.classList.remove('active'); });
+        panels.forEach(function(p) { p.classList.remove('active'); });
+        tab.classList.add('active');
+        var rp = document.getElementById('rp-' + tab.dataset.tab);
+        if (rp) rp.classList.add('active');
+      });
+    });
+
+    // Helper: insert text at cursor in the markdown editor
+    function insertSnippet(text) {
+      var ed = document.getElementById('editor');
+      if (!ed) return;
+      var start = ed.selectionStart, end = ed.selectionEnd;
+      var before = ed.value.slice(0, start), after = ed.value.slice(end);
+      // Ensure we start on a new line
+      if (before && !before.endsWith('\n')) { before += '\n'; }
+      ed.value = before + text + after;
+      var cur = before.length + text.length;
+      ed.setSelectionRange(cur, cur);
+      ed.focus();
+      ed.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    // Field / content insert buttons
+    document.querySelectorAll('.rb-insert').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var raw = btn.dataset.insert || '';
+        // decode HTML entities used in data-insert attributes
+        var txt = raw.replace(/&#10;/g, '\n').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+        insertSnippet(txt);
+      });
+    });
+
+    // Heading insert buttons
+    document.querySelectorAll('.rb-insert-heading').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var level = parseInt(btn.dataset.level, 10) || 1;
+        var hashes = '#'.repeat(level) + ' ';
+        var ed = document.getElementById('editor');
+        if (!ed) return;
+        var start = ed.selectionStart;
+        var before = ed.value.slice(0, start);
+        var after = ed.value.slice(start);
+        if (before && !before.endsWith('\n')) before += '\n';
+        var snippet = hashes + 'Heading\n';
+        ed.value = before + snippet + after;
+        var cur = before.length + hashes.length;
+        ed.setSelectionRange(cur, cur + 7); // select "Heading"
+        ed.focus();
+        ed.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    });
+
+    // Format tab: sync with doc settings controls (mirror values both ways)
+    function mirrorEl(srcId, dstId, evtType) {
+      var src = document.getElementById(srcId);
+      var dst = document.getElementById(dstId);
+      if (!src || !dst) return;
+      // Copy initial value from doc-settings panel
+      dst.value = src.value;
+      // When ribbon control changes, update doc-settings control and fire its change
+      dst.addEventListener(evtType || 'input', function() {
+        src.value = dst.value;
+        src.dispatchEvent(new Event(evtType || 'input', { bubbles: true }));
+      });
+      // When doc-settings control changes (e.g. from settings panel), keep ribbon in sync
+      src.addEventListener(evtType || 'input', function() {
+        dst.value = src.value;
+      });
+    }
+
+    mirrorEl('ds-font',           'rb-font',           'change');
+    mirrorEl('ds-font-size',      'rb-font-size',      'input');
+    mirrorEl('ds-accent-dark',    'rb-accent-dark',    'input');
+    mirrorEl('ds-accent-light',   'rb-accent-light',   'input');
+    mirrorEl('ds-border-contrast','rb-border-contrast','input');
+
+    // Font size value label
+    var rbFs = document.getElementById('rb-font-size');
+    var rbFsVal = document.getElementById('rb-font-size-val');
+    if (rbFs && rbFsVal) {
+      function syncFsLabel() { rbFsVal.textContent = rbFs.value + 'px'; }
+      rbFs.addEventListener('input', syncFsLabel);
+      syncFsLabel();
+    }
+    // Border contrast label
+    var rbBc = document.getElementById('rb-border-contrast');
+    var rbBcVal = document.getElementById('rb-border-val');
+    if (rbBc && rbBcVal) {
+      function syncBcLabel() { rbBcVal.textContent = rbBc.value + '%'; }
+      rbBc.addEventListener('input', syncBcLabel);
+      syncBcLabel();
+    }
+
+    // On doc-settings font-size change, keep rb-font-size-val synced
+    var dsFs = document.getElementById('ds-font-size');
+    if (dsFs) dsFs.addEventListener('input', function() {
+      if (rbFsVal) rbFsVal.textContent = dsFs.value + 'px';
+    });
+    var dsBc = document.getElementById('ds-border-contrast');
+    if (dsBc) dsBc.addEventListener('input', function() {
+      if (rbBcVal) rbBcVal.textContent = dsBc.value + '%';
+    });
   })();
 
   // ---- directive palette ----
