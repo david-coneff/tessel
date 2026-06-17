@@ -802,6 +802,15 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
   overflow: auto;
   z-index: 10;
 }
+@media (max-width: 640px) {
+  #workspace { flex-direction: column; }
+  #drag-handle { display: none; }
+  #editor-pane { flex: 0 0 50vh !important; min-width: 0; width: 100% !important; }
+  #preview-pane { flex: 1; min-width: 0; }
+  #ribbon-row { overflow-x: auto; scrollbar-width: none; }
+  #ribbon-tabs { overflow-x: auto; }
+  #ws-outline, #ws-props { display: none; }
+}
 </style>
 </head>
 <body>
@@ -9464,6 +9473,9 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
 
       var hdr = document.createElement('div');
       hdr.className = 'ws-section-hdr';
+      hdr.setAttribute('role', 'button');
+      hdr.setAttribute('tabindex', '0');
+      hdr.setAttribute('aria-expanded', b._collapsed ? 'false' : 'true');
 
       var toggle = document.createElement('span');
       toggle.textContent = '▼';
@@ -9487,11 +9499,16 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
 
       var body = document.createElement('div');
       body.className = 'ws-section-body';
-      var collapsed = false;
+      if (b._collapsed) body.classList.add('collapsed');
+      if (b._collapsed) toggle.textContent = '▶';
       hdr.addEventListener('click', function() {
-        collapsed = !collapsed;
-        body.classList.toggle('collapsed', collapsed);
-        toggle.textContent = collapsed ? '▶' : '▼';
+        b._collapsed = !b._collapsed;
+        body.classList.toggle('collapsed', b._collapsed);
+        toggle.textContent = b._collapsed ? '▶' : '▼';
+        hdr.setAttribute('aria-expanded', b._collapsed ? 'false' : 'true');
+      });
+      hdr.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); hdr.click(); }
       });
 
       b.children = b.children || [];
