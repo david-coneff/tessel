@@ -2476,7 +2476,7 @@ var TESSEL_RUNTIME_JS = String.raw`
         function moveDraw(e){ if(!drawing)return; e.preventDefault(); var p=pos(e); ctx.lineWidth=2; ctx.lineCap='round'; ctx.strokeStyle=getComputedStyle(document.body).getPropertyValue('--text')||'#cdd6f4'; ctx.lineTo(p.x,p.y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(p.x,p.y); lx=p.x;ly=p.y; }
         function endDraw(){ if(!drawing)return; drawing=false; saveDrawing(); }
         canvas.addEventListener('mousedown',startDraw); canvas.addEventListener('mousemove',moveDraw); canvas.addEventListener('mouseup',endDraw); canvas.addEventListener('mouseleave',endDraw);
-        canvas.addEventListener('touchstart',startDraw,{passive:false}); canvas.addEventListener('touchmove',moveDraw,{passive:false}); canvas.addEventListener('touchend',endDraw);
+        canvas.addEventListener('touchstart',startDraw,{passive:false}); canvas.addEventListener('touchmove',moveDraw,{passive:false}); canvas.addEventListener('touchend',endDraw); canvas.addEventListener('touchcancel',endDraw);
         if(clearBtn){ clearBtn.addEventListener('click',function(){ ctx.clearRect(0,0,canvas.width,canvas.height); if(drawHid)drawHid.value=''; try{localStorage.removeItem('bf:sig:'+id+':draw');}catch(e){} }); }
       }
 
