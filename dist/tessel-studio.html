@@ -2622,7 +2622,12 @@ var TESSEL_RUNTIME_JS = String.raw`
           }
         }
         // restore saved drawing
-        try{ var sd=localStorage.getItem('bf:sig:'+id+':draw'); if(sd){ var img=new Image(); img.onload=function(){resizeCanvas();ctx.drawImage(img,0,0,canvas.width/devicePixelRatio,canvas.height/devicePixelRatio);};img.src=sd; if(drawHid)drawHid.value=sd; } }catch(e){}
+        try{ var sd=localStorage.getItem('bf:sig:'+id+':draw'); if(sd){ var img=new Image(); img.onload=function(){
+          // Skip resizeCanvas if panel is hidden (getBoundingClientRect returns 0,0 and would zero the canvas)
+          var panel=canvas.closest('.sig-panel');
+          if(panel&&panel.style.display==='none'){ctx.drawImage(img,0,0,canvas.width/(window.devicePixelRatio||1),canvas.height/(window.devicePixelRatio||1));}
+          else{resizeCanvas();ctx.drawImage(img,0,0,canvas.width/(window.devicePixelRatio||1),canvas.height/(window.devicePixelRatio||1));}
+        };img.src=sd; if(drawHid)drawHid.value=sd; } }catch(e){}
         function saveDrawing(){
           var url=canvas.toDataURL('image/png');
           if(drawHid)drawHid.value=url;
@@ -3174,8 +3179,8 @@ var TESSEL_RUNTIME_JS = String.raw`
           inp=document.createElement('input');inp.type='checkbox';break;
         case 'select':
           inp=document.createElement('select');
-          inp.innerHTML='<option value="">—</option>'+col.opts.map(function(o){
-            return'<option value="'+o+'">'+o+'</option>';}).join('');
+          var _dopt=document.createElement('option');_dopt.value='';_dopt.textContent='—';inp.appendChild(_dopt);
+          col.opts.forEach(function(o){var opt=document.createElement('option');opt.value=o;opt.textContent=o;inp.appendChild(opt);});
           break;
         case 'radio':
           inp=document.createElement('div');inp.className='tb-radio-group';
@@ -3291,6 +3296,7 @@ var TESSEL_RUNTIME_JS = String.raw`
       var lastMatch=null;
       btn.addEventListener('click',function(){
         var matched=null;
+        if(ta.value.length>100000){valueEl.textContent='(input too large — max 100 000 chars)';resultDiv.style.display='';if(applyBtn)applyBtn.style.display='none';return;}
         try{var rx=new RegExp(rxStr,'m');var m=ta.value.match(rx);if(m)matched=m[1]!==undefined?m[1]:m[0];}catch(e){}
         lastMatch=matched; valueEl.textContent=matched||'(no match found)';
         resultDiv.style.display='';
@@ -4604,6 +4610,8 @@ var TESSEL_RUNTIME_JS = String.raw`
       var toolbar=document.querySelector('[data-rt-for="'+id+'"]');
       function save(){
         var html=editor.innerHTML;
+        // Treat a lone <br> as empty (browser artifact in empty contenteditable)
+        if(html==='<br>'||html==='<BR>'||html==='<br/>'||html==='<BR/>') html='';
         if(hidden)hidden.value=html;
         try{localStorage.setItem(ns+'note:'+id,html);}catch(e){}
         if(hidden){tesselValidate(hidden);tesselVisibility();}
@@ -4659,16 +4667,19 @@ var TESSEL_RUNTIME_JS = String.raw`
       try{return String(Function('"use strict";return('+resolved+')')());}catch(e){return'';}
     }
     function updateAll(){
-      document.querySelectorAll('[data-computed-expr]').forEach(function(hidden){
-        var id=hidden.dataset.note;
-        var expr=hidden.dataset.computedExpr;
-        if(!expr)return;
-        var val=evalExpr(expr);
-        hidden.value=val;
-        var disp=document.getElementById('note-'+id+'-display');
-        if(disp)disp.textContent=val;
-        try{localStorage.setItem(ns+'note:'+id,val);}catch(e){}
-      });
+      // Two passes handle chains between computed fields (e.g. B depends on A)
+      for(var _pass=0;_pass<2;_pass++){
+        document.querySelectorAll('[data-computed-expr]').forEach(function(hidden){
+          var id=hidden.dataset.note;
+          var expr=hidden.dataset.computedExpr;
+          if(!expr)return;
+          var val=evalExpr(expr);
+          hidden.value=val;
+          var disp=document.getElementById('note-'+id+'-display');
+          if(disp)disp.textContent=val;
+          try{localStorage.setItem(ns+'note:'+id,val);}catch(e){}
+        });
+      }
     }
     document.addEventListener('input',function(e){if(e.target&&e.target.dataset&&e.target.dataset.note)updateAll();});
     document.addEventListener('change',function(e){if(e.target&&e.target.dataset&&e.target.dataset.note)updateAll();});
@@ -6133,7 +6144,7 @@ var TesselFields = (function() {
       '  <label for="note-' + id + '-pick">' + label + reqMark(meta) + '</label>',
       '  <div class="image-controls">',
       '    <input type="file" accept="image/*" id="note-' + id + '-pick"',
-      '      aria-label="' + label + '" data-image-field="' + id + '" ' + tv + '>',
+      '      aria-label="' + label + '" data-image-field="' + id + '">',
       '    <button type="button" class="image-clear-btn" data-image-clear="' + id + '">✕ Clear</button>',
       '  </div>',
       (_pdfua
@@ -6142,7 +6153,7 @@ var TesselFields = (function() {
         + '\n    <figcaption class="sr-only" id="note-' + id + '-caption">' + label + '</figcaption>'
         + '\n  </figure>'
         : '  <img class="image-preview" id="note-' + id + '-preview" alt="' + label + ' preview" role="img">'),
-      '  <input type="hidden" id="note-' + id + '" data-note="' + id + '">',
+      '  <input type="hidden" id="note-' + id + '" data-note="' + id + '" ' + tv + '>',
       fieldFooter(meta),
       '</div>'
     ].join('\n');
