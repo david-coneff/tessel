@@ -87,3 +87,26 @@ The embedded source must be identical to the original `.md` input. No normalizat
 Once a directive is specified in TESSEL-SPEC.md and implemented, its syntax is frozen. New capabilities are added via new optional metadata keys or new directive types, not by changing existing syntax. Breaking changes require a major version increment and a migration path.
 
 The broodforge compatibility set (all directives implemented in `md_to_html.py`) is the baseline. Tessel must compile all broodforge documents without modification.
+
+---
+
+## 11. TOC widget conventions
+
+The auto-generated table of contents follows these normative conventions. Both implementations must produce identical structure.
+
+**Container:** `<details id="bf-toc" open>` — the outer TOC is itself a collapsible `<details>` element, not a `<div>`. Its `<summary>` holds the "Contents" label and the collapse-all/expand-all control.
+
+**Header controls:** A single `−`/`+` button (`id="bf-toc-section-toggle"`) in the summary toggles all branch sections simultaneously. It starts expanded (`−`); clicking collapses all branches and switches to `+`.
+
+**Branch collapsibility threshold:**
+- h2 entries that have h3 children: always wrapped in `<details class="bf-toc-section" open>`.
+- h3 entries that have h4 children: wrapped in `<details class="bf-toc-section" open>` only when they have **3 or more** h4 children. Fewer children are rendered as a plain nested `<ul>` without a toggle.
+- This threshold prevents toggle clutter on shallow sections while enabling navigation in deeply populated ones.
+
+**Toggle indicator:** A bordered `+`/`−` box rendered via `::before` pseudo-element on the `<summary>`, aligned to the **left** of the entry text using `display:flex; align-items:center` on the summary. The box uses `border:1px solid var(--border)` matching the toolbar button visual language. The open state uses the Unicode minus sign (U+2212, `\2212`) not a hyphen.
+
+**Section numbers:** Every TOC link includes `<span class="bf-toc-num">N.N</span>` before the title text. Numbers are muted (`color:var(--muted)`) with tabular-numeric font variant.
+
+**Indentation:** `#bf-toc .bf-toc-l2` and `#bf-toc .bf-toc-l3` (with the `#bf-toc` prefix for cascade specificity) provide 16px left padding per tier. The prefix is required because `#bf-toc ul{padding:0}` resets padding for all descendant `<ul>` elements and has higher specificity than a bare class selector.
+
+**Navbar panel:** The `≡ Contents` toolbar button opens a `position:fixed` dropdown that clones the inner TOC `<nav>`. Panel `<a>` elements have `display:block` for click-target sizing, but `<details>` summaries inside the panel must use `display:flex; align-items:center` with `summary>a{display:inline; flex:1}` to prevent the block link from wrapping below the toggle indicator.
