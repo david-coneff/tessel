@@ -2220,7 +2220,7 @@ var TESSEL_CSS = `
   /* design mode: fields get click-to-select highlight in preview iframe */
   .design-mode-active{outline:2px dashed var(--accent)!important;cursor:pointer!important}
   #btn-design-mode.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
-  @media print{#bf-main{padding:12px}#bf-notes-pane,#bf-drag,#bf-settings-panel,#bf-pag-strip,
+  @media print{@page{margin:2cm}#bf-main{padding:12px}#bf-notes-pane,#bf-drag,#bf-settings-panel,#bf-pag-strip,
     .bf-pag-overlay{display:none!important}
     #bf-pag-btn,#bf-print-btn,#bf-theme-btn,.copy-btn{display:none}
     .bf-sub-controls,.bf-edit-btn,.bf-edit-controls{display:none}
@@ -5317,8 +5317,11 @@ function inlineToHtml(text) {
     // italic
     s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
     s = s.replace(/_([^_]+)_/g, '<em>$1</em>');
-    // links
-    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+    // links — only allow safe protocols
+    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(_, label, href) {
+      var safe = /^(https?:\/\/|mailto:|#)/i.test(href.trim());
+      return safe ? '<a href="' + href + '">' + label + '</a>' : '<span>' + label + '</span>';
+    });
     return s;
   });
   return parts.join('<br>\n');
@@ -6118,7 +6121,7 @@ TesselCompiler.prototype._renderBlock = function(block, docSlug) {
   }
 
   if (type === 'paragraph') {
-    return '<p id="bf-doc-body">' + block.html + '</p>';
+    return '<p class="bf-doc-body">' + block.html + '</p>';
   }
 
   if (type === 'hr') {
