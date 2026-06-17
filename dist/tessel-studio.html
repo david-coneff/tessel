@@ -9071,6 +9071,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     var wsLastFocusId = null;
     var wsUndoStack = [];
     var wsRedoStack = [];
+    var wsFrontMatter = '';
 
     var WS_FIELD_TYPES = {
       text:       { icon:'T',   badge:'Text Field',    hasOptions:false },
@@ -9099,7 +9100,8 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     // ---- Serialization ----
 
     function wsSerialize() {
-      return wsBlocks.map(wsSerBlock).filter(function(s){ return s !== null && s !== ''; }).join('\n\n');
+      var body = wsBlocks.map(wsSerBlock).filter(function(s){ return s !== null && s !== ''; }).join('\n\n');
+      return wsFrontMatter ? wsFrontMatter + '\n\n' + body : body;
     }
 
     function wsSerBlock(b) {
@@ -9183,7 +9185,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     // ---- Block manipulation ----
 
     function wsPushUndo() {
-      wsUndoStack.push(JSON.stringify(wsBlocks));
+      wsUndoStack.push(JSON.stringify({ blocks: wsBlocks, sel: wsSelectedId }));
       if (wsUndoStack.length > 50) wsUndoStack.shift();
       wsRedoStack = [];
     }
@@ -9265,10 +9267,12 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     function wsRenderCanvas() {
       var root = document.getElementById('ws-blocks-root');
       var empty = document.getElementById('ws-canvas-empty');
+      var scrollTop = root.scrollTop;
       root.innerHTML = '';
       if (!wsBlocks.length) { empty.style.display = ''; return; }
       empty.style.display = 'none';
       wsBlocks.forEach(function(b) { root.appendChild(wsCreateBlockEl(b, wsBlocks)); });
+      root.scrollTop = scrollTop;
       wsUpdateOutline();
     }
 
@@ -9867,6 +9871,9 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
             var T = window.Tessel;
             var ast = T ? T.parse(editorEl.value) : null;
             if (ast) {
+              // Preserve front-matter for round-trip
+              var fmMatch = editorEl.value.match(/^(---[\s\S]*?---)/);
+              wsFrontMatter = fmMatch ? fmMatch[1] : '';
               wsBlocks = wsAstToBlocks(ast);
               wsSelectedId = null;
               wsRenderCanvas();
@@ -9889,11 +9896,16 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         workspace.style.display = '';
         wsMode.classList.remove('active');
         if (wsBlocks.length) {
-          var md = wsSerialize();
-          var editorEl2 = document.getElementById('editor');
-          if (editorEl2 && md) {
-            editorEl2.value = md;
-            editorEl2.dispatchEvent(new Event('input'));
+          try {
+            var md = wsSerialize();
+            var editorEl2 = document.getElementById('editor');
+            if (editorEl2 && md) {
+              editorEl2.value = md;
+              editorEl2.dispatchEvent(new Event('input'));
+            }
+          } catch(ex) {
+            console.error('[Tessel] wsSerialize failed:', ex.message);
+            setStatus('Could not convert blocks to markdown — check console', 'err');
           }
         }
         mdPanels.forEach(function(p){ p.style.display = ''; });
@@ -9946,15 +9958,21 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     document.getElementById('ws-btn-italic').addEventListener('click', function() { document.execCommand('italic'); });
     document.getElementById('ws-btn-undo').addEventListener('click', function() {
       if (!wsUndoStack.length) return;
-      wsRedoStack.push(JSON.stringify(wsBlocks));
-      wsBlocks = JSON.parse(wsUndoStack.pop());
+      wsRedoStack.push(JSON.stringify({ blocks: wsBlocks, sel: wsSelectedId }));
+      var snap = JSON.parse(wsUndoStack.pop());
+      wsBlocks = snap.blocks || snap; // back-compat if old format
+      wsSelectedId = snap.sel !== undefined ? snap.sel : null;
       wsRenderCanvas();
+      wsRenderProps();
     });
     document.getElementById('ws-btn-redo').addEventListener('click', function() {
       if (!wsRedoStack.length) return;
-      wsUndoStack.push(JSON.stringify(wsBlocks));
-      wsBlocks = JSON.parse(wsRedoStack.pop());
+      wsUndoStack.push(JSON.stringify({ blocks: wsBlocks, sel: wsSelectedId }));
+      var snap = JSON.parse(wsRedoStack.pop());
+      wsBlocks = snap.blocks || snap;
+      wsSelectedId = snap.sel !== undefined ? snap.sel : null;
       wsRenderCanvas();
+      wsRenderProps();
     });
     document.getElementById('ws-btn-save-draft').addEventListener('click', function() {
       try { localStorage.setItem('ts:ws-draft', JSON.stringify(wsBlocks)); setStatus('Draft saved'); } catch(e) {}
