@@ -703,7 +703,18 @@ var TESSEL_RUNTIME_JS = String.raw`
     }
     return el.value||'';
   }
+  var _ISO_DATE=/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?/;
+  function _toComparable(v){
+    if(typeof v==='number') return v;
+    var s=String(v).trim();
+    if(_ISO_DATE.test(s)){var d=new Date(s);if(!isNaN(d.getTime()))return d.getTime();}
+    return isNaN(Number(s))?s:Number(s);
+  }
   function evalExpr(expr){
+    try { return _evalExprInner(expr); }
+    catch(e){ console.warn('[Tessel] evalExpr error in "'+expr+'":',e.message); return false; }
+  }
+  function _evalExprInner(expr){
     if(!expr||!expr.trim()) return true;
     expr = expr.trim();
     // or
@@ -726,10 +737,11 @@ var TESSEL_RUNTIME_JS = String.raw`
       var lv=resolveVal(left),rv=resolveVal(right);
       if(kind==='eq') return String(lv)===String(rv);
       if(kind==='neq') return String(lv)!==String(rv);
-      if(kind==='gt') return Number(lv)>Number(rv);
-      if(kind==='gte') return Number(lv)>=Number(rv);
-      if(kind==='lt') return Number(lv)<Number(rv);
-      if(kind==='lte') return Number(lv)<=Number(rv);
+      var lvN=_toComparable(lv),rvN=_toComparable(rv);
+      if(kind==='gt') return lvN>rvN;
+      if(kind==='gte') return lvN>=rvN;
+      if(kind==='lt') return lvN<rvN;
+      if(kind==='lte') return lvN<=rvN;
       if(kind==='contains'){
         var lv2=Array.isArray(lv)?lv:[String(lv)];
         return lv2.indexOf(String(rv))>=0||String(lv).indexOf(String(rv))>=0;

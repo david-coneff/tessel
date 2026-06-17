@@ -364,12 +364,110 @@ var TesselFields = (function() {
     ].join('\n');
   }
 
+  // ---- @datetime ----
+  function renderDatetime(node, docSlug) {
+    var meta = node.meta || {};
+    var id = esc(meta.id || node.id);
+    var label = esc(node.label);
+    var tv = tvAttrs(meta);
+    return [
+      '<div class="datetime-field notefield" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
+      '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
+      '  <input type="datetime-local" id="note-' + id + '"',
+      '    data-note="' + id + '" data-field-type="datetime" ' + tv + '>',
+      '  <span class="datetime-display" id="dtdisp-' + id + '"></span>',
+      fieldFooter(meta),
+      '</div>'
+    ].filter(Boolean).join('\n');
+  }
+
+  // ---- @number ----
+  function renderNumber(node, docSlug) {
+    var meta = node.meta || {};
+    var id = esc(meta.id || node.id);
+    var label = esc(node.label);
+    var minVal = meta.min !== undefined ? ' min="' + esc(String(meta.min)) + '"' : '';
+    var maxVal = meta.max !== undefined ? ' max="' + esc(String(meta.max)) + '"' : '';
+    var step   = meta.step ? ' step="' + esc(String(meta.step)) + '"' : '';
+    var defVal = meta.default_value !== undefined ? esc(String(meta.default_value)) : '';
+    var tv = tvAttrs(meta);
+    return [
+      '<div class="notefield number-field" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
+      '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
+      '  <input type="number" class="note-input" id="note-' + id + '"',
+      '    data-note="' + id + '" ' + tv + minVal + maxVal + step,
+      '    value="' + defVal + '" autocomplete="off">',
+      fieldFooter(meta),
+      '</div>'
+    ].filter(Boolean).join('\n');
+  }
+
+  // ---- @email ----
+  function renderEmail(node, docSlug) {
+    var meta = node.meta || {};
+    var id = esc(meta.id || node.id);
+    var label = esc(node.label);
+    var placeholder = esc(meta.placeholder || 'user@example.com');
+    var tv = tvAttrs(meta);
+    return [
+      '<div class="notefield email-field" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
+      '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
+      '  <input type="email" class="note-input" id="note-' + id + '"',
+      '    data-note="' + id + '" data-validate="email" ' + tv,
+      '    placeholder="' + placeholder + '" autocomplete="email">',
+      fieldFooter(meta),
+      '</div>'
+    ].filter(Boolean).join('\n');
+  }
+
+  // ---- @phone ----
+  function renderPhone(node, docSlug) {
+    var meta = node.meta || {};
+    var id = esc(meta.id || node.id);
+    var label = esc(node.label);
+    var placeholder = esc(meta.placeholder || '+1 (555) 000-0000');
+    var pattern = meta.pattern ? esc(meta.pattern) : '';
+    var tv = tvAttrs(meta);
+    return [
+      '<div class="notefield phone-field" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
+      '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
+      '  <input type="tel" class="note-input" id="note-' + id + '"',
+      '    data-note="' + id + '" data-validate="phone" ' + tv,
+      '    placeholder="' + placeholder + '"' + (pattern ? ' pattern="' + pattern + '"' : '') + ' autocomplete="tel">',
+      fieldFooter(meta),
+      '</div>'
+    ].filter(Boolean).join('\n');
+  }
+
+  // ---- @url ----
+  function renderUrl(node, docSlug) {
+    var meta = node.meta || {};
+    var id = esc(meta.id || node.id);
+    var label = esc(node.label);
+    var placeholder = esc(meta.placeholder || 'https://example.com');
+    var tv = tvAttrs(meta);
+    return [
+      '<div class="notefield url-field" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
+      '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
+      '  <input type="url" class="note-input" id="note-' + id + '"',
+      '    data-note="' + id + '" data-validate="url" ' + tv,
+      '    placeholder="' + placeholder + '" autocomplete="url">',
+      fieldFooter(meta),
+      '</div>'
+    ].filter(Boolean).join('\n');
+  }
+
   // ---- dispatch ----
   function render(node, docSlug) {
     switch (node.type) {
       case 'text_field':       return renderText(node, docSlug);
       case 'area_field':       return renderArea(node, docSlug);
       case 'date_field':       return renderDate(node, docSlug);
+      case 'datetime_field':   return renderDatetime(node, docSlug);
+      case 'number_field':     return renderNumber(node, docSlug);
+      case 'email_field':      return renderEmail(node, docSlug);
+      case 'phone_field':      return renderPhone(node, docSlug);
+      case 'url_field':        return renderUrl(node, docSlug);
       case 'credential_field': return renderCredential(node, docSlug);
       case 'totp_field':       return renderTotp(node, docSlug);
       case 'radio_field':      return renderRadio(node, docSlug);
@@ -389,6 +487,11 @@ var TesselFields = (function() {
     renderText: renderText,
     renderArea: renderArea,
     renderDate: renderDate,
+    renderDatetime: renderDatetime,
+    renderNumber: renderNumber,
+    renderEmail: renderEmail,
+    renderPhone: renderPhone,
+    renderUrl: renderUrl,
     renderCredential: renderCredential,
     renderTotp: renderTotp,
     renderRadio: renderRadio,

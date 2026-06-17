@@ -237,6 +237,56 @@ button:disabled { opacity: .4; cursor: default; }
   tab-size: 2;
 }
 
+/* ---- Find/Replace bar ---- */
+#find-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+#find-bar input {
+  font-family: inherit;
+  font-size: .8em;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  padding: 2px 7px;
+  width: 140px;
+}
+#find-bar input:focus { outline: none; border-color: var(--accent); }
+#find-bar button {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: .78em;
+  padding: 2px 7px;
+}
+#find-bar button:hover { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+#find-count { font-size: .75em; color: var(--muted); min-width: 48px; }
+#find-bar.has-match #find-input { border-color: var(--green, #a6e3a1); }
+#find-bar.no-match #find-input { border-color: var(--red, #f38ba8); }
+
+/* ---- Editor stats bar ---- */
+#editor-stats {
+  flex: 0 0 20px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 14px;
+  font-size: 10px;
+  color: var(--muted);
+}
+
 /* ---- Drag handle ---- */
 #drag-handle {
   flex: 0 0 var(--gutter);
@@ -985,7 +1035,18 @@ button:disabled { opacity: .4; cursor: default; }
   <div id="editor-pane">
     <div id="editor-header">
       <span>Markdown Source</span>
-      <span id="editor-lines" style="margin-left:auto"></span>
+      <button id="btn-find" title="Find / Replace (Ctrl+F)" style="margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8em;padding:2px 6px;border-radius:3px">⌕ Find</button>
+      <span id="editor-lines" style="margin-left:6px"></span>
+    </div>
+    <div id="find-bar" style="display:none">
+      <input id="find-input" type="text" placeholder="Find…" autocomplete="off">
+      <input id="replace-input" type="text" placeholder="Replace…" autocomplete="off">
+      <button id="find-prev" title="Previous match">↑</button>
+      <button id="find-next" title="Next match">↓</button>
+      <button id="find-replace-one" title="Replace this match">Replace</button>
+      <button id="find-replace-all" title="Replace all matches">All</button>
+      <span id="find-count"></span>
+      <button id="find-close" title="Close">✕</button>
     </div>
     <textarea id="editor" spellcheck="false" placeholder="Open a .md file to get started, or start typing Tessel Markdown here…"></textarea>
     <div id="wysiwyg-toolbar" style="display:none">
@@ -1000,6 +1061,7 @@ button:disabled { opacity: .4; cursor: default; }
       <button data-cmd="code" title="Inline code">`Code`</button>
     </div>
     <div id="wysiwyg-editor" contenteditable="true" spellcheck="true" style="display:none"></div>
+    <div id="editor-stats"></div>
   </div>
 
   <div id="drag-handle"></div>
@@ -2945,10 +3007,12 @@ var TESSEL_RUNTIME_JS = String.raw`
       var lv=resolveVal(left),rv=resolveVal(right);
       if(kind==='eq') return String(lv)===String(rv);
       if(kind==='neq') return String(lv)!==String(rv);
-      if(kind==='gt') return Number(lv)>Number(rv);
-      if(kind==='gte') return Number(lv)>=Number(rv);
-      if(kind==='lt') return Number(lv)<Number(rv);
-      if(kind==='lte') return Number(lv)<=Number(rv);
+      // date-aware numeric comparison: if both sides look like dates, compare as timestamps
+      var lvN=_toComparable(lv), rvN=_toComparable(rv);
+      if(kind==='gt') return lvN>rvN;
+      if(kind==='gte') return lvN>=rvN;
+      if(kind==='lt') return lvN<rvN;
+      if(kind==='lte') return lvN<=rvN;
       if(kind==='contains'){
         var lv2=Array.isArray(lv)?lv:[String(lv)];
         return lv2.indexOf(String(rv))>=0||String(lv).indexOf(String(rv))>=0;
@@ -2957,6 +3021,13 @@ var TESSEL_RUNTIME_JS = String.raw`
     // bare field ref: truthy if non-empty
     var v=resolveVal(expr);
     return !!v&&(Array.isArray(v)?v.length>0:String(v).trim()!=='');
+  }
+  var _ISO_DATE=/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?/;
+  function _toComparable(v){
+    if(typeof v==='number') return v;
+    var s=String(v).trim();
+    if(_ISO_DATE.test(s)){var d=new Date(s);if(!isNaN(d.getTime()))return d.getTime();}
+    return isNaN(Number(s))?s:Number(s);
   }
   function resolveVal(s){
     s=s.trim();
@@ -6172,9 +6243,24 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     btnCompile.disabled = false;
   });
 
+  var editorStats = document.getElementById('editor-stats');
   function updateEditorMeta() {
-    var lines = editor.value.split('\n').length;
+    var src = editor.value;
+    var lines = src.split('\n').length;
     editorLines.textContent = lines + ' lines';
+    if (editorStats) {
+      var words = src.trim() ? src.trim().split(/\s+/).length : 0;
+      var chars = src.length;
+      var fieldMatches = src.match(/@(?:text|area|date|datetime|number|email|phone|url|radio|check|select|credential|totp|signature|image|richtext|computed|parse|filename|dir|table)\b/g);
+      var fields = fieldMatches ? fieldMatches.length : 0;
+      var sections = (src.match(/^@section\b/gm) || []).length;
+      editorStats.innerHTML =
+        '<span>' + lines + ' lines</span>' +
+        '<span>' + words + ' words</span>' +
+        '<span>' + chars + ' chars</span>' +
+        '<span>' + fields + ' field' + (fields !== 1 ? 's' : '') + '</span>' +
+        (sections ? '<span>' + sections + ' section' + (sections !== 1 ? 's' : '') + '</span>' : '');
+    }
   }
 
   // ---- open .md ----
@@ -7999,6 +8085,118 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         }
       };
       reader.readAsDataURL(f);
+    });
+  })();
+
+  // ---- Find / Replace ----
+  (function(){
+    var findBar     = document.getElementById('find-bar');
+    var findInput   = document.getElementById('find-input');
+    var replaceInput= document.getElementById('replace-input');
+    var findPrev    = document.getElementById('find-prev');
+    var findNext    = document.getElementById('find-next');
+    var replaceOne  = document.getElementById('find-replace-one');
+    var replaceAll  = document.getElementById('find-replace-all');
+    var findCount   = document.getElementById('find-count');
+    var findClose   = document.getElementById('find-close');
+    var findBtn     = document.getElementById('btn-find');
+    var ed          = document.getElementById('editor');
+    if (!findBar || !ed) return;
+
+    var matches = [];
+    var current = -1;
+
+    function openFind() {
+      findBar.style.display = 'flex';
+      findInput.focus();
+      findInput.select();
+      runSearch();
+    }
+    function closeFind() {
+      findBar.style.display = 'none';
+      ed.focus();
+    }
+
+    function runSearch() {
+      var q = findInput.value;
+      matches = [];
+      current = -1;
+      findBar.classList.remove('has-match','no-match');
+      findCount.textContent = '';
+      if (!q) return;
+      var src = ed.value;
+      var idx = 0;
+      while ((idx = src.indexOf(q, idx)) >= 0) {
+        matches.push(idx);
+        idx += q.length;
+      }
+      if (matches.length) {
+        findBar.classList.add('has-match');
+        current = 0;
+        highlight(current);
+      } else {
+        findBar.classList.add('no-match');
+      }
+      findCount.textContent = matches.length ? (current + 1) + '/' + matches.length : 'No matches';
+    }
+
+    function highlight(i) {
+      if (!matches.length) return;
+      var idx = matches[i];
+      var q = findInput.value;
+      ed.setSelectionRange(idx, idx + q.length);
+      ed.focus();
+      // scroll into view
+      var lineH = ed.scrollHeight / Math.max(ed.value.split('\n').length, 1);
+      var lineNum = ed.value.slice(0, idx).split('\n').length - 1;
+      ed.scrollTop = Math.max(0, lineNum * lineH - ed.clientHeight / 2);
+      findCount.textContent = (i + 1) + '/' + matches.length;
+    }
+
+    function stepFind(dir) {
+      if (!matches.length) { runSearch(); return; }
+      current = (current + dir + matches.length) % matches.length;
+      highlight(current);
+    }
+
+    function doReplaceOne() {
+      if (!matches.length) return;
+      var q = findInput.value, r = replaceInput.value;
+      var idx = matches[current];
+      ed.value = ed.value.slice(0, idx) + r + ed.value.slice(idx + q.length);
+      ed.dispatchEvent(new Event('input', { bubbles: true }));
+      runSearch();
+    }
+
+    function doReplaceAll() {
+      var q = findInput.value, r = replaceInput.value;
+      if (!q) return;
+      var count = matches.length;
+      ed.value = ed.value.split(q).join(r);
+      ed.dispatchEvent(new Event('input', { bubbles: true }));
+      runSearch();
+      findCount.textContent = 'Replaced ' + count;
+    }
+
+    findInput.addEventListener('input', runSearch);
+    findPrev.addEventListener('click', function(){ stepFind(-1); });
+    findNext.addEventListener('click', function(){ stepFind(1); });
+    replaceOne.addEventListener('click', doReplaceOne);
+    replaceAll.addEventListener('click', doReplaceAll);
+    findClose.addEventListener('click', closeFind);
+    findBtn.addEventListener('click', function(){ findBar.style.display === 'none' ? openFind() : closeFind(); });
+
+    findInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.shiftKey ? stepFind(-1) : stepFind(1); e.preventDefault(); }
+      if (e.key === 'Escape') { closeFind(); e.preventDefault(); }
+    });
+
+    // Ctrl+F / Cmd+F
+    document.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        openFind();
+      }
     });
   })();
 
