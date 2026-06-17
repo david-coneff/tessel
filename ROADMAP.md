@@ -22,8 +22,7 @@ Broodforge is an implementation domain built on top of Tessel. The framework is 
 - Split-pane layout: document left, session notes right (draggable divider, width persisted)
 - Dark/light theme toggle (localStorage)
 - Sticky toolbar with TOC, nav, attach, export, import, clear buttons
-- Collapsible sections (`--collapsible` flag wraps `h2` sections in `<details>`)
-- Collapsible subsections at every heading level, with +/- child expand controls
+- Collapsible sections (`--collapsible` flag wraps every heading level in `<details>`)
 - Live template parameters: `{{VAR}}` and `{{VAR=default}}` in code blocks
 - Copy button on all code blocks; resolves credentials before copying
 - Persistent note fields: `@field[Label]` (single-line), `@area[Label]` (multi-line)
@@ -35,7 +34,13 @@ Broodforge is an implementation domain built on top of Tessel. The framework is 
 - Filename suggest fields: `@filename[Label|template]`
 - Directory path fields: `@dir[Label|VAR]`
 - Dropdown: `@select[Label|Opt1|Opt2|...]`
-- Auto-generated TOC (collapsible, active-section highlighting)
+- Auto-generated TOC with tiered h2/h3/h4 numbered entries and active-section highlighting
+  - Outer container is `<details id="bf-toc" open>` with collapse-all/expand-all toggle in header
+  - h2 entries with h3 children always get a `<details class="bf-toc-section">` branch toggle
+  - h3 entries get a branch toggle only when they have ≥ 3 h4 children
+  - Branch toggles: bordered `+`/`−` box rendered via CSS `::before`, left-aligned inside a flex summary
+  - `≡ Contents` navbar button opens a dropdown panel cloning the TOC; uses `display:flex` on summary to keep toggle left of title (overrides `display:block` on panel links)
+  - `#bf-toc .bf-toc-l2/l3` specificity required to beat the `#bf-toc ul{padding:0}` reset
 - Session notes tree: recursive collapsible sections, editable titles, per-node textarea, state persisted
 - Export: ZIP package (notes.md + record.json + attachments/), with AES-256-GCM encryption when credentials are present
 - Import: restore session from previously exported ZIP
@@ -650,6 +655,7 @@ tessel/
 │   ├── tessel-cli.js                  ✓ complete (Node CLI wrapper)
 │   ├── tessel-repo-manager.html       ✓ complete (Phase 4)
 │   ├── tessel-vault.html              ✓ complete (Phase 5)
+│   ├── doc-graph.py                   ✓ complete (rhiz-docgraph v1)
 │   └── rollup.js                      — bundle builder
 ├── tests/
 │   ├── run-golden.js              — golden-file test runner
@@ -720,3 +726,5 @@ tessel/
 **Phase 6 — Full WYSIWYG Studio:** `studio/tessel-studio-full.html` exists and provides the compiler-mode and Studio foundation. The remaining work is full WYSIWYG editing (in-browser visual editing of Markdown without switching to raw source) and the visual form designer (drag-and-drop `@directive` insertion and configuration).
 
 Phases 0–5 and Phase 7 are complete. Phase 6 is the final major phase.
+
+**Phase 8 — DocGraph tooling (`doc-graph.py`):** `tools/doc-graph.py` implements the Rhizome DocGraph protocol (rhiz-docgraph v1) for Merkle-tree document decomposition. Large Markdown artifacts (such as this ROADMAP or any Tessel spec file) can be split into independently hash-verified section files with a JSON index. Commands: `split`, `update`, `verify`, `merge`, `status`, `init`. Zero external dependencies; Python 3.8+ stdlib only.
