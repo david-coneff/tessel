@@ -317,7 +317,8 @@ var TESSEL_CSS = `
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;overflow:hidden;margin:0;padding:0}
   body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
-    font-size:14px;line-height:1.6;transition:background .15s,color .15s}
+    font-size:14px;line-height:1.6;transition:background .15s,color .15s;
+    display:flex;flex-direction:column;height:100%;overflow:hidden}
   h1{color:var(--accent);font-size:1.7em;margin:18px 0 4px}
   h2{color:var(--accent);font-size:1.05em;margin:24px 0 8px;text-transform:uppercase;letter-spacing:.05em;
     border-bottom:1px solid var(--border);padding-bottom:4px}
@@ -343,10 +344,11 @@ var TESSEL_CSS = `
   td{padding:5px 8px;border-bottom:1px solid var(--bg3);vertical-align:top}
   tr:last-child td{border-bottom:none}
   /* toolbar */
-  #bf-toolbar{position:sticky;top:0;z-index:50;display:flex;flex-direction:column;
-    background:var(--bg);border-bottom:3px solid var(--accent);margin-bottom:14px}
-  .bf-toolbar-main{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;padding:12px 0 6px}
-  .bf-toolbar-end{margin-left:auto;display:flex;align-items:center;gap:6px 8px;flex-wrap:wrap}
+  #bf-toolbar{position:sticky;top:0;z-index:50;display:flex;flex-direction:row;align-items:center;
+    flex-wrap:wrap;gap:6px 8px;padding:6px 14px;
+    background:var(--bg);border-bottom:3px solid var(--accent);margin-bottom:0}
+  .bf-toolbar-left{display:flex;align-items:center;gap:6px 8px;flex-wrap:wrap;flex-shrink:0}
+  .bf-toolbar-right{display:flex;align-items:center;gap:6px 8px;flex-wrap:wrap;margin-left:auto}
   .bf-attach-bar{display:flex;align-items:center;gap:10px;
     padding:4px 0 6px;border-top:1px solid var(--border)}
   .bf-attach-hint{color:var(--muted);font-size:.76em}
@@ -460,8 +462,9 @@ var TESSEL_CSS = `
   .bf-ctrl-sep{width:10px;flex-shrink:0}
   .bf-ctrl-ghost{color:transparent !important;pointer-events:none;cursor:default;opacity:0.25}
   /* split-pane layout */
-  #bf-app{display:flex;height:100vh;overflow:hidden}
-  #bf-doc-pane{flex:1 1 auto;overflow-y:auto;padding:0 28px 80px;min-width:0;scrollbar-gutter:stable}
+  #bf-layout{display:flex;flex:1 1 auto;min-height:0;overflow:hidden}
+  #bf-main{flex:1 1 auto;overflow-y:auto;min-width:0;scrollbar-gutter:stable}
+  #bf-doc-body{padding:0 var(--doc-pad-h,20px) 80px;--doc-pad-h:20px}
   #bf-drag{flex:0 0 5px;cursor:col-resize;background:var(--border);transition:background .1s;z-index:20}
   #bf-drag:hover,#bf-drag.dragging{background:var(--accent)}
   #bf-notes-pane{flex:0 0 320px;min-width:300px;max-width:60vw;
@@ -514,9 +517,17 @@ var TESSEL_CSS = `
   .nts-clear-btn{background:none;border:none;color:var(--muted);cursor:pointer;
     padding:2px 6px;font-size:.85em;line-height:1;border-radius:3px;flex-shrink:0}
   .nts-clear-btn:hover{color:var(--red)}
+  /* notes footer */
+  #bf-notes-footer{padding:6px 10px;border-top:1px solid var(--border);flex:0 0 auto;
+    display:flex;gap:6px;align-items:center}
+  #bf-notes-export-md,#bf-notes-clear{background:none;border:none;color:var(--muted);cursor:pointer;
+    padding:2px 8px;font-size:.82em;line-height:1;border-radius:3px;font-family:inherit}
+  #bf-notes-export-md:hover{color:var(--accent)}
+  #bf-notes-clear:hover{color:var(--red)}
   /* notes collapsed */
   #bf-notes-pane.collapsed{flex:0 0 30px !important;min-width:30px;overflow:hidden}
   #bf-notes-pane.collapsed #bf-notes-body,
+  #bf-notes-pane.collapsed #bf-notes-footer,
   #bf-notes-pane.collapsed .nts-export-btn,
   #bf-notes-pane.collapsed .nts-clear-btn,
   #bf-notes-pane.collapsed #bf-notes-float-btn{display:none}
@@ -534,9 +545,16 @@ var TESSEL_CSS = `
     transition:background .15s,backdrop-filter .15s}
   #bf-notes-pane.floating #bf-notes-header{cursor:move;user-select:none}
   #bf-notes-pane.floating~#bf-drag,#bf-drag.notes-floating{display:none}
-  #bf-notes-opacity-ctrl{display:none;flex-direction:column;gap:2px;
-    font-size:.63em;color:var(--muted);flex-shrink:0;white-space:nowrap}
-  #bf-notes-pane.floating #bf-notes-opacity-ctrl{display:flex}
+  .notes-opacity-ctrl,.notes-blur-ctrl{display:none;align-items:center;gap:3px;
+    font-size:.72em;color:var(--muted);flex-shrink:0;white-space:nowrap}
+  #bf-notes-pane.floating .notes-opacity-ctrl,
+  #bf-notes-pane.floating .notes-blur-ctrl{display:inline-flex}
+  #bf-notes-opacity-down,#bf-notes-opacity-up,
+  #bf-notes-blur-down,#bf-notes-blur-up{background:var(--btn-bg);color:var(--muted);
+    border:1px solid var(--border);border-radius:3px;width:18px;height:18px;padding:0;cursor:pointer;
+    font-size:.8em;line-height:1;display:inline-flex;align-items:center;justify-content:center;font-family:inherit}
+  #bf-notes-opacity-down:hover,#bf-notes-opacity-up:hover,
+  #bf-notes-blur-down:hover,#bf-notes-blur-up:hover{border-color:var(--accent);color:var(--accent)}
   .bf-ctrl-row{display:flex;align-items:center;gap:3px}
   .bf-ctrl-label{min-width:34px;text-align:right}
   #bf-notes-opacity-val,#bf-notes-blur-val{min-width:30px;text-align:center;font-variant-numeric:tabular-nums}
@@ -758,7 +776,35 @@ var TESSEL_CSS = `
   .bf-edit-cancel{background:none;color:var(--muted);border:1px solid var(--border);
     border-radius:3px;padding:3px 10px;cursor:pointer;font-size:.78em;font-family:inherit}
   .bf-edited-mark{font-size:.65em;color:var(--muted);margin-left:6px;opacity:.7}
-  @media print{#bf-doc-pane{padding:12px}#bf-notes-pane,#bf-drag{display:none}
+  /* settings panel */
+  #bf-settings-panel{position:fixed;top:0;right:0;width:320px;height:100vh;
+    background:var(--bg2);border-left:1px solid var(--border);
+    box-shadow:-4px 0 24px rgba(0,0,0,.45);z-index:9000;
+    display:none;flex-direction:column;overflow:hidden}
+  #bf-settings-panel.open{display:flex}
+  #bf-settings-hdr{padding:12px 14px 10px;border-bottom:1px solid var(--border);
+    flex:0 0 auto;display:flex;align-items:center;gap:8px}
+  #bf-settings-hdr span{flex:1;font-size:.82em;font-weight:700;color:var(--accent);
+    text-transform:uppercase;letter-spacing:.06em}
+  #bf-settings-close{background:none;border:none;color:var(--muted);cursor:pointer;
+    font-size:1.1em;padding:2px 6px;border-radius:3px}
+  #bf-settings-close:hover{color:var(--red)}
+  #bf-settings-body{flex:1;overflow-y:auto;padding:14px 16px;scrollbar-gutter:stable}
+  .bfs-group{margin:0 0 20px}
+  .bfs-group-label{font-size:.7em;font-weight:700;color:var(--muted);
+    text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;display:block}
+  .bfs-row{display:flex;align-items:center;gap:8px;margin:6px 0}
+  .bfs-row label{font-size:.82em;color:var(--text);min-width:90px;flex-shrink:0}
+  .bfs-row input[type=range]{flex:1;accent-color:var(--accent)}
+  .bfs-row .bfs-val{font-size:.78em;color:var(--muted);min-width:38px;text-align:right;
+    font-variant-numeric:tabular-nums;font-family:'Cascadia Code',Consolas,monospace}
+  .bfs-row select{flex:1;background:var(--bg3);color:var(--text);border:1px solid var(--border);
+    border-radius:var(--radius);padding:4px 6px;font-size:.82em;font-family:inherit;cursor:pointer}
+  .bfs-row select:focus{outline:none;border-color:var(--accent)}
+  .bfs-reset{background:none;border:1px solid var(--border);color:var(--muted);border-radius:var(--radius);
+    padding:3px 10px;font-size:.78em;font-family:inherit;cursor:pointer;margin-top:4px}
+  .bfs-reset:hover{border-color:var(--accent);color:var(--accent)}
+  @media print{#bf-main{padding:12px}#bf-notes-pane,#bf-drag,#bf-settings-panel{display:none!important}
     #bf-theme-btn,.copy-btn{display:none}
     .bf-sub-controls,.bf-edit-btn,.bf-edit-controls{display:none}
     .param-input,.note-input,.note-area,#bf-session-notes{border:1px solid #999}}
@@ -2070,6 +2116,55 @@ var TESSEL_RUNTIME_JS = String.raw`
     });}
   })();
 
+  // ---- settings panel ----
+  (function(){
+    var KEYS={pad:'bf:settings:pad-h',font:'bf:settings:font',fontSize:'bf:settings:font-size'};
+    var DEFAULTS={pad:20,font:'',fontSize:14};
+    var panel=document.getElementById('bf-settings-panel');
+    var btn=document.getElementById('bf-settings-btn');
+    var closeBtn=document.getElementById('bf-settings-close');
+    if(!panel||!btn)return;
+    function load(k,def){try{var v=localStorage.getItem(k);return v!==null?v:String(def);}catch(e){return String(def);}}
+    function save(k,v){try{localStorage.setItem(k,String(v));}catch(e){}}
+    function applyPad(v){
+      var px=parseInt(v,10)||0;
+      document.documentElement.style.setProperty('--doc-pad-h',px+'px');
+      var db=document.getElementById('bf-doc-body');if(db)db.style.padding='0 '+px+'px 80px';
+      var el=document.getElementById('bfs-pad-h-val');if(el)el.textContent=px+'px';
+    }
+    function applyFont(v){
+      var db=document.getElementById('bf-doc-body');if(db)db.style.fontFamily=v||'';
+      document.body.style.fontFamily=v||'';
+    }
+    function applyFontSize(v){
+      var px=parseInt(v,10)||14;
+      document.body.style.fontSize=px+'px';
+      var el=document.getElementById('bfs-font-size-val');if(el)el.textContent=px+'px';
+    }
+    // restore saved
+    var savedPad=load(KEYS.pad,DEFAULTS.pad);
+    var savedFont=load(KEYS.font,DEFAULTS.font);
+    var savedFs=load(KEYS.fontSize,DEFAULTS.fontSize);
+    applyPad(savedPad);applyFont(savedFont);applyFontSize(savedFs);
+    var padSlider=document.getElementById('bfs-pad-h');
+    var fontSel=document.getElementById('bfs-font');
+    var fsSlider=document.getElementById('bfs-font-size');
+    if(padSlider){padSlider.value=savedPad;padSlider.addEventListener('input',function(){applyPad(this.value);save(KEYS.pad,this.value);});}
+    if(fontSel){fontSel.value=savedFont;fontSel.addEventListener('change',function(){applyFont(this.value);save(KEYS.font,this.value);});}
+    if(fsSlider){fsSlider.value=savedFs;fsSlider.addEventListener('input',function(){applyFontSize(this.value);save(KEYS.fontSize,this.value);});}
+    var resetBtn=document.getElementById('bfs-reset');
+    if(resetBtn){resetBtn.addEventListener('click',function(){
+      applyPad(DEFAULTS.pad);applyFont(DEFAULTS.font);applyFontSize(DEFAULTS.fontSize);
+      if(padSlider)padSlider.value=DEFAULTS.pad;
+      if(fontSel)fontSel.value=DEFAULTS.font;
+      if(fsSlider)fsSlider.value=DEFAULTS.fontSize;
+      Object.values(KEYS).forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
+    });}
+    btn.addEventListener('click',function(e){e.stopPropagation();panel.classList.toggle('open');});
+    closeBtn.addEventListener('click',function(){panel.classList.remove('open');});
+    document.addEventListener('click',function(e){if(panel.classList.contains('open')&&!panel.contains(e.target)&&e.target!==btn){panel.classList.remove('open');}});
+  })();
+
 })();
 `;
 
@@ -3296,15 +3391,16 @@ TesselCompiler.prototype._renderToolbar = function(ast, docSlug) {
     '  <div class="bf-toolbar-left">',
     '    <span class="bf-title">' + esc(ast.title) + '</span>',
     (hasToc ? '    <button id="bf-toc-toggle" title="Table of Contents">☰ Contents</button>' : ''),
+    '    <button id="bf-theme-btn" title="Toggle light/dark theme">☀ Light</button>',
+    '    <button id="bf-settings-btn" title="Settings">⚙ Settings</button>',
     '  </div>',
     '  <div class="bf-toolbar-right">',
-    '    <button id="bf-theme-btn" title="Toggle theme">☀ Light</button>',
-    '    <button id="bf-expand-all" title="Expand all sections">⊞ Expand</button>',
-    '    <button id="bf-collapse-all" title="Collapse all sections">⊟ Collapse</button>',
-    '    <span id="bf-section-count" class="bf-section-count"></span>',
     '    <button id="bf-attach-btn" title="Attachments">📎 Attach <span id="bf-attach-count"></span></button>',
     '    <button id="bf-import-btn" title="Import session ZIP">↑ Import</button>',
     '    <button id="bf-export-btn" title="Export session ZIP">↓ Export</button>',
+    '    <button id="bf-expand-all" title="Expand all sections">⊞ Expand</button>',
+    '    <button id="bf-collapse-all" title="Collapse all sections">⊟ Collapse</button>',
+    '    <span id="bf-section-count" class="bf-section-count"></span>',
     '    <button id="bf-clear-fields-btn" title="Clear all fields">⊘ Clear</button>',
     '  </div>',
     '</div>',
@@ -3340,6 +3436,48 @@ TesselCompiler.prototype._renderEncModal = function() {
     '      <button type="button" id="bf-enc-plain">Export Plain (no credentials)</button>',
     '      <button type="button" id="bf-enc-cancel">Cancel</button>',
     '    </div>',
+    '  </div>',
+    '</div>'
+  ].join('\n');
+};
+
+// ---- settings panel ----
+TesselCompiler.prototype._renderSettingsPanel = function() {
+  return [
+    '<div id="bf-settings-panel">',
+    '  <div id="bf-settings-hdr">',
+    '    <span>Settings</span>',
+    '    <button type="button" id="bf-settings-close" title="Close settings">✕</button>',
+    '  </div>',
+    '  <div id="bf-settings-body">',
+    '    <div class="bfs-group">',
+    '      <span class="bfs-group-label">Document Layout</span>',
+    '      <div class="bfs-row">',
+    '        <label for="bfs-pad-h">Side padding</label>',
+    '        <input type="range" id="bfs-pad-h" min="0" max="120" step="4" value="20">',
+    '        <span class="bfs-val" id="bfs-pad-h-val">20px</span>',
+    '      </div>',
+    '    </div>',
+    '    <div class="bfs-group">',
+    '      <span class="bfs-group-label">Typography</span>',
+    '      <div class="bfs-row">',
+    '        <label for="bfs-font">Font</label>',
+    '        <select id="bfs-font">',
+    '          <option value="">System default</option>',
+    '          <option value="\'Segoe UI\',system-ui,sans-serif">Segoe UI</option>',
+    '          <option value="Georgia,\'Times New Roman\',serif">Serif (Georgia)</option>',
+    '          <option value="\'Cascadia Code\',\'Fira Code\',Consolas,monospace">Monospace</option>',
+    '          <option value="\'Inter\',system-ui,sans-serif">Inter</option>',
+    '          <option value="\'Arial\',Helvetica,sans-serif">Arial</option>',
+    '        </select>',
+    '      </div>',
+    '      <div class="bfs-row">',
+    '        <label for="bfs-font-size">Font size</label>',
+    '        <input type="range" id="bfs-font-size" min="10" max="22" step="1" value="14">',
+    '        <span class="bfs-val" id="bfs-font-size-val">14px</span>',
+    '      </div>',
+    '    </div>',
+    '    <button class="bfs-reset" id="bfs-reset" type="button">Reset to defaults</button>',
     '  </div>',
     '</div>'
   ].join('\n');
@@ -3448,6 +3586,9 @@ TesselCompiler.prototype.compile = function(ast) {
 
     // encryption modal (overlay)
     this._renderEncModal(),
+
+    // settings panel (overlay)
+    this._renderSettingsPanel(),
 
     // main split layout
     '<div id="bf-layout">',
