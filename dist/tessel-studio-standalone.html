@@ -1052,6 +1052,9 @@ var TESSEL_CSS = `
   /* credential fields */
   .cred-field{background:rgba(243,139,168,.05);border:1px solid rgba(243,139,168,.3);
     border-radius:var(--radius);padding:10px 12px;margin:10px 0}
+  .totp-qr-wrap{margin-top:8px;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+  .totp-qr-wrap canvas{display:none;border:1px solid var(--border);border-radius:4px;background:#fff;max-width:180px;image-rendering:pixelated}
+  .totp-qr-label{font-size:.68em;color:var(--muted);font-style:italic}
   .cred-badge{color:var(--red);font-size:.72em;font-weight:400;margin-left:6px}
   .cred-row{display:flex;align-items:center;gap:6px;margin:4px 0}
   .cred-input{flex:1}
@@ -3551,6 +3554,176 @@ var TESSEL_RUNTIME_JS = String.raw`
     setTimeout(updateAll,150);
   })();
 
+  // ---- TOTP QR code renderer ----
+  (function(){
+    'use strict';
+    // Minimal QR encoder — byte mode, ECC level M, versions 1-6
+    // Sufficient for otpauth:// URIs up to ~106 bytes
+    var EXP=new Uint8Array(512),LOG=new Uint8Array(256);
+    (function(){var x=1;for(var i=0;i<255;i++){EXP[i]=EXP[i+255]=x;LOG[x]=i;x=(x<<1)^(x>=128?0x11d:0);}})();
+    function gm(a,b){return(a&&b)?EXP[LOG[a]+LOG[b]]:0;}
+    function rsECC(data,n){
+      var g=[1];
+      for(var i=0;i<n;i++){var t=new Array(g.length+1).fill(0);for(var j=0;j<g.length;j++){t[j]^=g[j];t[j+1]^=gm(g[j],EXP[i]);}g=t;}
+      var r=data.concat(new Array(n).fill(0));
+      for(var i=0;i<data.length;i++){if(r[i])for(var j=1;j<=n;j++)r[i+j]^=gm(g[j],r[i]);}
+      return r.slice(data.length);
+    }
+    // [total_cw, ec_per_blk, g1_cnt, g1_dc, g2_cnt, g2_dc] for ECC-M
+    var VCAP=[null,
+      [26,10,1,16,0,0],[44,16,1,28,0,0],[70,26,1,44,0,0],
+      [100,18,2,32,0,0],[134,24,2,43,0,0],[172,16,4,27,0,0]
+    ];
+    var ALIGN=[null,[],[6,18],[6,22],[6,26],[6,30],[6,34]];
+    function pickVer(len){for(var v=1;v<=6;v++){var t=VCAP[v],dc=t[2]*t[3]+t[4]*t[5];if(dc>=len+2)return v;}return 0;}
+    function fmtInfo(mp){
+      // ECC-M=00, mask=mp; BCH(5-bit data) generator 0x537
+      var d=mp<<10;
+      for(var i=14;i>=10;i--){if((d>>i)&1)d^=0x537<<(i-10);}
+      return(mp<<10|(d&0x3ff))^21522;
+    }
+    function mkMat(v){
+      var n=v*4+17,m=[],f=[];
+      for(var i=0;i<n;i++){m.push(new Array(n).fill(0));f.push(new Array(n).fill(false));}
+      function set(r,c,dark){m[r][c]=dark?1:0;f[r][c]=true;}
+      function finder(row,col){
+        for(var r=-1;r<=7;r++)for(var c=-1;c<=7;c++){
+          var dr=row+r,dc=col+c;if(dr<0||dr>=n||dc<0||dc>=n)continue;
+          set(dr,dc,(r>=0&&r<=6&&c>=0&&c<=6)&&(r===0||r===6||c===0||c===6||( r>=2&&r<=4&&c>=2&&c<=4)));
+        }
+      }
+      finder(0,0);finder(0,n-7);finder(n-7,0);
+      for(var i=8;i<n-8;i++){set(6,i,i%2===0);set(i,6,i%2===0);}
+      var ap=ALIGN[v];
+      if(ap)for(var ai=0;ai<ap.length;ai++)for(var aj=0;aj<ap.length;aj++){
+        var cr=ap[ai],cc=ap[aj];if(f[cr][cc])continue;
+        for(var r=-2;r<=2;r++)for(var c=-2;c<=2;c++)
+          set(cr+r,cc+c,r===-2||r===2||c===-2||c===2||(r===0&&c===0));
+      }
+      set(4*v+9,8,true);
+      for(var i=0;i<=8;i++){f[8][i]=true;f[i][8]=true;}
+      for(var i=n-7;i<n;i++){f[8][i]=true;f[i][8]=true;}
+      return{m:m,f:f,n:n};
+    }
+    function placeFmt(mat,n,mp){
+      var fmt=fmtInfo(mp);
+      var tl=[[8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,7],[8,8],[7,8],[5,8],[4,8],[3,8],[2,8],[1,8],[0,8]];
+      for(var i=0;i<15;i++)mat[tl[i][0]][tl[i][1]]=(fmt>>i)&1;
+      for(var i=0;i<8;i++)mat[8][n-8+i]=(fmt>>(7-i))&1;
+      for(var i=0;i<7;i++)mat[n-7+i][8]=(fmt>>(8+i))&1;
+    }
+    function encodeData(text,v){
+      var bytes=[];for(var i=0;i<text.length;i++)bytes.push(text.charCodeAt(i)&0xff);
+      var bits=[];
+      function addBits(val,len){for(var i=len-1;i>=0;i--)bits.push((val>>i)&1);}
+      addBits(4,4);addBits(bytes.length,8);
+      for(var i=0;i<bytes.length;i++)addBits(bytes[i],8);
+      var t=VCAP[v],dc=t[2]*t[3]+t[4]*t[5],total=dc*8;
+      for(var i=0;i<4&&bits.length<total;i++)bits.push(0);
+      while(bits.length%8)bits.push(0);
+      var pads=[0xec,0x11],pi=0;
+      while(bits.length<total)addBits(pads[pi++%2],8);
+      var cws=[];
+      for(var i=0;i<bits.length;i+=8){var b=0;for(var j=0;j<8;j++)b=(b<<1)|bits[i+j];cws.push(b);}
+      return cws;
+    }
+    function interleave(cws,v){
+      var t=VCAP[v],ec=t[1],g1c=t[2],g1d=t[3],g2c=t[4],g2d=t[5];
+      var blocks=[],ecb=[];var pos=0;
+      for(var i=0;i<g1c;i++){var blk=cws.slice(pos,pos+g1d);pos+=g1d;blocks.push(blk);ecb.push(rsECC(blk,ec));}
+      for(var i=0;i<g2c;i++){var blk=cws.slice(pos,pos+g2d);pos+=g2d;blocks.push(blk);ecb.push(rsECC(blk,ec));}
+      var out=[],maxd=Math.max(g1d,g2d||0);
+      for(var i=0;i<maxd;i++)for(var b=0;b<blocks.length;b++)if(i<blocks[b].length)out.push(blocks[b][i]);
+      for(var i=0;i<ec;i++)for(var b=0;b<ecb.length;b++)out.push(ecb[b][i]);
+      return out;
+    }
+    function placeData(mat,func,n,data){
+      var bits=[];
+      for(var i=0;i<data.length;i++)for(var b=7;b>=0;b--)bits.push((data[i]>>b)&1);
+      var bi=0,right=n-1,up=true;
+      while(right>=1){
+        if(right===6)right--;
+        for(var row=0;row<n;row++){
+          var r=up?n-1-row:row;
+          for(var dc=0;dc<=1;dc++){var c=right-dc;if(!func[r][c])mat[r][c]=bi<bits.length?bits[bi++]:0;}
+        }
+        right-=2;up=!up;
+      }
+    }
+    function applyMask(mat,func,n,mp){
+      var mk=[];for(var r=0;r<n;r++)mk.push(mat[r].slice());
+      for(var r=0;r<n;r++)for(var c=0;c<n;c++){
+        if(func[r][c])continue;
+        var fl=false;
+        switch(mp){case 0:fl=(r+c)%2===0;break;case 1:fl=r%2===0;break;case 2:fl=c%3===0;break;
+          case 3:fl=(r+c)%3===0;break;case 4:fl=(Math.floor(r/2)+Math.floor(c/3))%2===0;break;
+          case 5:fl=(r*c)%2+(r*c)%3===0;break;case 6:fl=((r*c)%2+(r*c)%3)%2===0;break;
+          case 7:fl=((r+c)%2+(r*c)%3)%2===0;break;}
+        if(fl)mk[r][c]^=1;
+      }
+      return mk;
+    }
+    function penalty(mat,n){
+      var score=0;
+      for(var r=0;r<n;r++){for(var c=0;c<n;){var v=mat[r][c],run=1;while(c+run<n&&mat[r][c+run]===v)run++;if(run>=5)score+=3+(run-5);c+=run;}}
+      for(var c=0;c<n;c++){for(var r=0;r<n;){var v=mat[r][c],run=1;while(r+run<n&&mat[r+run][c]===v)run++;if(run>=5)score+=3+(run-5);r+=run;}}
+      for(var r=0;r<n-1;r++)for(var c=0;c<n-1;c++)if(mat[r][c]===mat[r][c+1]&&mat[r][c]===mat[r+1][c]&&mat[r][c]===mat[r+1][c+1])score+=3;
+      var p1=[1,0,1,1,1,0,1,0,0,0,0],p2=[0,0,0,0,1,0,1,1,1,0,1];
+      for(var r=0;r<n;r++)for(var c=0;c<=n-11;c++){
+        var m1=true,m2=true,m3=true,m4=true;
+        for(var k=0;k<11;k++){if(mat[r][c+k]!==p1[k])m1=false;if(mat[r][c+k]!==p2[k])m2=false;if(mat[c+k][r]!==p1[k])m3=false;if(mat[c+k][r]!==p2[k])m4=false;}
+        if(m1||m2)score+=40;if(m3||m4)score+=40;
+      }
+      var dark=0;for(var r=0;r<n;r++)for(var c=0;c<n;c++)dark+=mat[r][c];
+      var pct=dark*100/(n*n),k=Math.abs(Math.round(pct/5)*5-50)/5;score+=k*10;
+      return score;
+    }
+    function encodeQR(text){
+      var v=pickVer(text.length);if(!v)return null;
+      var cws=encodeData(text,v),data=interleave(cws,v);
+      var bestMat=null,bestScore=Infinity;
+      for(var mp=0;mp<8;mp++){
+        var mf=mkMat(v);
+        placeData(mf.m,mf.f,mf.n,data);
+        var masked=applyMask(mf.m,mf.f,mf.n,mp);
+        placeFmt(masked,mf.n,mp);
+        var s=penalty(masked,mf.n);
+        if(s<bestScore){bestScore=s;bestMat=masked;}
+      }
+      return{mat:bestMat,n:bestMat.length};
+    }
+    function renderQR(text,canvas){
+      var qr=encodeQR(text);
+      if(!qr){canvas.style.display='none';return;}
+      var cell=4,quiet=4,sz=qr.n*cell+quiet*2;
+      canvas.width=sz;canvas.height=sz;
+      canvas.style.width=Math.min(sz,180)+'px';
+      canvas.style.height=Math.min(sz,180)+'px';
+      var ctx=canvas.getContext('2d');
+      ctx.fillStyle='#ffffff';ctx.fillRect(0,0,sz,sz);
+      ctx.fillStyle='#000000';
+      for(var r=0;r<qr.n;r++)for(var c=0;c<qr.n;c++)
+        if(qr.mat[r][c])ctx.fillRect(quiet+c*cell,quiet+r*cell,cell,cell);
+      canvas.style.display='block';
+    }
+    function updateQR(inp){
+      var id=inp.dataset.cred||inp.id||'';
+      var canvas=document.querySelector('[data-totp-qr="'+id+'"]');
+      if(!canvas)return;
+      var secret=(inp.value||'').trim().toUpperCase().replace(/\s/g,'');
+      if(!secret){canvas.style.display='none';return;}
+      var issuer=encodeURIComponent(canvas.dataset.issuer||'Service');
+      var account=encodeURIComponent(canvas.dataset.account||issuer);
+      var uri='otpauth://totp/'+issuer+'%3A'+account+'?secret='+secret+'&issuer='+issuer;
+      renderQR(uri,canvas);
+    }
+    document.querySelectorAll('.cred-totp-input').forEach(function(inp){
+      inp.addEventListener('input',function(){updateQR(inp);});
+      // Render on load if value already set (e.g. from sessionStorage restore)
+      setTimeout(function(){if(inp.value)updateQR(inp);},200);
+    });
+  })();
+
 })();
 `;
 
@@ -4427,6 +4600,12 @@ var TesselFields = (function() {
       '        <option value="totp-32" ' + (bits === 256 ? 'selected' : '') + '>256-bit (SHA-256)</option>',
       '      </select>',
       '    </div>',
+      '  </div>',
+      '  <div class="totp-qr-wrap">',
+      '    <canvas id="totp-qr-' + id + '" data-totp-qr="' + id + '"',
+      '      data-issuer="' + esc(meta.issuer || node.label || '') + '"',
+      '      data-account="' + esc(meta.account || '') + '"></canvas>',
+      '    <span class="totp-qr-label">Scan to add in authenticator app</span>',
       '  </div>',
       fieldFooter(meta),
       '</div>'
