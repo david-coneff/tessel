@@ -8,7 +8,8 @@
  * Supported input:
  *   - YAML front-matter (--- ... ---)
  *   - Standard markdown: h1-h6, paragraphs, code fences, blockquotes, lists, --- hr, tables
- *   - @field directives: @text, @area, @date, @credential, @totp, @radio, @check/@checkbox,
+ *   - @field directives: @text, @area, @date, @datetime, @number/@num, @email, @phone/@tel, @url,
+ *                        @credential, @totp, @radio, @check/@checkbox,
  *                        @select, @table, @parse, @filename, @dir,
  *                        @image, @richtext, @computed, @signature
  *   - @section / @endsection / @subsection / @endsubsection (collapsible wrapper directives)
@@ -408,6 +409,26 @@ TesselParser.prototype.parse = function(source) {
         }
         else if (dir === 'date') {
           fieldNode = { type: 'date_field', label: rest };
+          applyMeta(fieldNode, meta);
+        }
+        else if (dir === 'datetime') {
+          fieldNode = { type: 'datetime_field', label: rest };
+          applyMeta(fieldNode, meta);
+        }
+        else if (dir === 'number' || dir === 'num') {
+          fieldNode = { type: 'number_field', label: rest };
+          applyMeta(fieldNode, meta);
+        }
+        else if (dir === 'email') {
+          fieldNode = { type: 'email_field', label: rest };
+          applyMeta(fieldNode, meta);
+        }
+        else if (dir === 'phone' || dir === 'tel') {
+          fieldNode = { type: 'phone_field', label: rest };
+          applyMeta(fieldNode, meta);
+        }
+        else if (dir === 'url') {
+          fieldNode = { type: 'url_field', label: rest };
           applyMeta(fieldNode, meta);
         }
         else if (dir === 'credential' || dir === 'cred') {
