@@ -43,6 +43,9 @@ body {
   overflow: hidden;
 }
 
+/* ---- Visually hidden utility (screen-reader only) ---- */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
 /* ---- Ribbon Toolbar ---- */
 #toolbar {
   flex: 0 0 var(--toolbar-h);
@@ -1371,6 +1374,7 @@ var TESSEL_CSS = `
     content:'';width:7px;height:7px;background:var(--bg);border-radius:1px}
   /* choice fields */
   .choice-field{margin:10px 0}
+  .choice-fieldset{border:none;margin:0;padding:0;min-width:0}
   .choice-rows{display:grid;grid-template-columns:18px max-content 1fr;
     align-items:center;column-gap:8px;row-gap:5px;margin:4px 0}
   .choice-row{display:contents}
@@ -1732,6 +1736,7 @@ var TESSEL_CSS = `
     font-family:'Cascadia Code',Consolas,monospace;white-space:pre-wrap;word-break:break-all}
   .computed-field .computed-display:empty::after{content:attr(data-placeholder);
     color:var(--muted);font-style:italic}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
   /* ---- WCAG: skip-nav and focus-visible ---- */
   .bf-skip-nav{position:absolute;top:-40px;left:0;background:var(--accent);color:var(--bg);
     padding:6px 12px;font-size:.9em;font-weight:600;border-radius:0 0 4px 0;z-index:9999;
@@ -1896,7 +1901,11 @@ var TESSEL_RUNTIME_JS = String.raw`
       var tabs = field.querySelectorAll('.sig-tab');
       var panels = field.querySelectorAll('.sig-panel');
       function showPanel(mode){
-        tabs.forEach(function(t){ t.classList.toggle('active', t.dataset.mode===mode); });
+        tabs.forEach(function(t){
+          var active = t.dataset.mode === mode;
+          t.classList.toggle('active', active);
+          t.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
         panels.forEach(function(p){ p.style.display = p.dataset.panel===mode ? '' : 'none'; });
         try{ localStorage.setItem('bf:sig:'+id+':mode', mode); }catch(e){}
       }
@@ -4806,7 +4815,7 @@ var TesselFields = (function() {
     var tv = tvAttrs(meta);
     return [
       '<div class="date-field notefield" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
-      '  <label>' + label + reqMark(meta) + '</label>',
+      '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <input type="date" id="note-' + id + '"',
       '    data-note="' + id + '" ' + tv,
       (minVal ? '    min="' + minVal + '"' : ''),
@@ -4826,7 +4835,7 @@ var TesselFields = (function() {
     var tv = tvAttrs(meta);
     return [
       '<div class="datetime-field notefield" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
-      '  <label>' + label + reqMark(meta) + '</label>',
+      '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <input type="datetime-local" id="note-' + id + '"',
       '    data-note="' + id + '" data-field-type="datetime" ' + tv + '>',
       '  <span class="datetime-display" id="dtdisp-' + id + '"></span>',
@@ -4844,17 +4853,18 @@ var TesselFields = (function() {
     var tv = tvAttrs(meta);
     return [
       '<div class="cred-field notefield" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
-      '  <label>' + label + reqMark(meta) + '</label>',
+      '  <label for="cred-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <div class="cred-row">',
       '    <div id="cred-pw-section-' + id + '" class="cred-section">',
       '      <input type="password" class="note-input cred-input" id="cred-' + id + '"',
       '        data-cred="' + id + '" data-note="' + id + '" ' + tv,
       '        placeholder="Password / passphrase" autocomplete="new-password">',
+      '      <label for="cred-confirm-' + id + '" class="sr-only">Confirm ' + label + '</label>',
       '      <input type="password" class="note-input cred-confirm-input" id="cred-confirm-' + id + '"',
-      '        data-for="' + id + '" placeholder="Confirm passphrase">',
-      '      <span class="cred-match-indicator" id="cred-match-' + id + '"></span>',
+      '        data-for="' + id + '" placeholder="Confirm passphrase" aria-describedby="cred-match-' + id + '">',
+      '      <span class="cred-match-indicator" id="cred-match-' + id + '" aria-live="polite"></span>',
       '      <div class="cred-btns">',
-      '        <button type="button" class="cred-toggle" data-for="' + id + '" title="Show / hide">👁</button>',
+      '        <button type="button" class="cred-toggle" data-for="' + id + '" aria-label="Show or hide ' + label + '" title="Show / hide">👁</button>',
       '        <button type="button" class="bf-suggest-btn" data-suggest="passphrase" data-for="' + id + '" title="Generate passphrase">✦ Generate</button>',
       '        <select class="bf-suggest-select" data-suggest-for="' + id + '">',
       '          <option value="4word">4-word phrase</option>',
@@ -4932,10 +4942,12 @@ var TesselFields = (function() {
     return [
       '<div class="choice-field notefield" data-slug="' + id + '" data-choice-type="radio"',
       '  ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
-      '  <label class="choice-group-label">' + label + reqMark(meta) + '</label>',
+      '  <fieldset class="choice-fieldset">',
+      '  <legend class="choice-group-label">' + label + reqMark(meta) + '</legend>',
       '  <div class="choice-opts">',
       opts,
       '  </div>',
+      '  </fieldset>',
       '  <input type="hidden" data-note="' + id + '" ' + tv + '>',
       fieldFooter(meta),
       '</div>'
@@ -4962,10 +4974,12 @@ var TesselFields = (function() {
     return [
       '<div class="choice-field notefield" data-slug="' + id + '" data-choice-type="checkbox"',
       '  ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
-      '  <label class="choice-group-label">' + label + reqMark(meta) + '</label>',
+      '  <fieldset class="choice-fieldset">',
+      '  <legend class="choice-group-label">' + label + reqMark(meta) + '</legend>',
       '  <div class="choice-opts">',
       opts,
       '  </div>',
+      '  </fieldset>',
       '  <input type="hidden" data-note="' + id + '" ' + tv + '>',
       fieldFooter(meta),
       '</div>'
@@ -4984,7 +4998,7 @@ var TesselFields = (function() {
     }).join('\n');
     return [
       '<div class="notefield" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
-      '  <label>' + label + reqMark(meta) + '</label>',
+      '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <select class="note-input" id="note-' + id + '"',
       '    data-note="' + id + '" ' + tv + '>',
       '    <option value="">— select —</option>',
@@ -5005,22 +5019,22 @@ var TesselFields = (function() {
     var maxRows = meta.max_rows ? parseInt(meta.max_rows, 10) : 0;
     var tv = tvAttrs(meta);
     var headers = columns.map(function(col) {
-      var th = '<th data-col-type="' + esc(col.type || 'text') + '"';
+      var th = '<th scope="col" data-col-type="' + esc(col.type || 'text') + '"';
       if (col.opts && col.opts.length) th += ' data-col-opts="' + esc(col.opts.join('|')) + '"';
       th += '>' + esc(col.name) + '</th>';
       return th;
-    }).join('') + '<th class="tbl-del-col"></th>';
+    }).join('') + '<th scope="col" class="tbl-del-col"><span class="sr-only">Remove row</span></th>';
     return [
       '<div class="table-field notefield" data-slug="' + id + '"',
       '  data-min-rows="' + minRows + '"' + (maxRows ? ' data-max-rows="' + maxRows + '"' : ''),
       '  ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
-      '  <label>' + label + reqMark(meta) + '</label>',
+      '  <label id="tbllbl-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <div class="input-table-wrap">',
-      '    <table class="input-table">',
+      '    <table class="input-table" aria-labelledby="tbllbl-' + id + '">',
       '      <thead><tr>' + headers + '</tr></thead>',
       '      <tbody id="tbl-' + id + '"></tbody>',
       '    </table>',
-      '    <button type="button" class="add-row-btn" title="Add row">+ Add row</button>',
+      '    <button type="button" class="add-row-btn" aria-label="Add row to ' + label + '" title="Add row">+ Add row</button>',
       '  </div>',
       '  <input type="hidden" data-note="' + id + '" ' + tv + '>',
       fieldFooter(meta),
@@ -5039,12 +5053,12 @@ var TesselFields = (function() {
     return [
       '<div class="parse-field notefield" data-parse-target="' + target + '" data-parse-regex="' + regex + '"',
       '  ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
-      '  <label>' + label + '</label>',
-      '  <textarea class="parse-input" rows="4" placeholder="Paste text to extract from…"></textarea>',
-      '  <button type="button" class="parse-btn">Extract</button>',
-      '  <div class="parse-result" style="display:none">',
+      '  <label for="parse-input-' + id + '">' + label + '</label>',
+      '  <textarea class="parse-input" id="parse-input-' + id + '" rows="4" placeholder="Paste text to extract from…" aria-describedby="parse-result-' + id + '"></textarea>',
+      '  <button type="button" class="parse-btn" aria-label="Extract from ' + label + ' input">Extract</button>',
+      '  <div class="parse-result" id="parse-result-' + id + '" role="status" aria-live="polite" style="display:none">',
       '    <strong>Extracted:</strong> <span class="parse-value"></span>',
-      '    <button type="button" class="parse-apply" style="display:none">Apply ↓</button>',
+      '    <button type="button" class="parse-apply" style="display:none" aria-label="Apply extracted value to ' + label + '">Apply ↓</button>',
       '  </div>',
       '  <input type="hidden" data-note="' + id + '" ' + tv + '>',
       fieldFooter(meta),
@@ -5065,10 +5079,10 @@ var TesselFields = (function() {
       '  <label>' + label + reqMark(meta) + '</label>',
       '  <div class="filename-row">',
       '    <input type="text" class="note-input filename-input" id="note-' + id + '"',
-      '      data-note="' + id + '" ' + tv + ' readonly>',
-      '    <button type="button" class="filename-suggest-btn" title="Re-generate filename">↻</button>',
+      '      data-note="' + id + '" ' + tv + ' readonly aria-describedby="fname-warn-' + id + '">',
+      '    <button type="button" class="filename-suggest-btn" aria-label="Re-generate ' + label + ' filename" title="Re-generate filename">↻</button>',
       '  </div>',
-      '  <div class="filename-dep-warn" style="display:none">',
+      '  <div class="filename-dep-warn" id="fname-warn-' + id + '" role="alert" style="display:none">',
       '    <span class="dep-warn-text"></span>',
       '    <button type="button" class="dep-highlight-btn" title="Highlight missing fields">⚑ Highlight</button>',
       '  </div>',
