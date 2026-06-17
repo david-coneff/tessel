@@ -183,6 +183,10 @@ function main() {
     process.exit(1);
   }
 
+  if (args.manifest) {
+    process.stderr.write('Warning: --manifest is not yet implemented. The nav-tree feature is planned for a future release.\n');
+  }
+
   // Apply preprocessing passes
   if (args.title || args.playbook) {
     source = injectFrontMatter(source, args.title, args.playbook);
