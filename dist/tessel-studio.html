@@ -1782,6 +1782,13 @@ var TESSEL_CSS = `
   /* credential fields */
   .cred-field{background:rgba(243,139,168,.05);border:1px solid rgba(243,139,168,.3);
     border-radius:var(--radius);padding:10px 12px;margin:10px 0}
+  .totp-live-wrap{display:flex;align-items:center;gap:8px;margin-top:6px;min-height:28px}
+  .totp-live-code{font-size:1.5em;font-weight:700;letter-spacing:.12em;font-variant-numeric:tabular-nums;min-width:5ch}
+  .totp-live-code:empty{display:none}
+  .totp-ring-svg{width:28px;height:28px;flex-shrink:0}
+  .totp-ring-bg{fill:none;stroke:var(--border);stroke-width:3}
+  .totp-ring{fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:round;stroke-dasharray:100;stroke-dashoffset:0;transform:rotate(-90deg);transform-origin:18px 18px;transition:stroke-dashoffset .9s linear}
+  .totp-live-code:empty~.totp-ring-svg{display:none}
   .totp-qr-wrap{margin-top:8px;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
   .totp-qr-wrap canvas{display:none;border:1px solid var(--border);border-radius:4px;background:#fff;max-width:180px;image-rendering:pixelated}
   .totp-qr-label{font-size:.68em;color:var(--muted);font-style:italic}
@@ -2807,6 +2814,60 @@ var TESSEL_RUNTIME_JS = String.raw`
     return out.match(/.{1,4}/g).join(' ');
   }
 
+  // ---- TOTP live code ----
+  (function(){
+    function b32decode(s){
+      var alpha='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+      s=s.toUpperCase().replace(/\s/g,'').replace(/=+$/,'');
+      var bits=0,val=0,out=[];
+      for(var i=0;i<s.length;i++){
+        var ch=alpha.indexOf(s[i]);
+        if(ch<0)continue;
+        val=(val<<5)|ch; bits+=5;
+        if(bits>=8){bits-=8;out.push((val>>bits)&0xff);}
+      }
+      return new Uint8Array(out);
+    }
+    async function computeTotp(secret,algo,t){
+      var key=b32decode(secret);
+      if(!key.length)return null;
+      var algoName=algo==='SHA-256'?'SHA-256':'SHA-1';
+      var digits=6,period=30;
+      var counter=Math.floor((t||Date.now()/1000)/period);
+      var msg=new Uint8Array(8);
+      for(var i=7;i>=0;i--){msg[i]=counter&0xff;counter>>=8;}
+      var cryptoKey=await crypto.subtle.importKey('raw',key,{name:'HMAC',hash:algoName},false,['sign']);
+      var sig=new Uint8Array(await crypto.subtle.sign('HMAC',cryptoKey,msg));
+      var offset=sig[sig.length-1]&0x0f;
+      var code=((sig[offset]&0x7f)<<24|(sig[offset+1]&0xff)<<16|(sig[offset+2]&0xff)<<8|(sig[offset+3]&0xff))%Math.pow(10,digits);
+      return String(code).padStart(digits,'0');
+    }
+    function startTotpLive(inp){
+      var id=inp.dataset.cred||inp.id||'';
+      var display=document.querySelector('.totp-live-code[data-for="'+id+'"]');
+      var ring=document.querySelector('.totp-ring[data-for="'+id+'"]');
+      if(!display)return;
+      var tid=null;
+      function refresh(){
+        var secret=(inp.value||'').trim().replace(/\s/g,'');
+        if(!secret){display.textContent='';if(ring)ring.style.strokeDashoffset='';return;}
+        var algoSel=document.querySelector('.bf-suggest-select[data-suggest-for="'+id+'"]');
+        var algo=algoSel&&algoSel.value==='totp-32'?'SHA-256':'SHA-1';
+        var now=Date.now()/1000;
+        var remaining=30-(now%30);
+        computeTotp(secret,algo,now).then(function(code){
+          if(code)display.textContent=code;
+          if(ring){var pct=remaining/30;ring.style.strokeDashoffset=String(Math.round((1-pct)*100));}
+        });
+      }
+      function loop(){refresh();var ms=(30-(Date.now()/1000%30))*1000;tid=setTimeout(loop,Math.min(ms,1000));}
+      loop();
+      inp.addEventListener('input',refresh);
+      return function(){clearTimeout(tid);};
+    }
+    document.querySelectorAll('.cred-totp-input').forEach(function(inp){startTotpLive(inp);});
+  })();
+
   // ---- suggest buttons ----
   (function(){
     document.querySelectorAll('.bf-suggest-btn').forEach(function(btn){
@@ -3315,29 +3376,31 @@ var TESSEL_RUNTIME_JS = String.raw`
       choiceField.querySelectorAll('input:checked').forEach(function(c){checked.push(c.value);});
       return checked;
     }
+    if (el.type === 'number') return el.value === '' ? '' : parseFloat(el.value);
     return el.value||'';
   }
-  function evalExpr(expr){
+  function evalExpr(expr, _depth){
+    if ((_depth||0) > 64) { console.warn('[Tessel] evalExpr: max depth exceeded'); return false; }
     try {
-      return _evalExprInner(expr);
+      return _evalExprInner(expr, (_depth||0)+1);
     } catch(e) {
       console.warn('[Tessel] evalExpr error in expression "' + expr + '":', e.message);
       return false;
     }
   }
-  function _evalExprInner(expr){
+  function _evalExprInner(expr, _depth){
     if(!expr||!expr.trim()) return true;
     expr = expr.trim();
     // or
     var orParts = splitTopLevel(expr,' or ');
-    if(orParts.length>1) return orParts.some(function(p){return evalExpr(p.trim());});
+    if(orParts.length>1) return orParts.some(function(p){return evalExpr(p.trim(),_depth);});
     // and
     var andParts = splitTopLevel(expr,' and ');
-    if(andParts.length>1) return andParts.every(function(p){return evalExpr(p.trim());});
+    if(andParts.length>1) return andParts.every(function(p){return evalExpr(p.trim(),_depth);});
     // not
-    if(expr.startsWith('not ')) return !evalExpr(expr.slice(4));
+    if(expr.startsWith('not ')) return !evalExpr(expr.slice(4),_depth);
     // parens
-    if(expr.startsWith('(')&&expr.endsWith(')')) return evalExpr(expr.slice(1,-1));
+    if(expr.startsWith('(')&&expr.endsWith(')')) return evalExpr(expr.slice(1,-1),_depth);
     // operators
     var ops=[['>=','gte'],['<=','lte'],['>','gt'],['<','lt'],['!=','neq'],['==','eq'],['contains','contains']];
     for(var i=0;i<ops.length;i++){
@@ -5549,6 +5612,13 @@ var TesselFields = (function() {
       '        <option value="totp-32" ' + (bits === 256 ? 'selected' : '') + '>256-bit (SHA-256)</option>',
       '      </select>',
       '    </div>',
+      '    <div class="totp-live-wrap" aria-live="polite" aria-label="Current one-time code">',
+      '      <svg class="totp-ring-svg" viewBox="0 0 36 36" aria-hidden="true">',
+      '        <circle class="totp-ring-bg" cx="18" cy="18" r="15.9"/>',
+      '        <circle class="totp-ring" data-for="' + id + '" cx="18" cy="18" r="15.9"/>',
+      '      </svg>',
+      '      <span class="totp-live-code" data-for="' + id + '"></span>',
+      '    </div>',
       '  </div>',
       (_pdfua
         ? '  <figure class="totp-qr-wrap" role="figure" aria-label="' + label + ' QR code">'
@@ -6843,13 +6913,31 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       edPane.style.flex = '0 0 ' + newW + 'px';
       try { localStorage.setItem('tessel-studio:split', newW); } catch(ex) {}
     });
-    document.addEventListener('mouseup', function() {
+    function stopDrag() {
       if (!dragging) return;
       dragging = false;
       handle.classList.remove('dragging');
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
-    });
+    }
+    document.addEventListener('mouseup', stopDrag);
+    document.addEventListener('mouseleave', stopDrag);
+    handle.addEventListener('touchstart', function(e) {
+      var t = e.touches[0];
+      dragging = true; startX = t.clientX; startW = edPane.offsetWidth;
+      handle.classList.add('dragging');
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    }, { passive: false });
+    document.addEventListener('touchmove', function(e) {
+      if (!dragging) return;
+      var total = workspace.offsetWidth;
+      var newW  = Math.max(180, Math.min(total - 200, startW + (e.touches[0].clientX - startX)));
+      edPane.style.flex = '0 0 ' + newW + 'px';
+      try { localStorage.setItem('tessel-studio:split', newW); } catch(ex) {}
+    }, { passive: false });
+    document.addEventListener('touchend', stopDrag);
+    document.addEventListener('touchcancel', stopDrag);
     try {
       var saved = localStorage.getItem('tessel-studio:split');
       if (saved) edPane.style.flex = '0 0 ' + saved + 'px';
