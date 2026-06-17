@@ -574,6 +574,13 @@ button:disabled { opacity: .4; cursor: default; }
         <button class="rb-btn rb-insert" data-insert="@text " title="Single-line text input"><span class="rb-icon">✏</span>Text</button>
         <button class="rb-btn rb-insert" data-insert="@area " title="Multi-line textarea"><span class="rb-icon">☰</span>Area</button>
         <button class="rb-btn rb-insert" data-insert="@date " title="Date picker"><span class="rb-icon">📅</span>Date</button>
+        <button class="rb-btn rb-insert" data-insert="@datetime " title="Date and time picker"><span class="rb-icon">🕐</span>Datetime</button>
+      </div>
+      <div class="rb-group">
+        <button class="rb-btn rb-insert" data-insert="@number " title="Numeric input"><span class="rb-icon">#</span>Number</button>
+        <button class="rb-btn rb-insert" data-insert="@email " title="Email address input"><span class="rb-icon">@</span>Email</button>
+        <button class="rb-btn rb-insert" data-insert="@phone " title="Phone number input"><span class="rb-icon">☎</span>Phone</button>
+        <button class="rb-btn rb-insert" data-insert="@url " title="URL input"><span class="rb-icon">🔗</span>URL</button>
       </div>
       <div class="rb-group">
         <button class="rb-btn rb-insert" data-insert="@image " title="Image upload field"><span class="rb-icon">🖼</span>Image</button>
@@ -1464,6 +1471,7 @@ var TESSEL_CSS = `
   /* validation */
   .note-input.val-warn,.param-input.val-warn{border-color:#f0a000!important;outline:none}
   .val-hint{color:#f0a000;font-size:.75em;margin-top:2px;display:block}
+  .tv-help-text{color:var(--muted);font-size:.75em;margin-top:3px;display:block}
   /* Tessel field-level validation (from field metadata) */
   .tv-invalid{border-color:var(--red)!important}
   .tv-warn-msg{color:var(--red);font-size:.75em;margin-top:3px;display:block}
@@ -2651,6 +2659,9 @@ var TESSEL_RUNTIME_JS = String.raw`
   (function(){
     var _IP4=/^(\d{1,3}\.){3}\d{1,3}$/;
     var _DOM=/^(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+    var _EMAIL=/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    var _URL=/^https?:\/\/[^\s/$.?#].[^\s]*$/i;
+    var _PHONE=/^[+\d][\d\s\-().]{6,}$/;
     function _validHint(el,msg){
       el.classList.toggle('val-warn',!!msg);
       var wrap=el.closest('.notefield,.param-row');if(!wrap)return;
@@ -2668,6 +2679,17 @@ var TESSEL_RUNTIME_JS = String.raw`
         if(!_DOM.test(val)){_validHint(el,'Expected domain format: name.tld or sub.name.tld');return;}
       } else if(v==='path'){
         if(val&&!val.endsWith('/')){_validHint(el,'Path should end with /');return;}
+      } else if(v==='email'){
+        if(!_EMAIL.test(val)){_validHint(el,'Expected email format: user@example.com');return;}
+      } else if(v==='url'){
+        if(!_URL.test(val)){_validHint(el,'Expected URL format: https://example.com');return;}
+      } else if(v==='phone'){
+        if(!_PHONE.test(val)){_validHint(el,'Expected phone format: +1 (555) 000-0000');return;}
+      } else if(v==='number'){
+        if(isNaN(Number(val))){_validHint(el,'Expected a number');return;}
+        var elMin=el.getAttribute('min'),elMax=el.getAttribute('max');
+        if(elMin!==null&&Number(val)<Number(elMin)){_validHint(el,'Minimum value is '+elMin);return;}
+        if(elMax!==null&&Number(val)>Number(elMax)){_validHint(el,'Maximum value is '+elMax);return;}
       }
       _validHint(el,'');
     }
@@ -4865,6 +4887,82 @@ var TesselFields = (function() {
     ].filter(Boolean).join('\n');
   }
 
+  // ---- @number ----
+  function renderNumber(node, docSlug) {
+    var meta = node.meta || {};
+    var id = esc(meta.id || node.id);
+    var label = esc(node.label);
+    var minVal = meta.min !== undefined ? ' min="' + esc(String(meta.min)) + '"' : '';
+    var maxVal = meta.max !== undefined ? ' max="' + esc(String(meta.max)) + '"' : '';
+    var step = meta.step ? ' step="' + esc(String(meta.step)) + '"' : '';
+    var defVal = meta.default_value !== undefined ? esc(String(meta.default_value)) : '';
+    var tv = tvAttrs(meta);
+    return [
+      '<div class="notefield number-field" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
+      '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
+      '  <input type="number" class="note-input" id="note-' + id + '"',
+      '    data-note="' + id + '" ' + tv + minVal + maxVal + step,
+      '    value="' + defVal + '" autocomplete="off">',
+      fieldFooter(meta),
+      '</div>'
+    ].filter(Boolean).join('\n');
+  }
+
+  // ---- @email ----
+  function renderEmail(node, docSlug) {
+    var meta = node.meta || {};
+    var id = esc(meta.id || node.id);
+    var label = esc(node.label);
+    var placeholder = esc(meta.placeholder || 'user@example.com');
+    var tv = tvAttrs(meta);
+    return [
+      '<div class="notefield email-field" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
+      '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
+      '  <input type="email" class="note-input" id="note-' + id + '"',
+      '    data-note="' + id + '" data-validate="email" ' + tv,
+      '    placeholder="' + placeholder + '" autocomplete="email">',
+      fieldFooter(meta),
+      '</div>'
+    ].filter(Boolean).join('\n');
+  }
+
+  // ---- @phone ----
+  function renderPhone(node, docSlug) {
+    var meta = node.meta || {};
+    var id = esc(meta.id || node.id);
+    var label = esc(node.label);
+    var placeholder = esc(meta.placeholder || '+1 (555) 000-0000');
+    var pattern = meta.pattern ? esc(meta.pattern) : '';
+    var tv = tvAttrs(meta);
+    return [
+      '<div class="notefield phone-field" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
+      '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
+      '  <input type="tel" class="note-input" id="note-' + id + '"',
+      '    data-note="' + id + '" data-validate="phone" ' + tv,
+      '    placeholder="' + placeholder + '"' + (pattern ? ' pattern="' + pattern + '"' : '') + ' autocomplete="tel">',
+      fieldFooter(meta),
+      '</div>'
+    ].filter(Boolean).join('\n');
+  }
+
+  // ---- @url ----
+  function renderUrl(node, docSlug) {
+    var meta = node.meta || {};
+    var id = esc(meta.id || node.id);
+    var label = esc(node.label);
+    var placeholder = esc(meta.placeholder || 'https://example.com');
+    var tv = tvAttrs(meta);
+    return [
+      '<div class="notefield url-field" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
+      '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
+      '  <input type="url" class="note-input" id="note-' + id + '"',
+      '    data-note="' + id + '" data-validate="url" ' + tv,
+      '    placeholder="' + placeholder + '" autocomplete="url">',
+      fieldFooter(meta),
+      '</div>'
+    ].filter(Boolean).join('\n');
+  }
+
   // ---- @credential ----
   function renderCredential(node, docSlug) {
     var meta = node.meta || {};
@@ -5280,6 +5378,10 @@ var TesselFields = (function() {
       case 'area_field':       return renderArea(node, docSlug);
       case 'date_field':       return renderDate(node, docSlug);
       case 'datetime_field':   return renderDatetime(node, docSlug);
+      case 'number_field':     return renderNumber(node, docSlug);
+      case 'email_field':      return renderEmail(node, docSlug);
+      case 'phone_field':      return renderPhone(node, docSlug);
+      case 'url_field':        return renderUrl(node, docSlug);
       case 'signature_field':  return renderSignature(node, docSlug);
       case 'credential_field': return renderCredential(node, docSlug);
       case 'totp_field':       return renderTotp(node, docSlug);
@@ -5457,7 +5559,7 @@ TesselCompiler.prototype._renderBlock = function(block, docSlug) {
   // field types
   var fieldTypes = ['text_field','area_field','date_field','datetime_field','credential_field','totp_field',
     'radio_field','check_field','select_field','table_field','parse_field','filename_field','dir_field',
-    'signature_field'];
+    'signature_field','number_field','email_field','phone_field','url_field'];
   if (fieldTypes.indexOf(type) >= 0) {
     if (self._fields) return self._fields.render(block, docSlug);
     return '<!-- fields renderer not available -->';
@@ -7646,6 +7748,11 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       { name: '@text',       icon: '✏',  desc: 'Single-line text input',                 tmpl: '@text Label\n' },
       { name: '@area',       icon: '☰',  desc: 'Multi-line text area',                   tmpl: '@area Label\n' },
       { name: '@date',       icon: '📅', desc: 'Date picker',                             tmpl: '@date Label\n' },
+      { name: '@datetime',   icon: '🕐', desc: 'Date and time picker',                   tmpl: '@datetime Label\n' },
+      { name: '@number',     icon: '#',  desc: 'Numeric input with optional min/max/step', tmpl: '@number Label\n' },
+      { name: '@email',      icon: '@',  desc: 'Email address input with format validation', tmpl: '@email Label\n' },
+      { name: '@phone',      icon: '☎',  desc: 'Phone number input with format validation', tmpl: '@phone Label\n' },
+      { name: '@url',        icon: '🔗', desc: 'URL input with format validation',        tmpl: '@url Label\n' },
       { name: '@image',      icon: '🖼', desc: 'Image upload (stored as data URI)',       tmpl: '@image Label\n' },
       { name: '@richtext',   icon: '✦',  desc: 'Rich-text editor with formatting toolbar',tmpl: '@richtext Label\n' },
       { name: '@computed',   icon: '⚙',  desc: 'Read-only value derived from other fields — use ${field_id}', tmpl: '@computed Label: ${field_id}\n' },
