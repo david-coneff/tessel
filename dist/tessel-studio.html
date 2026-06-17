@@ -3417,11 +3417,13 @@ var TESSEL_RUNTIME_JS = String.raw`
       // eval required_if
       if(!required && requiredIf) required = evalExpr(requiredIf);
 
-      // skip validation on hidden fields
-      if(fieldWrap && fieldWrap.style.display === 'none') {
+      // skip validation on hidden fields — also check nearest .notefield/.choice-field ancestor
+      var visTarget = el.closest('.notefield,.date-field,.choice-field,.table-field') || fieldWrap;
+      if((fieldWrap && fieldWrap.style.display === 'none') || (visTarget && visTarget.style.display === 'none')) {
         el.classList.remove('tv-invalid');
         el.removeAttribute('aria-invalid');
-        if(fieldWrap){var ws=fieldWrap.querySelector('.tv-warn-msg');if(ws){ws.textContent='';ws.style.display='none';}}
+        var warnSrc = fieldWrap || visTarget;
+        if(warnSrc){var ws=warnSrc.querySelector('.tv-warn-msg');if(ws){ws.textContent='';ws.style.display='none';}}
         return;
       }
 
@@ -3555,8 +3557,12 @@ var TESSEL_RUNTIME_JS = String.raw`
     if(andParts.length>1) return andParts.every(function(p){return evalExpr(p.trim(),_depth);});
     // not
     if(expr.startsWith('not ')) return !evalExpr(expr.slice(4),_depth);
-    // parens
-    if(expr.startsWith('(')&&expr.endsWith(')')) return evalExpr(expr.slice(1,-1),_depth);
+    // parens — only strip if the closing ')' at the end matches the opening '(' at position 0
+    if(expr.startsWith('(')&&expr.endsWith(')')){
+      var _pd=0;var _pm=false;
+      for(var _pi=0;_pi<expr.length-1;_pi++){if(expr[_pi]==='(') _pd++;else if(expr[_pi]===')')_pd--;if(_pd===0){_pm=true;break;}}
+      if(!_pm) return evalExpr(expr.slice(1,-1),_depth);
+    }
     // operators
     var ops=[['>=','gte'],['<=','lte'],['>','gt'],['<','lt'],['!=','neq'],['==','eq'],['contains','contains']];
     for(var i=0;i<ops.length;i++){
@@ -3686,12 +3692,13 @@ var TESSEL_RUNTIME_JS = String.raw`
       document.querySelectorAll('.note-input,.note-area').forEach(function(inp){
         var slug=inp.dataset.note||inp.id||'';if(!slug)return;
         var label=inp.closest('.notefield')?.querySelector('label')?.textContent||slug;
-        notes.push({label:label,value:inp.value,type:inp.tagName==='TEXTAREA'?'area':'field'});
+        notes.push({id:slug,label:label,value:inp.value,type:inp.tagName==='TEXTAREA'?'area':'field'});
       });
       document.querySelectorAll('.date-field').forEach(function(div){
         var inp=div.querySelector('input[type=date]');if(!inp)return;
-        var label=div.querySelector('label')?.textContent||inp.dataset.note||'date';
-        notes.push({label:label,value:inp.value,type:'date'});
+        var slug=inp.dataset.note||inp.id||'date';
+        var label=div.querySelector('label')?.textContent||slug;
+        notes.push({id:slug,label:label,value:inp.value,type:'date'});
       });
       document.querySelectorAll('.datetime-field').forEach(function(div){
         var inp=div.querySelector('input[type=datetime-local]');if(!inp)return;
@@ -3821,7 +3828,7 @@ var TESSEL_RUNTIME_JS = String.raw`
       }
       if(rec.notes){
         rec.notes.forEach(function(n){
-          var slug=n.label.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,48)||'note';
+          var slug=n.id||(n.label||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,48)||'note';
           var inp=document.querySelector('[data-note="'+slug+'"]');
           if(inp){inp.value=n.value||'';try{localStorage.setItem(ns+'note:'+slug,inp.value);}catch(e){}inp.dispatchEvent(new Event('input'));}
         });
@@ -3836,7 +3843,7 @@ var TESSEL_RUNTIME_JS = String.raw`
     async function processZip(ab){
       var files=parseZip(ab);if(!files)return alert('Could not parse ZIP file.');
       if(files['payload.enc']&&files['meta.json']){
-        var meta=JSON.parse(new TextDecoder().decode(files['meta.json']));
+        var meta;try{meta=JSON.parse(new TextDecoder().decode(files['meta.json']));}catch(e){return alert('meta.json is corrupt or unreadable.');}
         var phrase=prompt('This package is encrypted. Enter passphrase:','');if(!phrase)return;
         try{
           function b64ToU8(s){var b=atob(s),a=new Uint8Array(b.length);for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a;}
@@ -5300,7 +5307,7 @@ TesselParser.prototype.parse = function(source) {
         }
         else if (dir === 'table') {
           var tSpec = parseTableSpec(rest);
-          var cols = tSpec.columns.map(function(c) { return { name: c, type: 'text' }; });
+          var cols = tSpec.columns.map(function(c) { return { name: c.name, type: c.type || 'text', opts: c.opts || [] }; });
           fieldNode = { type: 'table_field', label: tSpec.label, columns: cols };
           applyMeta(fieldNode, meta);
         }
@@ -5795,7 +5802,7 @@ var TesselFields = (function() {
       '  <label for="cred-totp-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <div id="cred-totp-section-' + id + '" class="cred-section">',
       '    <input type="password" class="note-input cred-totp-input" id="cred-totp-' + id + '"',
-      '      data-cred="' + id + '" ' + tv,
+      '      data-cred="' + id + '" data-note="' + id + '" ' + tv,
       '      placeholder="TOTP secret (base32)" autocomplete="one-time-code">',
       '    <div class="cred-btns">',
       '      <button type="button" class="cred-toggle" data-for="' + id + '" aria-label="Show or hide TOTP secret" title="Show / hide secret">👁</button>',
@@ -5840,12 +5847,14 @@ var TesselFields = (function() {
     var label = esc(node.label);
     var options = node.options || [];
     var tv = tvAttrs(meta);
+    var defVal = meta.default_value || '';
     var opts = options.map(function(opt, idx) {
       var oid = id + '-' + idx;
+      var checked = (defVal && opt.value === defVal) ? ' checked' : '';
       return [
         '<label class="choice-opt">',
         '  <input type="radio" name="radio-' + id + '" id="' + oid + '"',
-        '    value="' + esc(opt.value) + '" data-slug="' + id + '">',
+        '    value="' + esc(opt.value) + '" data-slug="' + id + '"' + checked + '>',
         '  ' + esc(opt.label),
         '</label>'
       ].join('\n');
@@ -5872,12 +5881,14 @@ var TesselFields = (function() {
     var label = esc(node.label);
     var options = node.options || [];
     var tv = tvAttrs(meta);
+    var defVals = (meta.default_value || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
     var opts = options.map(function(opt, idx) {
       var oid = id + '-cb-' + idx;
+      var checked = defVals.indexOf(opt.value) >= 0 ? ' checked' : '';
       return [
         '<label class="choice-opt">',
         '  <input type="checkbox" id="' + oid + '"',
-        '    value="' + esc(opt.value) + '" data-slug="' + id + '">',
+        '    value="' + esc(opt.value) + '" data-slug="' + id + '"' + checked + '>',
         '  ' + esc(opt.label),
         '</label>'
       ].join('\n');
@@ -5904,8 +5915,10 @@ var TesselFields = (function() {
     var label = esc(node.label);
     var options = node.options || [];
     var tv = tvAttrs(meta);
+    var defVal = meta.default_value || '';
     var opts = options.map(function(opt) {
-      return '<option value="' + esc(opt.value) + '">' + esc(opt.label) + '</option>';
+      var sel = (defVal && opt.value === defVal) ? ' selected' : '';
+      return '<option value="' + esc(opt.value) + '"' + sel + '>' + esc(opt.label) + '</option>';
     }).join('\n');
     return [
       '<div class="notefield" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
