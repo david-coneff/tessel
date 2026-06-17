@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tessel Studio (standalone)</title>
+<title>Tessel Studio</title>
+<script>try{if(localStorage.getItem('tessel-studio:theme')==='light')document.documentElement.classList.add('light');}catch(e){}</script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -24,7 +25,7 @@
   --status-h:  26px;
   --gutter:    4px;
 }
-body.light {
+body.light, html.light body {
   --bg:      #f0f0f2;
   --surface: #ffffff;
   --border:  #b0b4bc;
@@ -432,7 +433,7 @@ button:disabled { opacity: .4; cursor: default; }
 #preview-frame {
   flex: 1;
   border: none;
-  background: #fff;
+  background: var(--bg);
 }
 
 #preview-placeholder {
@@ -791,8 +792,8 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
   position: absolute;
   bottom: var(--status-h);
   left: 0; right: 0;
-  background: #5a1c1c;
-  color: #ffcdd2;
+  background: color-mix(in srgb, var(--red) 20%, var(--bg));
+  color: color-mix(in srgb, var(--red) 60%, var(--text));
   font-size: 12px;
   padding: 6px 12px;
   border-top: 1px solid var(--red);
@@ -6578,8 +6579,10 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     var btn = document.getElementById('btn-theme');
     var stored = localStorage.getItem('tessel-studio:theme');
     if (stored === 'light') { document.body.classList.add('light'); btn.textContent = '☾ Dark'; }
+    else { btn.textContent = '☀ Light'; }
     btn.addEventListener('click', function() {
       var light = document.body.classList.toggle('light');
+      document.documentElement.classList.toggle('light', light);
       btn.textContent = light ? '☾ Dark' : '☀ Light';
       localStorage.setItem('tessel-studio:theme', light ? 'light' : 'dark');
     });
