@@ -257,6 +257,7 @@ body {
   width: 180px;
   min-height: 0;
   border-bottom: none;
+  scrollbar-width: none;
 }
 #ribbon-row.dock-left  { border-right: 1px solid var(--border); }
 #ribbon-row.dock-right { border-left:  1px solid var(--border); }
@@ -9400,6 +9401,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
 
     function wsSelectBlock(id) {
       wsSelectedId = id;
+      if (id) wsLastFocusId = id;
       document.querySelectorAll('#ws-blocks-root .ws-field-card').forEach(function(el){ el.classList.remove('selected'); });
       if (id) {
         var card = document.querySelector('#ws-blocks-root [data-block-id="' + id + '"] .ws-field-card');
@@ -9614,12 +9616,13 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       { label:'Dropdown',   icon:'▾', fn:function(aid){ wsInsertField('select',aid); } },
       { label:'Radio',      icon:'⊙', fn:function(aid){ wsInsertField('radio',aid); } },
       { label:'Checkboxes', icon:'☑', fn:function(aid){ wsInsertField('check',aid); } },
+      { label:'Table',      icon:'⊞', fn:function(aid){ wsInsertField('table',aid); } },
       { group:'STRUCTURE' },
       { label:'Section',    icon:'§', fn:function(aid){ wsInsertBlock({type:'section',title:'Section',children:[],id:wsUid()},aid); } },
     ];
 
     function wsInsertField(ft, afterId) {
-      var b = { type:'field', fieldType:ft, label:'Label', options:[], meta:{}, id:wsUid() };
+      var b = { type:'field', fieldType:ft, label:'Label', options:[], columns:[], meta:{}, id:wsUid() };
       b.meta.id = wsSlugify(b.label);
       wsInsertBlock(b, afterId);
     }
