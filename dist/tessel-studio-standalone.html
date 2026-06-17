@@ -788,6 +788,16 @@ button:disabled { opacity: .4; cursor: default; }
         <input type="number" id="ds-hist-max" min="10" max="500" value="100" style="width:64px">
       </div>
     </div>
+    <div class="ds-group">
+      <span class="ds-group-label">Accessibility</span>
+      <p class="ds-hint" style="margin:0 0 8px">Controls whether compiled documents include WCAG 2.1 accessibility structures (skip-nav, landmark roles, aria-required, aria-labelledby, aria-live).</p>
+      <div class="ds-row" style="align-items:flex-start;gap:8px">
+        <input type="checkbox" id="ds-wcag" checked style="margin-top:2px;flex-shrink:0">
+        <label for="ds-wcag" style="cursor:pointer;font-weight:500">WCAG 2.1 compliance mode<br>
+          <span style="font-weight:400;color:var(--muted);font-size:.85em">On: skip-nav, landmark roles, full aria-* attributes on fields, focus-visible rings.<br>Off: freeform — standard HTML labels only, no aria layer, no skip-nav.</span>
+        </label>
+      </div>
+    </div>
     <button class="ds-reset" id="ds-reset" type="button">Reset to defaults</button>
   </div>
 </div>
@@ -4641,6 +4651,8 @@ TesselParser.inlineToHtml = inlineToHtml;
 
 var TesselFields = (function() {
 
+  var _wcag = true; // toggled by setWCAG() before each compile
+
   function esc(s) {
     return (s == null ? '' : String(s))
       .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -4648,12 +4660,16 @@ var TesselFields = (function() {
 
   /**
    * Build common data-tv-* attributes from field metadata.
+   * In WCAG mode also emits aria-required.
    */
   function tvAttrs(meta) {
     if (!meta) return '';
     var parts = [];
     if (meta.id) parts.push('data-tv-id="' + esc(meta.id) + '"');
-    if (meta.required === true) parts.push('data-tv-required="true"');
+    if (meta.required === true) {
+      parts.push('data-tv-required="true"');
+      if (_wcag) parts.push('aria-required="true"');
+    }
     if (meta.required_if) parts.push('data-tv-required-if="' + esc(meta.required_if) + '"');
     if (meta.visible_if) parts.push('data-tv-visible-if="' + esc(meta.visible_if) + '"');
     if (meta.validate) parts.push('data-tv-validate="' + esc(meta.validate) + '"');
@@ -4694,7 +4710,7 @@ var TesselFields = (function() {
     var wrapStyle = meta.visible_if ? '' : '';
     return [
       '<div class="notefield" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
-      '  <label>' + label + reqMark(meta) + '</label>',
+      '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <input type="text" class="note-input" id="note-' + id + '"',
       '    data-note="' + id + '" ' + tv,
       '    placeholder="' + placeholder + '"',
@@ -4715,7 +4731,7 @@ var TesselFields = (function() {
     var tv = tvAttrs(meta);
     return [
       '<div class="notefield" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
-      '  <label>' + label + reqMark(meta) + '</label>',
+      '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <textarea class="note-area" id="note-' + id + '"',
       '    data-note="' + id + '" ' + tv,
       '    rows="' + rows + '"',
@@ -5115,7 +5131,7 @@ var TesselFields = (function() {
     return [
       '<div class="richtext-field notefield"' + (meta.visible_if ? ' data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
       '  <label id="rtlbl-' + id + '">' + label + reqMark(meta) + '</label>',
-      '  <div class="rt-toolbar" data-rt-for="' + id + '" role="toolbar" aria-label="' + label + ' formatting">',
+      '  <div class="rt-toolbar" data-rt-for="' + id + '"' + (_wcag ? ' role="toolbar" aria-label="' + label + ' formatting"' : '') + '>',
       '    <button type="button" data-rt-cmd="bold" title="Bold"><b>B</b></button>',
       '    <button type="button" data-rt-cmd="italic" title="Italic"><i>I</i></button>',
       '    <button type="button" data-rt-cmd="insertUnorderedList" title="Bullet list">• List</button>',
@@ -5123,7 +5139,7 @@ var TesselFields = (function() {
       '    <button type="button" data-rt-cmd="removeFormat" title="Clear formatting">✕ Fmt</button>',
       '  </div>',
       '  <div class="rt-editor" contenteditable="true" id="note-' + id + '-editor"',
-      '    role="textbox" aria-multiline="true" aria-labelledby="rtlbl-' + id + '"',
+      '    ' + (_wcag ? 'role="textbox" aria-multiline="true" aria-labelledby="rtlbl-' + id + '"' : ''),
       '    data-rt-field="' + id + '"' + (placeholder ? ' data-placeholder="' + placeholder + '"' : '') + '></div>',
       '  <input type="hidden" id="note-' + id + '" data-note="' + id + '" ' + tv + '>',
       fieldFooter(meta),
@@ -5143,7 +5159,7 @@ var TesselFields = (function() {
       '<div class="computed-field notefield"' + (meta.visible_if ? ' data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
       '  <label id="clbl-' + id + '">' + label + '</label>',
       '  <div class="computed-display" id="note-' + id + '-display"',
-      '    role="status" aria-labelledby="clbl-' + id + '"',
+      '    ' + (_wcag ? 'role="status" aria-labelledby="clbl-' + id + '"' : ''),
       '    data-placeholder="' + placeholder + '"></div>',
       '  <input type="hidden" id="note-' + id + '" data-note="' + id + '"',
       '    data-computed-expr="' + expr + '" ' + tv + '>',
@@ -5178,6 +5194,7 @@ var TesselFields = (function() {
   }
 
   return {
+    setWCAG: function(v) { _wcag = !!v; },
     render: render,
     renderText: renderText,
     renderArea: renderArea,
@@ -5746,9 +5763,17 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     if (!md.trim()) { setStatus('Empty document', ''); return; }
     var t0 = Date.now();
     try {
-      var html = T.compile(md);
-      // inject studio document settings as initial CSS/data defaults
+      // WCAG mode — must gate TesselFields before compile() renders fields
       var ds = getDocSettings();
+      if (typeof TesselFields !== 'undefined' && TesselFields.setWCAG) {
+        TesselFields.setWCAG(ds.wcag !== false);
+      }
+      var html = T.compile(md);
+      // post-process: skip-nav + role="main" only in WCAG mode
+      if (ds.wcag !== false) {
+        html = html.replace('<div id="bf-layout">', '<a class="bf-skip-nav" href="#bf-main">Skip to main content</a>\n<div id="bf-layout">');
+        html = html.replace('<main id="bf-main">', '<main id="bf-main" role="main">');
+      }
       var bc = ds.borderContrast != null ? ds.borderContrast : 100;
       var overrideCSS = '<style id="bf-doc-defaults">:root{--doc-pad-h:' + ds.padH + 'px;--border-mult:' + (bc/100).toFixed(2) + '}'
         + (ds.accentDark && ds.accentDark !== '#89b4fa' ? ':root{--accent:' + ds.accentDark + '}' : '')
@@ -5973,7 +5998,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
 
   // ---- document settings ----
   var DOC_SETTINGS_KEY = 'tessel-studio:doc-settings';
-  var DOC_SETTINGS_DEFAULTS = { padH: 20, font: '', fontSize: 14, dateFmt: 'YYYY-MM-DD', timeFmt: '24', checkStyle: 'check', tableMinRows: 1, tableMaxRows: 0, accentDark: '#89b4fa', accentLight: '#0969da', borderContrast: 100 };
+  var DOC_SETTINGS_DEFAULTS = { padH: 20, font: '', fontSize: 14, dateFmt: 'YYYY-MM-DD', timeFmt: '24', checkStyle: 'check', tableMinRows: 1, tableMaxRows: 0, accentDark: '#89b4fa', accentLight: '#0969da', borderContrast: 100, wcag: true };
 
   function getDocSettings() {
     try {
@@ -6005,6 +6030,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     var accentLightEl   = document.getElementById('ds-accent-light');
     var borderContrastEl = document.getElementById('ds-border-contrast');
     var borderContrastVal = document.getElementById('ds-border-contrast-val');
+    var wcagEl          = document.getElementById('ds-wcag');
     var resetBtn        = document.getElementById('ds-reset');
 
     function load() {
@@ -6023,6 +6049,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       if (accentLightEl)  { accentLightEl.value = s.accentLight || '#0969da'; }
       if (borderContrastEl){ borderContrastEl.value = s.borderContrast != null ? s.borderContrast : 100; }
       if (borderContrastVal){ borderContrastVal.textContent = (s.borderContrast != null ? s.borderContrast : 100) + '%'; }
+      if (wcagEl)           { wcagEl.checked = s.wcag !== false; }
     }
     function persist() {
       saveDocSettings({
@@ -6036,7 +6063,8 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         tableMaxRows:  parseInt(tblMaxEl ? tblMaxEl.value : 0, 10),
         accentDark:    accentDarkEl   ? accentDarkEl.value   : '#89b4fa',
         accentLight:   accentLightEl  ? accentLightEl.value  : '#0969da',
-        borderContrast: parseInt(borderContrastEl ? borderContrastEl.value : 100, 10)
+        borderContrast: parseInt(borderContrastEl ? borderContrastEl.value : 100, 10),
+        wcag:           wcagEl ? wcagEl.checked : true
       });
     }
 
@@ -6057,6 +6085,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     if (tblMaxEl)       tblMaxEl.addEventListener('input',       function() { persist(); });
     if (accentDarkEl)   accentDarkEl.addEventListener('input',   function() { persist(); });
     if (accentLightEl)  accentLightEl.addEventListener('input',  function() { persist(); });
+    if (wcagEl)         wcagEl.addEventListener('change',        function() { persist(); });
 
     if (resetBtn) resetBtn.addEventListener('click', function() {
       saveDocSettings(DOC_SETTINGS_DEFAULTS);
