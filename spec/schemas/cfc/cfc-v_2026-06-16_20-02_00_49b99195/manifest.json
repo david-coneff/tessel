@@ -1,0 +1,25 @@
+{
+  "schema_id": "cfc-v_2026-06-16_20-02_00_49b99195",
+  "cfc_version": "cfc-v_2026-06-16_20-02_00_49b99195",
+  "defined": "2026-06-16T20:02:00Z",
+  "description": "Canonical File Convention algorithm v1. Self-hashing: cfc_version equals schema_id because CFC is the base layer and applies its own algorithm to its own spec-blob.txt.",
+  "spec_blob_sha256": "49b991954f8c087a1274b36018802b9b863b284cb36e029c6bad234aa7c99e94",
+  "spec_blob_cid_short": "49b99195",
+  "file_hashes": {
+    "spec-blob.txt": {
+      "sha256": "49b991954f8c087a1274b36018802b9b863b284cb36e029c6bad234aa7c99e94",
+      "cid_short": "49b99195",
+      "file_type": "text"
+    },
+    "implementation.js": {
+      "sha256": "a97899e119b81491f5989f35bf1cfc0c0de20b0351fffe95dba243916ef3d05c",
+      "cid_short": "a97899e1",
+      "file_type": "binary"
+    },
+    "implementation.py": {
+      "sha256": "93f11cda16e7fab619209af5229a12168b28ac722dab4f9e99efce05e1ad8e2a",
+      "cid_short": "93f11cda",
+      "file_type": "binary"
+    }
+  }
+}
