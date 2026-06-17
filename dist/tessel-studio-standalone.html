@@ -1251,8 +1251,39 @@ var TESSEL_CSS = `
   .bfs-reset{background:none;border:1px solid var(--border);color:var(--muted);border-radius:var(--radius);
     padding:3px 10px;font-size:.78em;font-family:inherit;cursor:pointer;margin-top:4px}
   .bfs-reset:hover{border-color:var(--accent);color:var(--accent)}
-  @media print{#bf-main{padding:12px}#bf-notes-pane,#bf-drag,#bf-settings-panel{display:none!important}
-    #bf-theme-btn,.copy-btn{display:none}
+  /* custom page breaks (set in pagination preview, applied at print) */
+  .bf-page-break-before{break-before:page;page-break-before:always}
+  /* pagination preview mode */
+  .bf-pag-active #bf-doc-body{position:relative}
+  .bf-pag-overlay{position:absolute;top:0;left:0;right:0;pointer-events:none;z-index:40}
+  .bf-pag-ruler{position:absolute;left:-40px;right:-40px;height:0;display:flex;align-items:center;pointer-events:none}
+  .bf-pag-ruler.natural{border-top:2px dashed rgba(249,164,57,.7)}
+  .bf-pag-ruler.custom{border-top:2px dashed rgba(137,180,250,.9)}
+  body.light .bf-pag-ruler.natural{border-top-color:rgba(188,76,0,.65)}
+  body.light .bf-pag-ruler.custom{border-top-color:rgba(9,105,218,.8)}
+  .bf-pag-handle{position:absolute;left:0;width:22px;height:22px;margin-top:-11px;
+    background:rgba(249,164,57,.85);border:none;border-radius:3px;cursor:ns-resize;
+    pointer-events:auto;display:flex;align-items:center;justify-content:center;
+    color:#1a1d23;font-size:11px;font-weight:700;line-height:1;user-select:none}
+  .bf-pag-handle::after{content:'⇕';font-size:10px}
+  .bf-pag-ruler.custom .bf-pag-handle{background:rgba(137,180,250,.85)}
+  body.light .bf-pag-handle{background:rgba(188,76,0,.8);color:#fff}
+  body.light .bf-pag-ruler.custom .bf-pag-handle{background:rgba(9,105,218,.8)}
+  .bf-pag-label{position:absolute;left:28px;background:rgba(249,164,57,.2);
+    color:rgba(249,164,57,1);font-size:.72em;padding:1px 6px;border-radius:3px;
+    white-space:nowrap;pointer-events:none}
+  .bf-pag-ruler.custom .bf-pag-label{background:rgba(137,180,250,.12);color:var(--accent);pointer-events:auto;cursor:pointer}
+  .bf-pag-strip{display:none;flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border);
+    padding:4px 12px;gap:10px;align-items:center;font-size:.78em;color:var(--muted)}
+  .bf-pag-strip.active{display:flex}
+  .bf-pag-strip select{background:var(--bg3);border:1px solid var(--border);border-radius:3px;
+    padding:2px 6px;color:var(--text);font-size:.78em;font-family:inherit}
+  .bf-pag-strip select:focus{outline:none;border-color:var(--accent)}
+  .bf-pag-strip-hint{color:var(--muted);font-size:.72em}
+  #bf-pag-btn.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  @media print{#bf-main{padding:12px}#bf-notes-pane,#bf-drag,#bf-settings-panel,#bf-pag-strip,
+    .bf-pag-overlay{display:none!important}
+    #bf-pag-btn,#bf-print-btn,#bf-theme-btn,.copy-btn{display:none}
     .bf-sub-controls,.bf-edit-btn,.bf-edit-controls{display:none}
     .param-input,.note-input,.note-area,#bf-session-notes{border:1px solid #999}}
 `;
@@ -2901,6 +2932,197 @@ var TESSEL_RUNTIME_JS = String.raw`
     });}
   })();
 
+  // ---- pagination preview ----
+  (function(){
+    var pagBtn=document.getElementById('bf-pag-btn');
+    var printBtn=document.getElementById('bf-print-btn');
+    var main=document.getElementById('bf-main');
+    var docBody=document.getElementById('bf-doc-body');
+    var strip=document.getElementById('bf-pag-strip');
+    var fmtSel=document.getElementById('bf-pag-format');
+    var marginSel=document.getElementById('bf-pag-margin');
+    if(!pagBtn||!main||!docBody)return;
+
+    var PAG_KEY=ns+'pag-breaks';
+    var active=false;
+    var overlay=null;
+
+    // Page printable heights at 96dpi minus top+bottom margins
+    var PAGE_H={
+      letter:function(m){return Math.round(11*96 - 2*m);},
+      a4:function(m){return Math.round(297/25.4*96 - 2*m);}
+    };
+
+    function getPageH(){
+      var fmt=(fmtSel?fmtSel.value:'letter')||'letter';
+      var m=parseInt(marginSel?marginSel.value:48,10)||48;
+      return PAGE_H[fmt]?PAGE_H[fmt](m):PAGE_H.letter(m);
+    }
+
+    function loadBreaks(){try{var s=localStorage.getItem(PAG_KEY);return s?JSON.parse(s):{};}catch(e){return{};}}
+    function saveBreaks(map){try{localStorage.setItem(PAG_KEY,JSON.stringify(map));}catch(e){}}
+
+    function elemPath(el){
+      var parts=[];
+      var cur=el;
+      while(cur&&cur!==docBody){
+        var parent=cur.parentElement;if(!parent)break;
+        var idx=Array.prototype.indexOf.call(parent.children,cur)+1;
+        parts.unshift(cur.tagName.toLowerCase()+':nth-child('+idx+')');
+        cur=parent;
+      }
+      return parts.join('>');
+    }
+    function findByPath(path){if(!path)return null;try{return docBody.querySelector(path);}catch(e){return null;}}
+
+    function applyBreaks(){
+      docBody.querySelectorAll('.bf-page-break-before').forEach(function(el){el.classList.remove('bf-page-break-before');});
+      var brks=loadBreaks();
+      Object.keys(brks).forEach(function(p){var el=findByPath(p);if(el)el.classList.add('bf-page-break-before');});
+    }
+
+    // All block-level elements in docBody for snapping
+    function blockElements(){
+      return Array.from(docBody.querySelectorAll('h1,h2,h3,h4,h5,h6,p,.notefield,.section-block,details,blockquote,pre,ul,ol,hr,table,.md-table-wrap'));
+    }
+
+    // Find the block element whose top is closest to but <= relY (from docBody top)
+    function snapToBlock(relY){
+      var best=null,bestTop=-Infinity;
+      var docBodyTop=docBody.offsetTop;
+      blockElements().forEach(function(el){
+        var elTop=el.offsetTop; // relative to docBody (since docBody is relative)
+        if(elTop<=relY&&elTop>bestTop){bestTop=elTop;best=el;}
+      });
+      return best;
+    }
+
+    function renderRulers(){
+      if(!overlay)return;
+      overlay.innerHTML='';
+      var pageH=getPageH();
+      var docH=docBody.scrollHeight;
+      var docBodyTop=docBody.offsetTop;
+      var brks=loadBreaks();
+      var pageCount=Math.ceil(docH/pageH);
+
+      // Natural break lines
+      for(var i=1;i<pageCount;i++){
+        var naturalY=docBodyTop+i*pageH;
+        (function(pageIdx,ny){
+          var ruler=document.createElement('div');
+          ruler.className='bf-pag-ruler natural';
+          ruler.style.top=ny+'px';
+
+          var handle=document.createElement('div');
+          handle.className='bf-pag-handle';
+          handle.title='Drag up to move page break earlier';
+          ruler.appendChild(handle);
+
+          var lbl=document.createElement('span');
+          lbl.className='bf-pag-label';
+          lbl.textContent='Page '+pageIdx+' → '+(pageIdx+1);
+          ruler.appendChild(lbl);
+          overlay.appendChild(ruler);
+
+          // Drag
+          handle.style.pointerEvents='auto';
+          handle.addEventListener('mousedown',function(e){
+            e.preventDefault();
+            var prevBreakY=pageIdx===1?docBodyTop:docBodyTop+(pageIdx-1)*pageH;
+            var startMouse=e.clientY;
+            var startY=ny;
+
+            function onMove(ev){
+              var delta=ev.clientY-startMouse;
+              var newY=Math.max(prevBreakY+40,Math.min(startY,startY+delta));
+              ruler.style.top=newY+'px';
+              ruler.classList.add('dragging');
+            }
+            function onUp(ev){
+              ruler.classList.remove('dragging');
+              var delta=ev.clientY-startMouse;
+              var newY=Math.max(prevBreakY+40,Math.min(startY,startY+delta));
+              var relY=newY-docBodyTop;
+              var el=snapToBlock(relY);
+              if(el){
+                var brk=loadBreaks();
+                brk[elemPath(el)]=true;
+                saveBreaks(brk);
+                applyBreaks();
+              }
+              document.removeEventListener('mousemove',onMove);
+              document.removeEventListener('mouseup',onUp);
+              renderRulers();
+            }
+            document.addEventListener('mousemove',onMove);
+            document.addEventListener('mouseup',onUp);
+          });
+        })(i,naturalY);
+      }
+
+      // Custom break lines (from saved breaks)
+      var brksMap=loadBreaks();
+      Object.keys(brksMap).forEach(function(path){
+        var el=findByPath(path);if(!el)return;
+        var elY=docBody.offsetTop+el.offsetTop;
+        var ruler=document.createElement('div');
+        ruler.className='bf-pag-ruler custom';
+        ruler.style.top=elY+'px';
+
+        var handle=document.createElement('div');
+        handle.className='bf-pag-handle';
+        handle.title='Drag to reposition, or click label to remove';
+        ruler.appendChild(handle);
+
+        var lbl=document.createElement('span');
+        lbl.className='bf-pag-label';
+        lbl.textContent='Custom break — click to remove';
+        lbl.style.pointerEvents='auto';
+        lbl.style.cursor='pointer';
+        lbl.addEventListener('click',function(){
+          var b=loadBreaks();delete b[path];saveBreaks(b);applyBreaks();renderRulers();
+        });
+        ruler.appendChild(lbl);
+        overlay.appendChild(ruler);
+      });
+    }
+
+    function activate(){
+      active=true;
+      pagBtn.classList.add('active');
+      if(strip)strip.classList.add('active');
+      docBody.style.position='relative';
+      overlay=document.createElement('div');
+      overlay.className='bf-pag-overlay';
+      overlay.style.cssText='position:absolute;top:0;left:0;right:0;pointer-events:none;z-index:40';
+      overlay.style.height=docBody.scrollHeight+'px';
+      docBody.appendChild(overlay);
+      applyBreaks();
+      renderRulers();
+      if(fmtSel)fmtSel.addEventListener('change',renderRulers);
+      if(marginSel)marginSel.addEventListener('change',renderRulers);
+    }
+
+    function deactivate(){
+      active=false;
+      pagBtn.classList.remove('active');
+      if(strip)strip.classList.remove('active');
+      if(overlay&&overlay.parentNode){overlay.parentNode.removeChild(overlay);}
+      overlay=null;
+      applyBreaks();
+    }
+
+    pagBtn.addEventListener('click',function(){if(active)deactivate();else activate();});
+    if(printBtn){printBtn.addEventListener('click',function(){
+      if(active)deactivate();
+      setTimeout(function(){window.print();},50);
+    });}
+
+    // Apply any saved breaks on load (for printing without entering preview)
+    applyBreaks();
+  })();
+
   // ---- settings panel ----
   (function(){
     var KEYS={pad:'bf:settings:pad-h',font:'bf:settings:font',fontSize:'bf:settings:font-size',checkStyle:'bf:settings:check-style',accent:'bf:settings:accent',borderContrast:'bf:settings:border-contrast'};
@@ -4318,6 +4540,8 @@ TesselCompiler.prototype._renderToolbar = function(ast, docSlug) {
     '    <button id="bf-settings-btn" title="Settings">⚙ Settings</button>',
     '  </div>',
     '  <div class="bf-toolbar-right">',
+    '    <button id="bf-pag-btn" title="Pagination preview — see page breaks and drag to reposition them">⊟ Pagination</button>',
+    '    <button id="bf-print-btn" title="Print / Export PDF">⎙ Print</button>',
     '    <button id="bf-attach-btn" title="Attachments">📎 Attach <span id="bf-attach-count"></span></button>',
     '    <button id="bf-import-btn" title="Import session ZIP">↑ Import</button>',
     '    <button id="bf-export-btn" title="Export session ZIP">↓ Export</button>',
@@ -4535,6 +4759,23 @@ TesselCompiler.prototype.compile = function(ast) {
 
     // settings panel (overlay)
     this._renderSettingsPanel(),
+
+    // pagination strip (shown when pagination preview is active)
+    '<div id="bf-pag-strip">',
+    '  <strong style="color:var(--accent)">Pagination Preview</strong>',
+    '  <span>Paper:</span>',
+    '  <select id="bf-pag-format">',
+    '    <option value="letter">Letter (8.5×11in)</option>',
+    '    <option value="a4">A4 (210×297mm)</option>',
+    '  </select>',
+    '  <span>Margins:</span>',
+    '  <select id="bf-pag-margin">',
+    '    <option value="48">0.5in</option>',
+    '    <option value="96">1in</option>',
+    '    <option value="0">None</option>',
+    '  </select>',
+    '  <span class="bf-pag-strip-hint">Orange = natural break · Blue = custom break · Drag handle up to reposition</span>',
+    '</div>',
 
     // main split layout
     '<div id="bf-layout">',
