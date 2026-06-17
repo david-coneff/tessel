@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tessel Studio (standalone)</title>
+<title>Tessel Studio</title>
+<script>try{if(localStorage.getItem('tessel-studio:theme')==='light')document.documentElement.classList.add('light');}catch(e){}</script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -24,7 +25,7 @@
   --status-h:  26px;
   --gutter:    4px;
 }
-body.light {
+body.light, html.light body {
   --bg:      #f0f0f2;
   --surface: #ffffff;
   --border:  #b0b4bc;
@@ -138,10 +139,7 @@ body {
   color: var(--text); font-size: 11px; padding: 3px 5px; font-family: inherit; cursor: pointer;
 }
 .rb-select:focus { outline: none; border-color: var(--accent); }
-#rb-filename {
-  font-size: 11px; color: var(--muted); max-width: 180px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 6px;
-}
+/* #rb-filename merged into #filename-display */
 /* Format tab: color pickers inline */
 .rb-color-wrap { display: flex; align-items: center; gap: 4px; }
 .rb-color-wrap label { font-size: 10px; color: var(--muted); }
@@ -181,6 +179,8 @@ body {
   padding: 0 8px;
   gap: 0;
   min-height: var(--ribbon-tab-h);
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 #ribbon-tabs.dock-bottom {
   border-bottom: none;
@@ -257,6 +257,7 @@ body {
   width: 180px;
   min-height: 0;
   border-bottom: none;
+  scrollbar-width: none;
 }
 #ribbon-row.dock-left  { border-right: 1px solid var(--border); }
 #ribbon-row.dock-right { border-left:  1px solid var(--border); }
@@ -296,12 +297,13 @@ button.primary:hover { background: var(--accent2); }
 button:disabled { opacity: .4; cursor: default; }
 
 #filename-display {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted);
   max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  padding: 0 6px;
 }
 
 /* ---- Split pane ---- */
@@ -310,7 +312,6 @@ button:disabled { opacity: .4; cursor: default; }
   display: flex;
   min-height: 0;
   overflow: hidden;
-  min-height: 0;
 }
 
 #editor-pane {
@@ -432,7 +433,7 @@ button:disabled { opacity: .4; cursor: default; }
 #preview-frame {
   flex: 1;
   border: none;
-  background: #fff;
+  background: var(--bg);
 }
 
 #preview-placeholder {
@@ -652,6 +653,64 @@ button:disabled { opacity: .4; cursor: default; }
 #studio-theme-hdr button:hover { color: var(--text); }
 #studio-theme-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
 #btn-studio-theme.active { background: var(--accent); color: var(--bg); }
+#btn-toolbar-customize.active { background: var(--accent); color: var(--bg); }
+#toolbar-customize-panel {
+  position: fixed;
+  top: var(--toolbar-h);
+  right: 0;
+  width: 280px;
+  height: calc(100vh - var(--toolbar-h) - var(--status-h));
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -4px 0 20px rgba(0,0,0,.4);
+  z-index: 201;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#toolbar-customize-hdr {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px 8px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+#toolbar-customize-hdr span { flex: 1; }
+#toolbar-customize-close {
+  background: none; border: none; color: var(--muted);
+  cursor: pointer; font-size: 13px; padding: 1px 5px; border-radius: 3px;
+}
+#toolbar-customize-close:hover { color: var(--red); }
+#toolbar-customize-body { flex: 1; overflow-y: auto; padding: 10px 14px; font-size: 12px; }
+#toolbar-customize-footer { flex: 0 0 auto; padding: 10px 14px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 6px; }
+#toolbar-customize-footer .ds-btn { flex: 1; padding: 5px 8px; font-size: 12px; background: var(--surface2,var(--surface)); border: 1px solid var(--border); color: var(--fg); border-radius: 3px; cursor: pointer; white-space: nowrap; }
+#toolbar-customize-footer .ds-btn:hover { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.tc-section { margin-bottom: 16px; }
+.tc-section-label {
+  display: block; font-size: 10px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .08em;
+  margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border);
+}
+.tc-row {
+  display: flex; align-items: center; gap: 8px; margin: 3px 0; cursor: pointer; user-select: none;
+}
+.tc-row input[type=checkbox] { accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+.tc-row label { font-size: 11px; color: var(--text); cursor: pointer; flex: 1; }
+.tc-group-hdr {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10px; color: var(--muted); margin: 10px 0 4px;
+  cursor: pointer; user-select: none;
+}
+.tc-group-hdr::before { content: '▸'; font-size: 9px; }
+.tc-group-hdr.open::before { content: '▾'; }
+.tc-group-rows { margin-left: 12px; }
+.tc-hint { color: var(--muted); font-size: 10px; line-height: 1.5; margin-bottom: 12px; }
 
 /* ---- WYSIWYG editor ---- */
 #editor-pane{display:flex;flex-direction:column}
@@ -791,8 +850,8 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
   position: absolute;
   bottom: var(--status-h);
   left: 0; right: 0;
-  background: #5a1c1c;
-  color: #ffcdd2;
+  background: color-mix(in srgb, var(--red) 20%, var(--bg));
+  color: color-mix(in srgb, var(--red) 60%, var(--text));
   font-size: 12px;
   padding: 6px 12px;
   border-top: 1px solid var(--red);
@@ -800,6 +859,15 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
   max-height: 80px;
   overflow: auto;
   z-index: 10;
+}
+@media (max-width: 640px) {
+  #workspace { flex-direction: column; }
+  #drag-handle { display: none; }
+  #editor-pane { flex: 0 0 50vh !important; min-width: 0; width: 100% !important; }
+  #preview-pane { flex: 1; min-width: 0; }
+  #ribbon-row { overflow-x: auto; scrollbar-width: none; }
+  #ribbon-tabs { overflow-x: auto; }
+  #ws-outline, #ws-props { display: none; }
 }
 </style>
 </head>
@@ -821,6 +889,7 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
       <button id="btn-a11y-audit" title="Accessibility compliance audit — check compiled document for WCAG issues">♿ Audit</button>
       <div class="sep"></div>
       <button id="btn-studio-theme" title="Studio theme customization">🎨</button>
+      <button id="btn-toolbar-customize" title="Customize toolbar — show or hide ribbon buttons">⊞</button>
       <button id="btn-theme" title="Toggle light/dark mode">☀</button>
     </div>
   </div>
@@ -843,71 +912,71 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
       </div>
 
       <div class="rb-group">
-        <span id="filename-display" id="rb-filename">No file open</span>
+        <span id="filename-display">No file open</span>
       </div>
     </div>
 
     <!-- FIELDS panel -->
     <div class="ribbon-panel" id="rp-fields">
       <div class="rb-group">
-        <button class="rb-btn rb-insert" data-insert="@text " title="Single-line text input"><span class="rb-icon">✏</span>Text</button>
-        <button class="rb-btn rb-insert" data-insert="@area " title="Multi-line textarea"><span class="rb-icon">☰</span>Area</button>
-        <button class="rb-btn rb-insert" data-insert="@date " title="Date picker"><span class="rb-icon">📅</span>Date</button>
-        <button class="rb-btn rb-insert" data-insert="@datetime " title="Date and time picker"><span class="rb-icon">🕐</span>Datetime</button>
+        <button class="rb-btn rb-insert" data-insert="@text " data-rbid="fields-text" title="Single-line text input"><span class="rb-icon">✏</span>Text</button>
+        <button class="rb-btn rb-insert" data-insert="@area " data-rbid="fields-area" title="Multi-line textarea"><span class="rb-icon">☰</span>Area</button>
+        <button class="rb-btn rb-insert" data-insert="@date " data-rbid="fields-date" title="Date picker"><span class="rb-icon">📅</span>Date</button>
+        <button class="rb-btn rb-insert" data-insert="@datetime " data-rbid="fields-datetime" title="Date and time picker"><span class="rb-icon">🕐</span>Datetime</button>
       </div>
       <div class="rb-group">
-        <button class="rb-btn rb-insert" data-insert="@number " title="Numeric input"><span class="rb-icon">#</span>Number</button>
-        <button class="rb-btn rb-insert" data-insert="@email " title="Email address input"><span class="rb-icon">@</span>Email</button>
-        <button class="rb-btn rb-insert" data-insert="@phone " title="Phone number input"><span class="rb-icon">☎</span>Phone</button>
-        <button class="rb-btn rb-insert" data-insert="@url " title="URL input"><span class="rb-icon">🔗</span>URL</button>
+        <button class="rb-btn rb-insert" data-insert="@number " data-rbid="fields-number" title="Numeric input"><span class="rb-icon">#</span>Number</button>
+        <button class="rb-btn rb-insert" data-insert="@email " data-rbid="fields-email" title="Email address input"><span class="rb-icon">@</span>Email</button>
+        <button class="rb-btn rb-insert" data-insert="@phone " data-rbid="fields-phone" title="Phone number input"><span class="rb-icon">☎</span>Phone</button>
+        <button class="rb-btn rb-insert" data-insert="@url " data-rbid="fields-url" title="URL input"><span class="rb-icon">🔗</span>URL</button>
       </div>
       <div class="rb-group">
-        <button class="rb-btn rb-insert" data-insert="@image " title="Image upload field"><span class="rb-icon">🖼</span>Image</button>
-        <button class="rb-btn rb-insert" data-insert="@richtext " title="Rich-text editor"><span class="rb-icon">✦</span>Richtext</button>
-        <button class="rb-btn rb-insert" data-insert="@computed : " title="Computed / derived field"><span class="rb-icon">⚙</span>Computed</button>
+        <button class="rb-btn rb-insert" data-insert="@image " data-rbid="fields-image" title="Image upload field"><span class="rb-icon">🖼</span>Image</button>
+        <button class="rb-btn rb-insert" data-insert="@richtext " data-rbid="fields-richtext" title="Rich-text editor"><span class="rb-icon">✦</span>Richtext</button>
+        <button class="rb-btn rb-insert" data-insert="@computed : " data-rbid="fields-computed" title="Computed / derived field"><span class="rb-icon">⚙</span>Computed</button>
       </div>
       <div class="rb-group">
-        <button class="rb-btn rb-insert" data-insert="@radio : opt1, opt2" title="Radio button group"><span class="rb-icon">⦿</span>Radio</button>
-        <button class="rb-btn rb-insert" data-insert="@check : opt1, opt2" title="Checkbox group"><span class="rb-icon">☑</span>Check</button>
-        <button class="rb-btn rb-insert" data-insert="@select : opt1 | opt2" title="Dropdown select"><span class="rb-icon">▼</span>Select</button>
+        <button class="rb-btn rb-insert" data-insert="@radio : opt1, opt2" data-rbid="fields-radio" title="Radio button group"><span class="rb-icon">⦿</span>Radio</button>
+        <button class="rb-btn rb-insert" data-insert="@check : opt1, opt2" data-rbid="fields-check" title="Checkbox group"><span class="rb-icon">☑</span>Check</button>
+        <button class="rb-btn rb-insert" data-insert="@select : opt1 | opt2" data-rbid="fields-select" title="Dropdown select"><span class="rb-icon">▼</span>Select</button>
       </div>
       <div class="rb-group">
-        <button class="rb-btn rb-insert" data-insert="@totp " title="TOTP secret + QR code"><span class="rb-icon">🔐</span>TOTP</button>
-        <button class="rb-btn rb-insert" data-insert="@credential " title="Password / credential field"><span class="rb-icon">🗝</span>Credential</button>
-        <button class="rb-btn rb-insert" data-insert="@signature " title="Cryptographic signature field"><span class="rb-icon">✍</span>Signature</button>
+        <button class="rb-btn rb-insert" data-insert="@totp " data-rbid="fields-totp" title="TOTP secret + QR code"><span class="rb-icon">🔐</span>TOTP</button>
+        <button class="rb-btn rb-insert" data-insert="@credential " data-rbid="fields-credential" title="Password / credential field"><span class="rb-icon">🗝</span>Credential</button>
+        <button class="rb-btn rb-insert" data-insert="@signature " data-rbid="fields-signature" title="Cryptographic signature field"><span class="rb-icon">✍</span>Signature</button>
       </div>
       <div class="rb-group">
-        <button class="rb-btn" id="btn-insert-table" title="Insert a typed table field (opens Table Builder)"><span class="rb-icon">⊞</span>Table</button>
-        <button class="rb-btn rb-insert" data-insert="@parse : /regex/" title="Regex-parsed input"><span class="rb-icon">⊂</span>Parse</button>
-        <button class="rb-btn rb-insert" data-insert="@filename : {{SLUG}}_{{STAMP}}.txt" title="Filename template"><span class="rb-icon">📎</span>Filename</button>
-        <button class="rb-btn rb-insert" data-insert="@dir " title="Directory path field"><span class="rb-icon">📁</span>Dir</button>
+        <button class="rb-btn" id="btn-insert-table" data-rbid="fields-table" title="Insert a typed table field (opens Table Builder)"><span class="rb-icon">⊞</span>Table</button>
+        <button class="rb-btn rb-insert" data-insert="@parse : /regex/" data-rbid="fields-parse" title="Regex-parsed input"><span class="rb-icon">⊂</span>Parse</button>
+        <button class="rb-btn rb-insert" data-insert="@filename : {{SLUG}}_{{STAMP}}.txt" data-rbid="fields-filename" title="Filename template"><span class="rb-icon">📎</span>Filename</button>
+        <button class="rb-btn rb-insert" data-insert="@dir " data-rbid="fields-dir" title="Directory path field"><span class="rb-icon">📁</span>Dir</button>
       </div>
     </div>
 
     <!-- CONTENT panel -->
     <div class="ribbon-panel" id="rp-content">
       <div class="rb-group">
-        <button class="rb-btn rb-insert" data-insert="@section &#10;{id=}&#10;" title="Collapsible section"><span class="rb-icon">§</span>Section</button>
-        <button class="rb-btn rb-insert" data-insert="@endsection&#10;" title="End section">@endsection</button>
-        <button class="rb-btn rb-insert" data-insert="@subsection &#10;" title="Subsection"><span class="rb-icon">⊂</span>Subsection</button>
-        <button class="rb-btn rb-insert" data-insert="@endsubsection&#10;" title="End subsection">@endsubsection</button>
+        <button class="rb-btn rb-insert" data-insert="@section &#10;{id=}&#10;" data-rbid="content-section" title="Collapsible section"><span class="rb-icon">§</span>Section</button>
+        <button class="rb-btn rb-insert" data-insert="@endsection&#10;" data-rbid="content-endsection" title="End section">@endsection</button>
+        <button class="rb-btn rb-insert" data-insert="@subsection &#10;" data-rbid="content-subsection" title="Subsection"><span class="rb-icon">⊂</span>Subsection</button>
+        <button class="rb-btn rb-insert" data-insert="@endsubsection&#10;" data-rbid="content-endsubsection" title="End subsection">@endsubsection</button>
       </div>
       <div class="rb-group">
-        <button class="rb-btn rb-insert-heading" data-level="1" title="Heading 1">H1</button>
-        <button class="rb-btn rb-insert-heading" data-level="2" title="Heading 2">H2</button>
-        <button class="rb-btn rb-insert-heading" data-level="3" title="Heading 3">H3</button>
-        <button class="rb-btn rb-insert-heading" data-level="4" title="Heading 4">H4</button>
+        <button class="rb-btn rb-insert-heading" data-level="1" data-rbid="content-h1" title="Heading 1">H1</button>
+        <button class="rb-btn rb-insert-heading" data-level="2" data-rbid="content-h2" title="Heading 2">H2</button>
+        <button class="rb-btn rb-insert-heading" data-level="3" data-rbid="content-h3" title="Heading 3">H3</button>
+        <button class="rb-btn rb-insert-heading" data-level="4" data-rbid="content-h4" title="Heading 4">H4</button>
       </div>
       <div class="rb-group">
-        <button class="rb-btn rb-insert" data-insert="&#10;---&#10;&#10;" title="Horizontal rule"><span class="rb-icon">―</span>HR</button>
-        <button class="rb-btn rb-insert" data-insert="&#10;> " title="Blockquote"><span class="rb-icon">❝</span>Quote</button>
-        <button class="rb-btn rb-insert" data-insert="&#10;```&#10;&#10;```&#10;" title="Code block"><span class="rb-icon">⌥</span>Code</button>
+        <button class="rb-btn rb-insert" data-insert="&#10;---&#10;&#10;" data-rbid="content-hr" title="Horizontal rule"><span class="rb-icon">―</span>HR</button>
+        <button class="rb-btn rb-insert" data-insert="&#10;> " data-rbid="content-quote" title="Blockquote"><span class="rb-icon">❝</span>Quote</button>
+        <button class="rb-btn rb-insert" data-insert="&#10;```&#10;&#10;```&#10;" data-rbid="content-code" title="Code block"><span class="rb-icon">⌥</span>Code</button>
       </div>
       <div class="rb-group">
-        <button class="rb-btn" id="btn-insert-img" title="Insert inline image (embedded as data URI)"><span class="rb-icon">⬡</span>Embed Image</button>
+        <button class="rb-btn" id="btn-insert-img" data-rbid="content-embedimg" title="Insert inline image (embedded as data URI)"><span class="rb-icon">⬡</span>Embed Image</button>
         <input type="file" id="pick-img" accept="image/*" style="display:none">
-        <button class="rb-btn rb-insert" data-insert="@if {{VAR}}&#10;&#10;@endif&#10;" title="Conditional block"><span class="rb-icon">⁇</span>If/Endif</button>
-        <button class="rb-btn rb-insert" data-insert="@param &#10;{type=text}" title="Template parameter declaration"><span class="rb-icon">$</span>Param</button>
+        <button class="rb-btn rb-insert" data-insert="@if {{VAR}}&#10;&#10;@endif&#10;" data-rbid="content-ifendif" title="Conditional block"><span class="rb-icon">⁇</span>If/Endif</button>
+        <button class="rb-btn rb-insert" data-insert="@param &#10;{type=text}" data-rbid="content-param" title="Template parameter declaration"><span class="rb-icon">$</span>Param</button>
       </div>
     </div>
 
@@ -1328,6 +1397,90 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
       <button type="button" id="tbl-builder-cancel">Cancel</button>
       <button type="button" id="tbl-builder-insert" class="primary">Insert at cursor</button>
     </div>
+  </div>
+</div>
+
+<!-- Toolbar customize panel -->
+<div id="toolbar-customize-panel" style="display:none">
+  <div id="toolbar-customize-hdr">
+    <span>Customize Toolbar</span>
+    <button type="button" id="toolbar-customize-close" title="Close">✕</button>
+  </div>
+  <div id="toolbar-customize-body">
+    <p class="tc-hint">Show or hide individual buttons in the Fields and Content ribbon panels. Groups with all buttons hidden are collapsed automatically.</p>
+
+    <div class="tc-section">
+      <span class="tc-section-label">Fields panel</span>
+      <div class="tc-group-hdr open" data-tc-group="fields-basic">Basic inputs</div>
+      <div class="tc-group-rows" id="tcg-fields-basic">
+        <div class="tc-row"><input type="checkbox" id="tc-fields-text"     data-for="fields-text"><label for="tc-fields-text">✏ Text</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-area"     data-for="fields-area"><label for="tc-fields-area">☰ Area</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-date"     data-for="fields-date"><label for="tc-fields-date">📅 Date</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-datetime" data-for="fields-datetime"><label for="tc-fields-datetime">🕐 Datetime</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-number"   data-for="fields-number"><label for="tc-fields-number"># Number</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-email"    data-for="fields-email"><label for="tc-fields-email">@ Email</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-phone"    data-for="fields-phone"><label for="tc-fields-phone">☎ Phone</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-url"      data-for="fields-url"><label for="tc-fields-url">🔗 URL</label></div>
+      </div>
+      <div class="tc-group-hdr open" data-tc-group="fields-choice">Choices</div>
+      <div class="tc-group-rows" id="tcg-fields-choice">
+        <div class="tc-row"><input type="checkbox" id="tc-fields-radio"    data-for="fields-radio"><label for="tc-fields-radio">⦿ Radio</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-check"    data-for="fields-check"><label for="tc-fields-check">☑ Check</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-select"   data-for="fields-select"><label for="tc-fields-select">▼ Select</label></div>
+      </div>
+      <div class="tc-group-hdr open" data-tc-group="fields-rich">Rich content</div>
+      <div class="tc-group-rows" id="tcg-fields-rich">
+        <div class="tc-row"><input type="checkbox" id="tc-fields-image"    data-for="fields-image"><label for="tc-fields-image">🖼 Image</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-richtext" data-for="fields-richtext"><label for="tc-fields-richtext">✦ Richtext</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-table"    data-for="fields-table"><label for="tc-fields-table">⊞ Table</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-signature" data-for="fields-signature"><label for="tc-fields-signature">✍ Signature</label></div>
+      </div>
+      <div class="tc-group-hdr open" data-tc-group="fields-advanced">Advanced / developer</div>
+      <div class="tc-group-rows" id="tcg-fields-advanced">
+        <div class="tc-row"><input type="checkbox" id="tc-fields-computed"   data-for="fields-computed"><label for="tc-fields-computed">⚙ Computed</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-parse"      data-for="fields-parse"><label for="tc-fields-parse">⊂ Parse</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-filename"   data-for="fields-filename"><label for="tc-fields-filename">📎 Filename</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-dir"        data-for="fields-dir"><label for="tc-fields-dir">📁 Dir</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-totp"       data-for="fields-totp"><label for="tc-fields-totp">🔐 TOTP</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-credential" data-for="fields-credential"><label for="tc-fields-credential">🗝 Credential</label></div>
+      </div>
+    </div>
+
+    <div class="tc-section">
+      <span class="tc-section-label">Content panel</span>
+      <div class="tc-group-hdr open" data-tc-group="content-structure">Structure</div>
+      <div class="tc-group-rows" id="tcg-content-structure">
+        <div class="tc-row"><input type="checkbox" id="tc-content-section"        data-for="content-section"><label for="tc-content-section">§ Section / @endsection</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-content-subsection"     data-for="content-subsection"><label for="tc-content-subsection">⊂ Subsection / @endsubsection</label></div>
+      </div>
+      <div class="tc-group-hdr open" data-tc-group="content-headings">Headings</div>
+      <div class="tc-group-rows" id="tcg-content-headings">
+        <div class="tc-row"><input type="checkbox" id="tc-content-h1" data-for="content-h1"><label for="tc-content-h1">H1</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-content-h2" data-for="content-h2"><label for="tc-content-h2">H2</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-content-h3" data-for="content-h3"><label for="tc-content-h3">H3</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-content-h4" data-for="content-h4"><label for="tc-content-h4">H4</label></div>
+      </div>
+      <div class="tc-group-hdr open" data-tc-group="content-blocks">Block elements</div>
+      <div class="tc-group-rows" id="tcg-content-blocks">
+        <div class="tc-row"><input type="checkbox" id="tc-content-hr"       data-for="content-hr"><label for="tc-content-hr">― HR</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-content-quote"    data-for="content-quote"><label for="tc-content-quote">❝ Quote</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-content-code"     data-for="content-code"><label for="tc-content-code">⌥ Code block</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-content-embedimg" data-for="content-embedimg"><label for="tc-content-embedimg">⬡ Embed Image</label></div>
+      </div>
+      <div class="tc-group-hdr open" data-tc-group="content-advanced">Advanced / developer</div>
+      <div class="tc-group-rows" id="tcg-content-advanced">
+        <div class="tc-row"><input type="checkbox" id="tc-content-ifendif" data-for="content-ifendif"><label for="tc-content-ifendif">⁇ If / @endif</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-content-param"   data-for="content-param"><label for="tc-content-param">$ Param</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-content-endsection"    data-for="content-endsection"><label for="tc-content-endsection">@endsection (standalone)</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-content-endsubsection" data-for="content-endsubsection"><label for="tc-content-endsubsection">@endsubsection (standalone)</label></div>
+      </div>
+    </div>
+  </div>
+  <div id="toolbar-customize-footer">
+    <button type="button" class="ds-reset" id="tc-reset">Reset to defaults</button>
+    <button type="button" class="ds-btn" id="tc-export-prefs" title="Export all Studio preferences to a JSON file">Export prefs</button>
+    <button type="button" class="ds-btn" id="tc-import-prefs" title="Import Studio preferences from a JSON file">Import prefs</button>
+    <input type="file" id="tc-import-file" accept=".json" style="display:none">
   </div>
 </div>
 
@@ -1784,6 +1937,13 @@ var TESSEL_CSS = `
   /* credential fields */
   .cred-field{background:rgba(243,139,168,.05);border:1px solid rgba(243,139,168,.3);
     border-radius:var(--radius);padding:10px 12px;margin:10px 0}
+  .totp-live-wrap{display:flex;align-items:center;gap:8px;margin-top:6px;min-height:28px}
+  .totp-live-code{font-size:1.5em;font-weight:700;letter-spacing:.12em;font-variant-numeric:tabular-nums;min-width:5ch}
+  .totp-live-code:empty{display:none}
+  .totp-ring-svg{width:28px;height:28px;flex-shrink:0}
+  .totp-ring-bg{fill:none;stroke:var(--border);stroke-width:3}
+  .totp-ring{fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:round;stroke-dasharray:100;stroke-dashoffset:0;transform:rotate(-90deg);transform-origin:18px 18px;transition:stroke-dashoffset .9s linear}
+  .totp-live-code:empty~.totp-ring-svg{display:none}
   .totp-qr-wrap{margin-top:8px;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
   .totp-qr-wrap canvas{display:none;border:1px solid var(--border);border-radius:4px;background:#fff;max-width:180px;image-rendering:pixelated}
   .totp-qr-label{font-size:.68em;color:var(--muted);font-style:italic}
@@ -2215,9 +2375,9 @@ var TESSEL_CSS = `
   /* design mode: fields get click-to-select highlight in preview iframe */
   .design-mode-active{outline:2px dashed var(--accent)!important;cursor:pointer!important}
   #btn-design-mode.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
-  @media print{#bf-main{padding:12px}#bf-notes-pane,#bf-drag,#bf-settings-panel,#bf-pag-strip,
+  @media print{@page{margin:2cm}#bf-main{padding:12px}#bf-notes-pane,#bf-drag,#bf-settings-panel,#bf-pag-strip,
     .bf-pag-overlay{display:none!important}
-    #bf-pag-btn,#bf-print-btn,#bf-theme-btn,.copy-btn{display:none}
+    #bf-toolbar,#bf-pag-btn,#bf-print-btn,#bf-theme-btn,.copy-btn{display:none}
     .bf-sub-controls,.bf-edit-btn,.bf-edit-controls{display:none}
     .param-input,.note-input,.note-area,#bf-session-notes{border:1px solid #999}}
   /* ---- @image field ---- */
@@ -2457,12 +2617,25 @@ var TESSEL_RUNTIME_JS = String.raw`
             ctx.scale(ratio,ratio);
             // restore
             if(dataUrl !== 'data:,'){
-              var img = new Image(); img.onload=function(){ctx.drawImage(img,0,0);};img.src=dataUrl;
+              var img = new Image();
+              img.onload=function(){ctx.drawImage(img,0,0,Math.round(rect.width),Math.round(rect.height));};
+              img.src=dataUrl;
             }
           }
         }
         // restore saved drawing
-        try{ var sd=localStorage.getItem('bf:sig:'+id+':draw'); if(sd){ var img=new Image(); img.onload=function(){resizeCanvas();ctx.drawImage(img,0,0,canvas.width/devicePixelRatio,canvas.height/devicePixelRatio);};img.src=sd; if(drawHid)drawHid.value=sd; } }catch(e){}
+        try{ var sd=localStorage.getItem('bf:sig:'+id+':draw'); if(sd){ var img=new Image(); img.onload=function(){
+          // Skip resizeCanvas if panel is hidden (getBoundingClientRect returns 0,0 and would zero the canvas)
+          var panel=canvas.closest('.sig-panel');
+          if(panel&&panel.style.display==='none'){
+            var cssW=canvas.width/(window.devicePixelRatio||1),cssH=canvas.height/(window.devicePixelRatio||1);
+            ctx.drawImage(img,0,0,cssW,cssH);
+          } else {
+            resizeCanvas();
+            var r2=canvas.getBoundingClientRect();
+            ctx.drawImage(img,0,0,Math.round(r2.width),Math.round(r2.height));
+          }
+        };img.src=sd; if(drawHid)drawHid.value=sd; } }catch(e){}
         function saveDrawing(){
           var url=canvas.toDataURL('image/png');
           if(drawHid)drawHid.value=url;
@@ -2478,7 +2651,7 @@ var TESSEL_RUNTIME_JS = String.raw`
         function moveDraw(e){ if(!drawing)return; e.preventDefault(); var p=pos(e); ctx.lineWidth=2; ctx.lineCap='round'; ctx.strokeStyle=getComputedStyle(document.body).getPropertyValue('--text')||'#cdd6f4'; ctx.lineTo(p.x,p.y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(p.x,p.y); lx=p.x;ly=p.y; }
         function endDraw(){ if(!drawing)return; drawing=false; saveDrawing(); }
         canvas.addEventListener('mousedown',startDraw); canvas.addEventListener('mousemove',moveDraw); canvas.addEventListener('mouseup',endDraw); canvas.addEventListener('mouseleave',endDraw);
-        canvas.addEventListener('touchstart',startDraw,{passive:false}); canvas.addEventListener('touchmove',moveDraw,{passive:false}); canvas.addEventListener('touchend',endDraw);
+        canvas.addEventListener('touchstart',startDraw,{passive:false}); canvas.addEventListener('touchmove',moveDraw,{passive:false}); canvas.addEventListener('touchend',endDraw); canvas.addEventListener('touchcancel',endDraw);
         if(clearBtn){ clearBtn.addEventListener('click',function(){ ctx.clearRect(0,0,canvas.width,canvas.height); if(drawHid)drawHid.value=''; try{localStorage.removeItem('bf:sig:'+id+':draw');}catch(e){} }); }
       }
 
@@ -2809,6 +2982,60 @@ var TESSEL_RUNTIME_JS = String.raw`
     return out.match(/.{1,4}/g).join(' ');
   }
 
+  // ---- TOTP live code ----
+  (function(){
+    function b32decode(s){
+      var alpha='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+      s=s.toUpperCase().replace(/\s/g,'').replace(/=+$/,'');
+      var bits=0,val=0,out=[];
+      for(var i=0;i<s.length;i++){
+        var ch=alpha.indexOf(s[i]);
+        if(ch<0)continue;
+        val=(val<<5)|ch; bits+=5;
+        if(bits>=8){bits-=8;out.push((val>>bits)&0xff);}
+      }
+      return new Uint8Array(out);
+    }
+    async function computeTotp(secret,algo,t){
+      var key=b32decode(secret);
+      if(!key.length)return null;
+      var algoName=algo==='SHA-256'?'SHA-256':'SHA-1';
+      var digits=6,period=30;
+      var counter=Math.floor((t||Date.now()/1000)/period);
+      var msg=new Uint8Array(8);
+      for(var i=7;i>=0;i--){msg[i]=counter&0xff;counter>>=8;}
+      var cryptoKey=await crypto.subtle.importKey('raw',key,{name:'HMAC',hash:algoName},false,['sign']);
+      var sig=new Uint8Array(await crypto.subtle.sign('HMAC',cryptoKey,msg));
+      var offset=sig[sig.length-1]&0x0f;
+      var code=((sig[offset]&0x7f)<<24|(sig[offset+1]&0xff)<<16|(sig[offset+2]&0xff)<<8|(sig[offset+3]&0xff))%Math.pow(10,digits);
+      return String(code).padStart(digits,'0');
+    }
+    function startTotpLive(inp){
+      var id=inp.dataset.cred||inp.id||'';
+      var display=document.querySelector('.totp-live-code[data-for="'+id+'"]');
+      var ring=document.querySelector('.totp-ring[data-for="'+id+'"]');
+      if(!display)return;
+      var tid=null;
+      function refresh(){
+        var secret=(inp.value||'').trim().replace(/\s/g,'');
+        if(!secret){display.textContent='';if(ring)ring.style.strokeDashoffset='';return;}
+        var algoSel=document.querySelector('.bf-suggest-select[data-suggest-for="'+id+'"]');
+        var algo=algoSel&&algoSel.value==='totp-32'?'SHA-256':'SHA-1';
+        var now=Date.now()/1000;
+        var remaining=30-(now%30);
+        computeTotp(secret,algo,now).then(function(code){
+          if(code)display.textContent=code;
+          if(ring){var pct=remaining/30;ring.style.strokeDashoffset=String(Math.round((1-pct)*100));}
+        });
+      }
+      function loop(){refresh();var ms=(30-(Date.now()/1000%30))*1000;tid=setTimeout(loop,Math.min(ms,1000));}
+      loop();
+      inp.addEventListener('input',refresh);
+      return function(){clearTimeout(tid);};
+    }
+    document.querySelectorAll('.cred-totp-input').forEach(function(inp){startTotpLive(inp);});
+  })();
+
   // ---- suggest buttons ----
   (function(){
     document.querySelectorAll('.bf-suggest-btn').forEach(function(btn){
@@ -2960,8 +3187,8 @@ var TESSEL_RUNTIME_JS = String.raw`
           inp=document.createElement('input');inp.type='checkbox';break;
         case 'select':
           inp=document.createElement('select');
-          inp.innerHTML='<option value="">—</option>'+col.opts.map(function(o){
-            return'<option value="'+o+'">'+o+'</option>';}).join('');
+          var _dopt=document.createElement('option');_dopt.value='';_dopt.textContent='—';inp.appendChild(_dopt);
+          col.opts.forEach(function(o){var opt=document.createElement('option');opt.value=o;opt.textContent=o;inp.appendChild(opt);});
           break;
         case 'radio':
           inp=document.createElement('div');inp.className='tb-radio-group';
@@ -3077,10 +3304,11 @@ var TESSEL_RUNTIME_JS = String.raw`
       var lastMatch=null;
       btn.addEventListener('click',function(){
         var matched=null;
+        if(ta.value.length>100000){valueEl.textContent='(input too large — max 100 000 chars)';resultDiv.style.display='';if(applyBtn)applyBtn.style.display='none';return;}
         try{var rx=new RegExp(rxStr,'m');var m=ta.value.match(rx);if(m)matched=m[1]!==undefined?m[1]:m[0];}catch(e){}
         lastMatch=matched; valueEl.textContent=matched||'(no match found)';
         resultDiv.style.display='';
-        if(applyBtn)applyBtn.style.display=matched?'':'none';
+        if(applyBtn)applyBtn.style.display=(matched&&target)?'':'none';
       });
       if(applyBtn){
         applyBtn.addEventListener('click',function(){
@@ -3203,6 +3431,16 @@ var TESSEL_RUNTIME_JS = String.raw`
       // eval required_if
       if(!required && requiredIf) required = evalExpr(requiredIf);
 
+      // skip validation on hidden fields — also check nearest .notefield/.choice-field ancestor
+      var visTarget = el.closest('.notefield,.date-field,.choice-field,.table-field') || fieldWrap;
+      if((fieldWrap && fieldWrap.style.display === 'none') || (visTarget && visTarget.style.display === 'none')) {
+        el.classList.remove('tv-invalid');
+        el.removeAttribute('aria-invalid');
+        var warnSrc = fieldWrap || visTarget;
+        if(warnSrc){var ws=warnSrc.querySelector('.tv-warn-msg');if(ws){ws.textContent='';ws.style.display='none';}}
+        return;
+      }
+
       var err = '';
       if(required && isEmpty){ err = warnMsg||'This field is required.'; }
       else if(validateExpr && !isEmpty){ if(!evalExpr(validateExpr)) err = warnMsg||'Validation failed.'; }
@@ -3270,7 +3508,8 @@ var TESSEL_RUNTIME_JS = String.raw`
       var slug = inp.dataset.cred||'';
       if(!slug) return;
       var conf = document.getElementById('cred-confirm-'+slug);
-      if(!conf||!conf.value) return;
+      if(!conf) return;
+      if(!inp.value&&!conf.value) return; // both empty — no mismatch to show
       var mismatch = inp.value !== conf.value;
       inp.classList.toggle('tv-invalid', mismatch);
       conf.classList.toggle('tv-invalid', mismatch);
@@ -3309,29 +3548,35 @@ var TESSEL_RUNTIME_JS = String.raw`
       choiceField.querySelectorAll('input:checked').forEach(function(c){checked.push(c.value);});
       return checked;
     }
+    if (el.type === 'number') return el.value === '' ? '' : parseFloat(el.value);
     return el.value||'';
   }
-  function evalExpr(expr){
+  function evalExpr(expr, _depth){
+    if ((_depth||0) > 64) { console.warn('[Tessel] evalExpr: max depth exceeded'); return false; }
     try {
-      return _evalExprInner(expr);
+      return _evalExprInner(expr, (_depth||0)+1);
     } catch(e) {
       console.warn('[Tessel] evalExpr error in expression "' + expr + '":', e.message);
       return false;
     }
   }
-  function _evalExprInner(expr){
+  function _evalExprInner(expr, _depth){
     if(!expr||!expr.trim()) return true;
     expr = expr.trim();
     // or
     var orParts = splitTopLevel(expr,' or ');
-    if(orParts.length>1) return orParts.some(function(p){return evalExpr(p.trim());});
+    if(orParts.length>1) return orParts.some(function(p){return evalExpr(p.trim(),_depth);});
     // and
     var andParts = splitTopLevel(expr,' and ');
-    if(andParts.length>1) return andParts.every(function(p){return evalExpr(p.trim());});
+    if(andParts.length>1) return andParts.every(function(p){return evalExpr(p.trim(),_depth);});
     // not
-    if(expr.startsWith('not ')) return !evalExpr(expr.slice(4));
-    // parens
-    if(expr.startsWith('(')&&expr.endsWith(')')) return evalExpr(expr.slice(1,-1));
+    if(expr.startsWith('not ')) return !evalExpr(expr.slice(4),_depth);
+    // parens — only strip if the closing ')' at the end matches the opening '(' at position 0
+    if(expr.startsWith('(')&&expr.endsWith(')')){
+      var _pd=0;var _pm=false;
+      for(var _pi=0;_pi<expr.length-1;_pi++){if(expr[_pi]==='(') _pd++;else if(expr[_pi]===')')_pd--;if(_pd===0){_pm=true;break;}}
+      if(!_pm) return evalExpr(expr.slice(1,-1),_depth);
+    }
     // operators
     var ops=[['>=','gte'],['<=','lte'],['>','gt'],['<','lt'],['!=','neq'],['==','eq'],['contains','contains']];
     for(var i=0;i<ops.length;i++){
@@ -3372,26 +3617,37 @@ var TESSEL_RUNTIME_JS = String.raw`
     // field ref
     var el=document.querySelector('[data-tv-id="'+s+'"]')||document.querySelector('[data-note="'+s+'"]')||document.querySelector('[data-var="'+s+'"]');
     if(el) return getFieldValue(el);
-    return s;
+    return ''; // unknown field id → falsy, not the identifier string
   }
   function splitTopLevel(s,sep){
-    var parts=[],depth=0,cur='';
+    var parts=[],depth=0,cur='',inQ=false,qc='';
     for(var i=0;i<s.length;i++){
-      if(s[i]==='(') depth++;
-      else if(s[i]===')') depth--;
-      if(depth===0&&s.slice(i,i+sep.length)===sep){parts.push(cur);cur='';i+=sep.length-1;}
-      else cur+=s[i];
+      var ch=s[i];
+      if(!inQ&&(ch==='"'||ch==="'")){inQ=true;qc=ch;}
+      else if(inQ&&ch===qc){inQ=false;}
+      else if(!inQ&&ch==='(') depth++;
+      else if(!inQ&&ch===')') depth--;
+      if(!inQ&&depth===0&&s.slice(i,i+sep.length)===sep){parts.push(cur);cur='';i+=sep.length-1;}
+      else cur+=ch;
     }
     parts.push(cur);
     return parts.length>1?parts:[s];
   }
   function findOp(s,op){
-    // find op not inside quotes
+    // find op not inside quotes; word-based ops require surrounding whitespace
+    var wordOp=/^[a-z]/.test(op);
     var inQ=false,qc='';
     for(var i=0;i<s.length;i++){
       if(!inQ&&(s[i]==='"'||s[i]==="'")){inQ=true;qc=s[i];}
       else if(inQ&&s[i]===qc) inQ=false;
-      else if(!inQ&&s.slice(i,i+op.length)===op) return i;
+      else if(!inQ&&s.slice(i,i+op.length)===op){
+        if(wordOp){
+          var before=i===0||s[i-1]===' ';
+          var after=i+op.length>=s.length||s[i+op.length]===' ';
+          if(!before||!after) continue;
+        }
+        return i;
+      }
     }
     return -1;
   }
@@ -3424,10 +3680,19 @@ var TESSEL_RUNTIME_JS = String.raw`
           s.textContent=val||'';
         });
         var text=clone.innerText||clone.textContent;
-        navigator.clipboard.writeText(text).then(function(){
-          var old=btn.textContent;btn.textContent='Copied!';
-          setTimeout(function(){btn.textContent=old;},1400);
-        }).catch(function(){});
+        var old=btn.textContent;
+        function flashCopied(){btn.textContent='Copied!';setTimeout(function(){btn.textContent=old;},1400);}
+        if(navigator.clipboard&&navigator.clipboard.writeText){
+          navigator.clipboard.writeText(text).then(flashCopied).catch(function(){
+            var t=document.createElement('textarea');t.value=text;t.style.position='fixed';t.style.opacity='0';
+            document.body.appendChild(t);t.select();try{document.execCommand('copy');flashCopied();}catch(e){}
+            document.body.removeChild(t);
+          });
+        } else {
+          var t=document.createElement('textarea');t.value=text;t.style.position='fixed';t.style.opacity='0';
+          document.body.appendChild(t);t.select();try{document.execCommand('copy');flashCopied();}catch(e){}
+          document.body.removeChild(t);
+        }
       });
     });
   })();
@@ -3449,15 +3714,17 @@ var TESSEL_RUNTIME_JS = String.raw`
         if(inp.dataset.var) params[inp.dataset.var]=inp.value;
       });
       var notes=[];
-      document.querySelectorAll('.note-input,.note-area').forEach(function(inp){
+      document.querySelectorAll('.note-input,.note-area,input[type=hidden][data-note]:not([data-computed-expr])').forEach(function(inp){
         var slug=inp.dataset.note||inp.id||'';if(!slug)return;
-        var label=inp.closest('.notefield')?.querySelector('label')?.textContent||slug;
-        notes.push({label:label,value:inp.value,type:inp.tagName==='TEXTAREA'?'area':'field'});
+        var _wrap=inp.closest('.notefield');
+        var label=(_wrap&&(_wrap.querySelector('legend')?.textContent?.trim()||_wrap.querySelector('label')?.textContent?.trim()))||slug;
+        notes.push({id:slug,label:label,value:inp.value,type:inp.tagName==='TEXTAREA'?'area':'field'});
       });
       document.querySelectorAll('.date-field').forEach(function(div){
         var inp=div.querySelector('input[type=date]');if(!inp)return;
-        var label=div.querySelector('label')?.textContent||inp.dataset.note||'date';
-        notes.push({label:label,value:inp.value,type:'date'});
+        var slug=inp.dataset.note||inp.id||'date';
+        var label=div.querySelector('label')?.textContent||slug;
+        notes.push({id:slug,label:label,value:inp.value,type:'date'});
       });
       document.querySelectorAll('.datetime-field').forEach(function(div){
         var inp=div.querySelector('input[type=datetime-local]');if(!inp)return;
@@ -3587,7 +3854,7 @@ var TESSEL_RUNTIME_JS = String.raw`
       }
       if(rec.notes){
         rec.notes.forEach(function(n){
-          var slug=n.label.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,48)||'note';
+          var slug=n.id||(n.label||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,48)||'note';
           var inp=document.querySelector('[data-note="'+slug+'"]');
           if(inp){inp.value=n.value||'';try{localStorage.setItem(ns+'note:'+slug,inp.value);}catch(e){}inp.dispatchEvent(new Event('input'));}
         });
@@ -3602,7 +3869,7 @@ var TESSEL_RUNTIME_JS = String.raw`
     async function processZip(ab){
       var files=parseZip(ab);if(!files)return alert('Could not parse ZIP file.');
       if(files['payload.enc']&&files['meta.json']){
-        var meta=JSON.parse(new TextDecoder().decode(files['meta.json']));
+        var meta;try{meta=JSON.parse(new TextDecoder().decode(files['meta.json']));}catch(e){return alert('meta.json is corrupt or unreadable.');}
         var phrase=prompt('This package is encrypted. Enter passphrase:','');if(!phrase)return;
         try{
           function b64ToU8(s){var b=atob(s),a=new Uint8Array(b.length);for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a;}
@@ -4048,7 +4315,7 @@ var TESSEL_RUNTIME_JS = String.raw`
       var w=parseFloat(custW?custW.value:0)||0;
       var h=parseFloat(custH?custH.value:0)||0;
       var unit=custUnit?custUnit.value:'mm';
-      if(!w||!h){alert('Please enter valid width and height.');return;}
+      if(!w||!h||w<=0||h<=0){alert('Please enter valid positive width and height.');return;}
       if(unit==='in'){w=w*25.4;h=h*25.4;}
       var key='custom_'+Date.now();
       var c=loadCustomSizes();
@@ -4216,7 +4483,7 @@ var TESSEL_RUNTIME_JS = String.raw`
       docBody.appendChild(overlay);
       applyBreaks();
       renderRulers();
-      if(marginSel)marginSel.addEventListener('change',renderRulers);
+      if(marginSel){marginSel.addEventListener('change',renderRulers);marginSel._paginateBound=renderRulers;}
     }
 
     function deactivate(){
@@ -4226,6 +4493,7 @@ var TESSEL_RUNTIME_JS = String.raw`
       if(overlay&&overlay.parentNode){overlay.parentNode.removeChild(overlay);}
       overlay=null;
       applyBreaks();
+      if(marginSel&&marginSel._paginateBound){marginSel.removeEventListener('change',marginSel._paginateBound);marginSel._paginateBound=null;}
     }
 
     pagBtn.addEventListener('click',function(){if(active)deactivate();else activate();});
@@ -4327,8 +4595,15 @@ var TESSEL_RUNTIME_JS = String.raw`
       try{var s=localStorage.getItem(ns+'note:'+id);if(s)setImg(s);}catch(e){}
       inp.addEventListener('change',function(){
         var f=this.files&&this.files[0];if(!f)return;
+        if(f.size>5*1024*1024){alert('Image is too large (max 5 MB). Please choose a smaller file.');inp.value='';return;}
         var r=new FileReader();
-        r.onload=function(ev){setImg(ev.target.result);};
+        r.onload=function(ev){
+          setImg(ev.target.result);
+          // Warn if localStorage failed (quota exceeded)
+          var stored;
+          try{stored=localStorage.getItem(ns+'note:'+id);}catch(e){}
+          if(ev.target.result&&!stored)console.warn('[Tessel] Image stored in memory only — localStorage quota exceeded.');
+        };
         r.readAsDataURL(f);
       });
       if(clearBtn)clearBtn.addEventListener('click',function(){inp.value='';setImg('');});
@@ -4343,11 +4618,30 @@ var TESSEL_RUNTIME_JS = String.raw`
       var toolbar=document.querySelector('[data-rt-for="'+id+'"]');
       function save(){
         var html=editor.innerHTML;
+        // Treat a lone <br> as empty (browser artifact in empty contenteditable)
+        if(html==='<br>'||html==='<BR>'||html==='<br/>'||html==='<BR/>') html='';
         if(hidden)hidden.value=html;
         try{localStorage.setItem(ns+'note:'+id,html);}catch(e){}
         if(hidden){tesselValidate(hidden);tesselVisibility();}
       }
-      try{var s=localStorage.getItem(ns+'note:'+id);if(s)editor.innerHTML=s;}catch(e){}
+      function rtSanitize(html){
+        var tmp=document.createElement('div');
+        tmp.innerHTML=html;
+        tmp.querySelectorAll('script,style,iframe,object,embed,form').forEach(function(el){el.remove();});
+        tmp.querySelectorAll('[onclick],[onerror],[onload],[onmouseover]').forEach(function(el){
+          ['onclick','onerror','onload','onmouseover','onfocus','onblur'].forEach(function(a){el.removeAttribute(a);});
+        });
+        tmp.querySelectorAll('a[href]').forEach(function(a){
+          if(!/^(https?:\/\/|mailto:|#)/i.test(a.getAttribute('href')))a.removeAttribute('href');
+        });
+        return tmp.innerHTML;
+      }
+      try{var s=localStorage.getItem(ns+'note:'+id);if(s)editor.innerHTML=rtSanitize(s);}catch(e){}
+      editor.addEventListener('paste',function(e){
+        e.preventDefault();
+        var plain=(e.clipboardData||window.clipboardData).getData('text/plain');
+        document.execCommand('insertText',false,plain);
+      });
       editor.addEventListener('input',save);
       editor.addEventListener('blur',save);
       if(toolbar){
@@ -4358,7 +4652,7 @@ var TESSEL_RUNTIME_JS = String.raw`
           var cmd=btn.dataset.rtCmd;
           if(cmd==='createLink'){
             var url=window.prompt('Enter URL:');
-            if(url) document.execCommand('createLink',false,url);
+            if(url&&/^(https?:\/\/|mailto:|#)/i.test(url.trim()))document.execCommand('createLink',false,url.trim());
           } else {
             document.execCommand(cmd,false,null);
           }
@@ -4381,16 +4675,19 @@ var TESSEL_RUNTIME_JS = String.raw`
       try{return String(Function('"use strict";return('+resolved+')')());}catch(e){return'';}
     }
     function updateAll(){
-      document.querySelectorAll('[data-computed-expr]').forEach(function(hidden){
-        var id=hidden.dataset.note;
-        var expr=hidden.dataset.computedExpr;
-        if(!expr)return;
-        var val=evalExpr(expr);
-        hidden.value=val;
-        var disp=document.getElementById('note-'+id+'-display');
-        if(disp)disp.textContent=val;
-        try{localStorage.setItem(ns+'note:'+id,val);}catch(e){}
-      });
+      // Two passes handle chains between computed fields (e.g. B depends on A)
+      for(var _pass=0;_pass<2;_pass++){
+        document.querySelectorAll('[data-computed-expr]').forEach(function(hidden){
+          var id=hidden.dataset.note;
+          var expr=hidden.dataset.computedExpr;
+          if(!expr)return;
+          var val=evalExpr(expr);
+          hidden.value=val;
+          var disp=document.getElementById('note-'+id+'-display');
+          if(disp)disp.textContent=val;
+          try{localStorage.setItem(ns+'note:'+id,val);}catch(e){}
+        });
+      }
     }
     document.addEventListener('input',function(e){if(e.target&&e.target.dataset&&e.target.dataset.note)updateAll();});
     document.addEventListener('change',function(e){if(e.target&&e.target.dataset&&e.target.dataset.note)updateAll();});
@@ -4760,6 +5057,7 @@ function applyMeta(node, meta) {
   if (meta.multiline !== undefined) fieldMeta.multiline = meta.multiline === 'true' || meta.multiline === true;
   if (meta.min !== undefined) fieldMeta.min = meta.min;
   if (meta.max !== undefined) fieldMeta.max = meta.max;
+  if (meta.step !== undefined) fieldMeta.step = meta.step;
   if (meta.format) fieldMeta.format = meta.format;
   if (meta.rows !== undefined) fieldMeta.rows = parseInt(meta.rows, 10) || 4;
   if (meta.preset_rows) fieldMeta.preset_rows = meta.preset_rows.split('|').map(function(s) { return s.trim(); }).filter(Boolean);
@@ -4863,6 +5161,7 @@ TesselParser.prototype.parse = function(source) {
       var depth = 0;
       var start = j;
       while (j < lines.length) {
+        if (j - start > 30) break; // guard against unterminated { block
         var seg = lines[j];
         for (var c = 0; c < seg.length; c++) {
           if (seg[c] === '{') depth++;
@@ -4940,7 +5239,10 @@ TesselParser.prototype.parse = function(source) {
           continue;
         }
         if (dir === 'endsection') {
-          if (sectionStack.length && sectionStack[sectionStack.length - 1].type === 'section')
+          // pop any open subsections, then pop the enclosing section
+          while (sectionStack.length && sectionStack[sectionStack.length - 1].type !== 'section')
+            sectionStack.pop();
+          if (sectionStack.length)
             sectionStack.pop();
           continue;
         }
@@ -5008,6 +5310,22 @@ TesselParser.prototype.parse = function(source) {
           fieldNode = { type: 'totp_field', label: rest };
           applyMeta(fieldNode, meta);
         }
+        else if (dir === 'number' || dir === 'num') {
+          fieldNode = { type: 'number_field', label: rest };
+          applyMeta(fieldNode, meta);
+        }
+        else if (dir === 'email') {
+          fieldNode = { type: 'email_field', label: rest };
+          applyMeta(fieldNode, meta);
+        }
+        else if (dir === 'phone' || dir === 'tel') {
+          fieldNode = { type: 'phone_field', label: rest };
+          applyMeta(fieldNode, meta);
+        }
+        else if (dir === 'url') {
+          fieldNode = { type: 'url_field', label: rest };
+          applyMeta(fieldNode, meta);
+        }
         else if (dir === 'radio') {
           var rSpec = parseOptionSpec(rest, ',');
           fieldNode = { type: 'radio_field', label: rSpec.label, options: rSpec.options };
@@ -5025,7 +5343,7 @@ TesselParser.prototype.parse = function(source) {
         }
         else if (dir === 'table') {
           var tSpec = parseTableSpec(rest);
-          var cols = tSpec.columns.map(function(c) { return { name: c, type: 'text' }; });
+          var cols = tSpec.columns.map(function(c) { return { name: c.name, type: c.type || 'text', opts: c.opts || [] }; });
           fieldNode = { type: 'table_field', label: tSpec.label, columns: cols };
           applyMeta(fieldNode, meta);
         }
@@ -5187,6 +5505,9 @@ TesselParser.prototype.parse = function(source) {
   var allHeadings = collectHeadings(blocks);
   var toc = buildToc(allHeadings);
 
+  // Clear any unclosed sections/subsections so their content isn't stranded
+  sectionStack.length = 0;
+
   // Derive doc title from front-matter or first h1
   var title = frontMatter.title || '';
   if (!title) {
@@ -5232,8 +5553,11 @@ function inlineToHtml(text) {
     // italic
     s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
     s = s.replace(/_([^_]+)_/g, '<em>$1</em>');
-    // links
-    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+    // links — only allow safe protocols
+    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(_, label, href) {
+      var safe = /^(https?:\/\/|mailto:|#)/i.test(href.trim());
+      return safe ? '<a href="' + href + '">' + label + '</a>' : '<span>' + label + '</span>';
+    });
     return s;
   });
   return parts.join('<br>\n');
@@ -5362,12 +5686,13 @@ var TesselFields = (function() {
     var label = esc(node.label);
     var minVal = esc(meta.min || '');
     var maxVal = esc(meta.max || '');
+    var defVal = meta.default_value ? ' value="' + esc(String(meta.default_value)) + '"' : '';
     var tv = tvAttrs(meta);
     return [
       '<div class="date-field notefield" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
       '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <input type="date" id="note-' + id + '"',
-      '    data-note="' + id + '" ' + tv,
+      '    data-note="' + id + '" ' + tv + defVal,
       (minVal ? '    min="' + minVal + '"' : ''),
       (maxVal ? '    max="' + maxVal + '"' : ''),
       '  >',
@@ -5382,12 +5707,13 @@ var TesselFields = (function() {
     var meta = node.meta || {};
     var id = esc(meta.id || node.id);
     var label = esc(node.label);
+    var defVal = meta.default_value ? ' value="' + esc(String(meta.default_value)) + '"' : '';
     var tv = tvAttrs(meta);
     return [
       '<div class="datetime-field notefield" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
       '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <input type="datetime-local" id="note-' + id + '"',
-      '    data-note="' + id + '" data-field-type="datetime" ' + tv + '>',
+      '    data-note="' + id + '" data-field-type="datetime" ' + tv + defVal + '>',
       '  <span class="datetime-display" id="dtdisp-' + id + '"></span>',
       fieldFooter(meta),
       '</div>'
@@ -5421,13 +5747,14 @@ var TesselFields = (function() {
     var id = esc(meta.id || node.id);
     var label = esc(node.label);
     var placeholder = esc(meta.placeholder || 'user@example.com');
+    var defVal = meta.default_value ? ' value="' + esc(String(meta.default_value)) + '"' : '';
     var tv = tvAttrs(meta);
     return [
       '<div class="notefield email-field" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
       '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <input type="email" class="note-input" id="note-' + id + '"',
       '    data-note="' + id + '" data-validate="email" ' + tv,
-      '    placeholder="' + placeholder + '" autocomplete="email">',
+      '    placeholder="' + placeholder + '" autocomplete="email"' + defVal + '>',
       fieldFooter(meta),
       '</div>'
     ].filter(Boolean).join('\n');
@@ -5440,13 +5767,14 @@ var TesselFields = (function() {
     var label = esc(node.label);
     var placeholder = esc(meta.placeholder || '+1 (555) 000-0000');
     var pattern = meta.pattern ? esc(meta.pattern) : '';
+    var defVal = meta.default_value ? ' value="' + esc(String(meta.default_value)) + '"' : '';
     var tv = tvAttrs(meta);
     return [
       '<div class="notefield phone-field" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
       '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <input type="tel" class="note-input" id="note-' + id + '"',
       '    data-note="' + id + '" data-validate="phone" ' + tv,
-      '    placeholder="' + placeholder + '"' + (pattern ? ' pattern="' + pattern + '"' : '') + ' autocomplete="tel">',
+      '    placeholder="' + placeholder + '"' + (pattern ? ' pattern="' + pattern + '"' : '') + ' autocomplete="tel"' + defVal + '>',
       fieldFooter(meta),
       '</div>'
     ].filter(Boolean).join('\n');
@@ -5458,13 +5786,14 @@ var TesselFields = (function() {
     var id = esc(meta.id || node.id);
     var label = esc(node.label);
     var placeholder = esc(meta.placeholder || 'https://example.com');
+    var defVal = meta.default_value ? ' value="' + esc(String(meta.default_value)) + '"' : '';
     var tv = tvAttrs(meta);
     return [
       '<div class="notefield url-field" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
       '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <input type="url" class="note-input" id="note-' + id + '"',
       '    data-note="' + id + '" data-validate="url" ' + tv,
-      '    placeholder="' + placeholder + '" autocomplete="url">',
+      '    placeholder="' + placeholder + '" autocomplete="url"' + defVal + '>',
       fieldFooter(meta),
       '</div>'
     ].filter(Boolean).join('\n');
@@ -5517,7 +5846,7 @@ var TesselFields = (function() {
       '  <label for="cred-totp-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <div id="cred-totp-section-' + id + '" class="cred-section">',
       '    <input type="password" class="note-input cred-totp-input" id="cred-totp-' + id + '"',
-      '      data-cred="' + id + '" ' + tv,
+      '      data-cred="' + id + '" data-note="' + id + '" ' + tv,
       '      placeholder="TOTP secret (base32)" autocomplete="one-time-code">',
       '    <div class="cred-btns">',
       '      <button type="button" class="cred-toggle" data-for="' + id + '" aria-label="Show or hide TOTP secret" title="Show / hide secret">👁</button>',
@@ -5526,6 +5855,13 @@ var TesselFields = (function() {
       '        <option value="totp-20">160-bit (SHA-1, common)</option>',
       '        <option value="totp-32" ' + (bits === 256 ? 'selected' : '') + '>256-bit (SHA-256)</option>',
       '      </select>',
+      '    </div>',
+      '    <div class="totp-live-wrap" aria-live="polite" aria-label="Current one-time code">',
+      '      <svg class="totp-ring-svg" viewBox="0 0 36 36" aria-hidden="true">',
+      '        <circle class="totp-ring-bg" cx="18" cy="18" r="15.9"/>',
+      '        <circle class="totp-ring" data-for="' + id + '" cx="18" cy="18" r="15.9"/>',
+      '      </svg>',
+      '      <span class="totp-live-code" data-for="' + id + '"></span>',
       '    </div>',
       '  </div>',
       (_pdfua
@@ -5555,12 +5891,14 @@ var TesselFields = (function() {
     var label = esc(node.label);
     var options = node.options || [];
     var tv = tvAttrs(meta);
+    var defVal = meta.default_value || '';
     var opts = options.map(function(opt, idx) {
       var oid = id + '-' + idx;
+      var checked = (defVal && opt.value === defVal) ? ' checked' : '';
       return [
         '<label class="choice-opt">',
         '  <input type="radio" name="radio-' + id + '" id="' + oid + '"',
-        '    value="' + esc(opt.value) + '" data-slug="' + id + '">',
+        '    value="' + esc(opt.value) + '" data-slug="' + id + '"' + checked + '>',
         '  ' + esc(opt.label),
         '</label>'
       ].join('\n');
@@ -5587,12 +5925,14 @@ var TesselFields = (function() {
     var label = esc(node.label);
     var options = node.options || [];
     var tv = tvAttrs(meta);
+    var defVals = (meta.default_value || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
     var opts = options.map(function(opt, idx) {
       var oid = id + '-cb-' + idx;
+      var checked = defVals.indexOf(opt.value) >= 0 ? ' checked' : '';
       return [
         '<label class="choice-opt">',
         '  <input type="checkbox" id="' + oid + '"',
-        '    value="' + esc(opt.value) + '" data-slug="' + id + '">',
+        '    value="' + esc(opt.value) + '" data-slug="' + id + '"' + checked + '>',
         '  ' + esc(opt.label),
         '</label>'
       ].join('\n');
@@ -5619,8 +5959,10 @@ var TesselFields = (function() {
     var label = esc(node.label);
     var options = node.options || [];
     var tv = tvAttrs(meta);
+    var defVal = meta.default_value || '';
     var opts = options.map(function(opt) {
-      return '<option value="' + esc(opt.value) + '">' + esc(opt.label) + '</option>';
+      var sel = (defVal && opt.value === defVal) ? ' selected' : '';
+      return '<option value="' + esc(opt.value) + '"' + sel + '>' + esc(opt.label) + '</option>';
     }).join('\n');
     return [
       '<div class="notefield" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
@@ -5702,7 +6044,7 @@ var TesselFields = (function() {
     return [
       '<div class="filename-field notefield" data-slug="' + id + '" data-template="' + template + '"',
       '  ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
-      '  <label>' + label + reqMark(meta) + '</label>',
+      '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <div class="filename-row">',
       '    <input type="text" class="note-input filename-input" id="note-' + id + '"',
       '      data-note="' + id + '" ' + tv + ' readonly aria-describedby="fname-warn-' + id + '">',
@@ -5726,7 +6068,7 @@ var TesselFields = (function() {
     var tv = tvAttrs(meta);
     return [
       '<div class="notefield dir-field" ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
-      '  <label>' + label + reqMark(meta) + '</label>',
+      '  <label for="note-' + id + '">' + label + reqMark(meta) + '</label>',
       '  <input type="text" class="note-input dir-input" id="note-' + id + '"',
       '    data-note="' + id + '" ' + tv,
       '    placeholder="' + placeholder + '">',
@@ -5816,7 +6158,7 @@ var TesselFields = (function() {
       '  <label for="note-' + id + '-pick">' + label + reqMark(meta) + '</label>',
       '  <div class="image-controls">',
       '    <input type="file" accept="image/*" id="note-' + id + '-pick"',
-      '      aria-label="' + label + '" data-image-field="' + id + '" ' + tv + '>',
+      '      aria-label="' + label + '" data-image-field="' + id + '">',
       '    <button type="button" class="image-clear-btn" data-image-clear="' + id + '">✕ Clear</button>',
       '  </div>',
       (_pdfua
@@ -5825,7 +6167,7 @@ var TesselFields = (function() {
         + '\n    <figcaption class="sr-only" id="note-' + id + '-caption">' + label + '</figcaption>'
         + '\n  </figure>'
         : '  <img class="image-preview" id="note-' + id + '-preview" alt="' + label + ' preview" role="img">'),
-      '  <input type="hidden" id="note-' + id + '" data-note="' + id + '">',
+      '  <input type="hidden" id="note-' + id + '" data-note="' + id + '" ' + tv + '>',
       fieldFooter(meta),
       '</div>'
     ].join('\n');
@@ -6026,7 +6368,7 @@ TesselCompiler.prototype._renderBlock = function(block, docSlug) {
   }
 
   if (type === 'paragraph') {
-    return '<p id="bf-doc-body">' + block.html + '</p>';
+    return '<p class="bf-doc-body">' + block.html + '</p>';
   }
 
   if (type === 'hr') {
@@ -6457,8 +6799,10 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     var btn = document.getElementById('btn-theme');
     var stored = localStorage.getItem('tessel-studio:theme');
     if (stored === 'light') { document.body.classList.add('light'); btn.textContent = '☾ Dark'; }
+    else { btn.textContent = '☀ Light'; }
     btn.addEventListener('click', function() {
       var light = document.body.classList.toggle('light');
+      document.documentElement.classList.toggle('light', light);
       btn.textContent = light ? '☾ Dark' : '☀ Light';
       localStorage.setItem('tessel-studio:theme', light ? 'light' : 'dark');
     });
@@ -6513,8 +6857,8 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
 
   // ---- status helpers ----
   function setStatus(msg, cls) {
-    statusText.textContent = msg;
-    statusInd.className = cls || '';
+    if (statusText) statusText.textContent = msg;
+    if (statusInd) statusInd.className = cls || '';
   }
 
   // ---- compile ----
@@ -6645,12 +6989,16 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     filenameDisp.title = file.name;
     var reader = new FileReader();
     reader.onload = function(e) {
-      editor.value = e.target.result;
+      var text = e.target.result;
+      if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); // strip UTF-8 BOM
+      editor.value = text;
       updateEditorMeta();
       btnCompile.disabled = false;
       setStatus('Opened ' + file.name, '');
+      document.dispatchEvent(new CustomEvent('tessel-file-open'));
       compile();
     };
+    reader.onerror = function(e) { setStatus('Failed to read file: ' + ((e.target.error && e.target.error.message) || 'unknown error'), 'err'); };
     reader.readAsText(file);
   }
 
@@ -6659,17 +7007,29 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     var reader = new FileReader();
     reader.onload = function(e) {
       var html = e.target.result;
-      // Look for <script type="text/tessel-source" data-encoding="base64">
-      var m = html.match(/<script[^>]+type="text\/tessel-source"[^>]*data-encoding="base64"[^>]*>([\s\S]*?)<\/script>/i);
-      if (!m) {
-        m = html.match(/<script[^>]+type="text\/tessel-source"[^>]*>([\s\S]*?)<\/script>/i);
-      }
-      if (!m || !m[1].trim()) {
+      // Look for <script type="text/tessel-source" ...> — attribute order may vary
+      var tsMatch = html.match(/<script\b([^>]*\btype="text\/tessel-source"[^>]*)>([\s\S]*?)<\/script>/i);
+      var tsAttrs   = tsMatch ? tsMatch[1] : '';
+      var tsContent = tsMatch ? tsMatch[2] : '';
+      var isBase64  = /data-encoding="base64"/i.test(tsAttrs);
+      if (!tsMatch || !tsContent.trim()) {
         setStatus('No embedded Tessel source found in this HTML file.', 'err');
         return;
       }
       try {
-        var b64 = m[1].trim();
+        var b64 = isBase64 ? tsContent.trim() : null;
+        if (!b64) {
+          // Plain-text source (older format) — treat content as raw markdown
+          currentFilename = file.name.replace(/\.html?$/, '.md');
+          filenameDisp.textContent = currentFilename + ' (from HTML)';
+          editor.value = tsContent.trim();
+          updateEditorMeta();
+          btnCompile.disabled = false;
+          setStatus('Source extracted from ' + file.name, 'ok');
+          document.dispatchEvent(new CustomEvent('tessel-file-open'));
+          compile();
+          return;
+        }
         var decoded = decodeB64Utf8(b64);
         currentFilename = file.name.replace(/\.html?$/, '.md');
         filenameDisp.textContent = currentFilename + ' (from HTML)';
@@ -6677,11 +7037,13 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         updateEditorMeta();
         btnCompile.disabled = false;
         setStatus('Source extracted from ' + file.name, 'ok');
+        document.dispatchEvent(new CustomEvent('tessel-file-open'));
         compile();
       } catch (ex) {
         setStatus('Failed to decode embedded source: ' + ex.message, 'err');
       }
     };
+    reader.onerror = function(e) { setStatus('Failed to read file: ' + ((e.target.error && e.target.error.message) || 'unknown error'), 'err'); };
     reader.readAsText(file);
   }
 
@@ -6745,11 +7107,18 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       if (compileTimer) { clearTimeout(compileTimer); compileTimer = null; }
       compile();
     }
-    // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y → handled by history IIFE (event dispatched globally)
+    // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y → history undo/redo (only in markdown mode)
     if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z' || e.key === 'y' || e.key === 'Y') && !e.altKey) {
+      var wsMode2 = document.getElementById('ws-mode');
+      if (wsMode2 && wsMode2.classList.contains('active')) return; // let visual editor handle it
       e.preventDefault();
       var redo = e.key === 'y' || e.key === 'Y' || (e.shiftKey && (e.key === 'z' || e.key === 'Z'));
       document.dispatchEvent(new CustomEvent('tessel-history-nav', { detail: { redo: redo } }));
+    }
+    // Ctrl+S → save draft to localStorage
+    if ((e.ctrlKey || e.metaKey) && e.key === 's' && !e.shiftKey && !e.altKey) {
+      e.preventDefault();
+      try { localStorage.setItem('tessel-studio:draft', editor.value); setStatus('Draft saved', ''); } catch(ex) {}
     }
     // Tab → insert 2 spaces
     if (e.key === 'Tab') {
@@ -6800,13 +7169,31 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       edPane.style.flex = '0 0 ' + newW + 'px';
       try { localStorage.setItem('tessel-studio:split', newW); } catch(ex) {}
     });
-    document.addEventListener('mouseup', function() {
+    function stopDrag() {
       if (!dragging) return;
       dragging = false;
       handle.classList.remove('dragging');
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
-    });
+    }
+    document.addEventListener('mouseup', stopDrag);
+    document.addEventListener('mouseleave', stopDrag);
+    handle.addEventListener('touchstart', function(e) {
+      var t = e.touches[0];
+      dragging = true; startX = t.clientX; startW = edPane.offsetWidth;
+      handle.classList.add('dragging');
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    }, { passive: false });
+    document.addEventListener('touchmove', function(e) {
+      if (!dragging) return;
+      var total = workspace.offsetWidth;
+      var newW  = Math.max(180, Math.min(total - 200, startW + (e.touches[0].clientX - startX)));
+      edPane.style.flex = '0 0 ' + newW + 'px';
+      try { localStorage.setItem('tessel-studio:split', newW); } catch(ex) {}
+    }, { passive: false });
+    document.addEventListener('touchend', stopDrag);
+    document.addEventListener('touchcancel', stopDrag);
     try {
       var saved = localStorage.getItem('tessel-studio:split');
       if (saved) edPane.style.flex = '0 0 ' + saved + 'px';
@@ -6895,6 +7282,8 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         borderContrast: parseInt(borderContrastEl ? borderContrastEl.value : 100, 10),
         a11yStd:        a11yStdEl ? a11yStdEl.value : 'wcag21'
       });
+      scheduleCompile();
+      setStatus('Settings saved', '');
     }
 
     if (padSlider) padSlider.addEventListener('input', function() {
@@ -7047,6 +7436,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     openBtn.addEventListener('click', function(e) {
       e.stopPropagation();
       var open = panel.style.display !== 'none';
+      if (!open && window._tsCloseAllPanels) window._tsCloseAllPanels();
       panel.style.display = open ? 'none' : 'flex';
     });
     if (closeBtn) closeBtn.addEventListener('click', function() { panel.style.display = 'none'; });
@@ -7310,6 +7700,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     openBtn.addEventListener('click', function(e) {
       e.stopPropagation();
       var open = panel.style.display !== 'none';
+      if (!open && window._tsCloseAllPanels) window._tsCloseAllPanels();
       panel.style.display = open ? 'none' : 'flex';
       openBtn.classList.toggle('active', !open);
     });
@@ -7326,6 +7717,197 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     }, true);
 
     load();
+  })();
+
+  // ---- Toolbar button customization ----
+  (function() {
+    var BTN_PREFS_KEY = 'tessel-studio:btn-prefs';
+
+    // Some rbids are logically linked: hiding one should hide its companion
+    var LINKED = {
+      'content-section':    ['content-endsection'],
+      'content-subsection': ['content-endsubsection'],
+    };
+
+    function getPrefs() {
+      try { var s = localStorage.getItem(BTN_PREFS_KEY); return s ? JSON.parse(s) : {}; } catch(e) { return {}; }
+    }
+    function savePrefs(prefs) {
+      try { localStorage.setItem(BTN_PREFS_KEY, JSON.stringify(prefs)); } catch(e) {}
+    }
+
+    function applyPrefs(prefs) {
+      // Show/hide individual [data-rbid] buttons
+      document.querySelectorAll('[data-rbid]').forEach(function(btn) {
+        btn.style.display = (prefs[btn.getAttribute('data-rbid')] === false) ? 'none' : '';
+      });
+      // Auto-hide rb-groups that have no visible buttons (Fields + Content panels only)
+      ['rp-fields', 'rp-content'].forEach(function(pid) {
+        var panel = document.getElementById(pid);
+        if (!panel) return;
+        panel.querySelectorAll('.rb-group').forEach(function(grp) {
+          var hasVisible = false;
+          grp.querySelectorAll('button').forEach(function(b) {
+            if (b.style.display !== 'none') hasVisible = true;
+          });
+          grp.style.display = hasVisible ? '' : 'none';
+        });
+      });
+    }
+
+    function loadCheckboxes(prefs) {
+      document.querySelectorAll('#toolbar-customize-body input[type=checkbox][data-for]').forEach(function(cb) {
+        cb.checked = (prefs[cb.getAttribute('data-for')] !== false);
+      });
+    }
+
+    var panel   = document.getElementById('toolbar-customize-panel');
+    var openBtn = document.getElementById('btn-toolbar-customize');
+    var closeBtn = document.getElementById('toolbar-customize-close');
+    var resetBtn = document.getElementById('tc-reset');
+    if (!panel || !openBtn) return;
+
+    function openPanel() {
+      if (window._tsCloseAllPanels) window._tsCloseAllPanels();
+      panel.style.display = 'flex';
+      openBtn.classList.add('active');
+      loadCheckboxes(getPrefs());
+    }
+    function closePanel() {
+      panel.style.display = 'none';
+      openBtn.classList.remove('active');
+    }
+
+    openBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      panel.style.display !== 'none' ? closePanel() : openPanel();
+    });
+    if (closeBtn) closeBtn.addEventListener('click', closePanel);
+    document.addEventListener('click', function(e) {
+      if (panel.style.display !== 'none' && !panel.contains(e.target) && e.target !== openBtn) closePanel();
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && panel.style.display !== 'none') closePanel();
+    });
+
+    // Checkbox change
+    document.querySelectorAll('#toolbar-customize-body input[type=checkbox][data-for]').forEach(function(cb) {
+      cb.addEventListener('change', function() {
+        var prefs = getPrefs();
+        var id = cb.getAttribute('data-for');
+        if (cb.checked) { delete prefs[id]; } else { prefs[id] = false; }
+        // Propagate to linked rbids
+        (LINKED[id] || []).forEach(function(lid) {
+          if (cb.checked) { delete prefs[lid]; } else { prefs[lid] = false; }
+        });
+        savePrefs(prefs);
+        applyPrefs(prefs);
+      });
+    });
+
+    // Collapsible sub-groups in the drawer
+    document.querySelectorAll('.tc-group-hdr').forEach(function(hdr) {
+      var grpId = hdr.getAttribute('data-tc-group');
+      var rows = document.getElementById('tcg-' + grpId);
+      hdr.addEventListener('click', function() {
+        var open = hdr.classList.toggle('open');
+        if (rows) rows.style.display = open ? '' : 'none';
+      });
+    });
+
+    if (resetBtn) resetBtn.addEventListener('click', function() {
+      savePrefs({});
+      loadCheckboxes({});
+      applyPrefs({});
+    });
+
+    // Apply on page load
+    applyPrefs(getPrefs());
+
+    // ---- Preference export / import ----
+    var PREF_KEYS = [
+      'tessel-studio:dock-primary',
+      'tessel-studio:dock-secondary',
+      'tessel-studio:doc-settings',
+      'tessel-studio:theme',
+      BTN_PREFS_KEY,
+      'tessel-studio:split',
+      'tessel-studio:history-settings',
+      'bf:notes-pane-w',
+      'bf:notes-blur',
+      'bf:notes-opacity',
+      'bf:notes-floating',
+    ];
+
+    function collectAllPrefs() {
+      var obj = { _tessel_prefs: true, version: 1 };
+      PREF_KEYS.forEach(function(k) {
+        try { var v = localStorage.getItem(k); if (v !== null) obj[k] = v; } catch(e) {}
+      });
+      return obj;
+    }
+
+    function applyImportedPrefs(obj) {
+      PREF_KEYS.forEach(function(k) {
+        try {
+          if (Object.prototype.hasOwnProperty.call(obj, k)) {
+            localStorage.setItem(k, obj[k]);
+          }
+        } catch(e) {}
+      });
+      // Re-apply settings that have live effect without full reload
+      applyPrefs(getPrefs());
+      loadCheckboxes(getPrefs());
+      // Re-apply studio theme via the canonical function (STH_KEY → getSth() → applyStudioTheme)
+      try { if (typeof applyStudioTheme === 'function' && typeof getSth === 'function') applyStudioTheme(getSth()); } catch(e) {}
+      // Re-apply light/dark class
+      try {
+        var isLight = localStorage.getItem('tessel-studio:theme-mode') === 'light';
+        document.documentElement.classList.toggle('light', isLight);
+      } catch(e) {}
+    }
+
+    var exportBtn = document.getElementById('tc-export-prefs');
+    var importBtn = document.getElementById('tc-import-prefs');
+    var importFile = document.getElementById('tc-import-file');
+
+    if (exportBtn) exportBtn.addEventListener('click', function() {
+      var data = JSON.stringify(collectAllPrefs(), null, 2);
+      var blob = new Blob([data], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'tessel-prefs.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
+    });
+
+    if (importBtn) importBtn.addEventListener('click', function() {
+      if (importFile) importFile.click();
+    });
+
+    if (importFile) importFile.addEventListener('change', function() {
+      var file = importFile.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          var obj = JSON.parse(e.target.result);
+          if (!obj || obj._tessel_prefs !== true) {
+            alert('This does not appear to be a valid Tessel Studio preferences file.');
+            return;
+          }
+          applyImportedPrefs(obj);
+          alert('Preferences imported. Some settings (dock position, split width) will take effect on next page load.');
+        } catch(err) {
+          alert('Could not read preferences file: ' + err.message);
+        }
+        importFile.value = '';
+      };
+      reader.readAsText(file);
+    });
   })();
 
   // ---- WYSIWYG mode ----
@@ -7438,6 +8020,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     }
 
     function exitWysiwyg() {
+      clearTimeout(_wyDebounce); _wyDebounce = null;
       syncToTextarea();
       editor.style.display = '';
       wysiwygEl.style.display = 'none';
@@ -7525,8 +8108,9 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     document.addEventListener('tessel-history-settings-changed', function(e) {
       snapshotInterval = e.detail.interval || 2000;
       maxSnapshots = e.detail.maxSnapshots || 100;
-      while (snapshots.length > maxSnapshots) snapshots.shift();
-      if (ptr >= snapshots.length) ptr = snapshots.length - 1;
+      var _removed = 0;
+      while (snapshots.length > maxSnapshots) { snapshots.shift(); _removed++; }
+      ptr = Math.max(0, Math.min(ptr - _removed, snapshots.length - 1));
       saveHistory();
       renderList();
     });
@@ -7603,6 +8187,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       try { localStorage.setItem('tessel-studio:draft', editor.value); } catch(e) {}
       updateEditorMeta();
       btnCompile.disabled = editor.value.trim() === '';
+      scheduleCompile();
       saveHistory();
       renderList();
     }
@@ -7679,10 +8264,17 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       pushSnapshot(editor.value);
     });
 
+    // Cancel pending snapshot when a new file is opened, then push the loaded content
+    document.addEventListener('tessel-file-open', function() {
+      if (snapTimer) { clearTimeout(snapTimer); snapTimer = null; }
+      setTimeout(function() { pushSnapshot(editor.value); }, 0);
+    });
+
     // Panel open/close
     histBtn.addEventListener('click', function(e) {
       e.stopPropagation();
       panelOpen = !panelOpen;
+      if (panelOpen && window._tsCloseAllPanels) window._tsCloseAllPanels();
       panel.classList.toggle('open', panelOpen);
       histBtn.classList.toggle('active', panelOpen);
       if (panelOpen) renderList();
@@ -7732,6 +8324,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
 
     function togglePanel(open) {
       panelOpen = (open !== undefined) ? open : !panelOpen;
+      if (panelOpen && window._tsCloseAllPanels) window._tsCloseAllPanels();
       if (panel) panel.classList.toggle('open', panelOpen);
       if (auditBtn) auditBtn.classList.toggle('active', panelOpen);
     }
@@ -8199,6 +8792,8 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     var panels = document.querySelectorAll('.ribbon-panel');
     tabs.forEach(function(tab) {
       tab.addEventListener('click', function() {
+        // In visual mode, markdown tabs do nothing (ws panels are active)
+        if (document.getElementById('ws-mode') && document.getElementById('ws-mode').classList.contains('active')) return;
         tabs.forEach(function(t) { t.classList.remove('active'); });
         panels.forEach(function(p) { p.classList.remove('active'); });
         tab.classList.add('active');
@@ -8421,6 +9016,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     btn.addEventListener('click', function(e) {
       e.stopPropagation();
       var open = panel.classList.contains('open');
+      if (!open && window._tsCloseAllPanels) window._tsCloseAllPanels();
       panel.classList.toggle('open', !open);
       btn.classList.toggle('active', !open);
     });
@@ -8566,11 +9162,47 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       if (e.key === 'Escape') { closeFind(); e.preventDefault(); }
     });
 
-    // Ctrl+F / Cmd+F
+    // Shared helper — closes every right-side drawer/panel
+    window._tsCloseAllPanels = function() {
+      [['history-panel', 'btn-history'], ['a11y-panel', 'btn-a11y-audit'], ['directive-palette', 'btn-directives']].forEach(function(pair) {
+        var el = document.getElementById(pair[0]); if (el) el.classList.remove('open');
+        var btn = document.getElementById(pair[1]); if (btn) btn.classList.remove('active');
+      });
+      [['doc-settings-panel', 'btn-doc-settings'], ['studio-theme-panel', 'btn-studio-theme'], ['toolbar-customize-panel', 'btn-toolbar-customize']].forEach(function(pair) {
+        var el = document.getElementById(pair[0]); if (el) el.style.display = 'none';
+        var btn = document.getElementById(pair[1]); if (btn) btn.classList.remove('active');
+      });
+      var fi = document.getElementById('field-inspector'); if (fi) fi.style.display = 'none';
+    };
+
+    // Ctrl+F / Cmd+F  and  global Ctrl+S
     document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') { window._tsCloseAllPanels && window._tsCloseAllPanels(); }
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault();
         openFind();
+      }
+      // Ctrl+S in visual block editor mode — trigger the save-draft button
+      if ((e.ctrlKey || e.metaKey) && e.key === 's' && !e.shiftKey && !e.altKey) {
+        var wsMode = document.getElementById('ws-mode');
+        if (wsMode && wsMode.classList.contains('active')) {
+          e.preventDefault();
+          var saveDraftBtn = document.getElementById('ws-btn-save-draft');
+          if (saveDraftBtn) saveDraftBtn.click();
+        }
+        // markdown mode Ctrl+S is handled by the editor keydown listener
+      }
+      // Ctrl+Z / Ctrl+Y in visual block editor mode — route to block editor undo/redo
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z' || e.key === 'y' || e.key === 'Y') && !e.altKey) {
+        var wsMode3 = document.getElementById('ws-mode');
+        var _af = document.activeElement;
+        var _inField = _af && (_af.tagName === 'INPUT' || _af.tagName === 'TEXTAREA' || _af.isContentEditable);
+        if (wsMode3 && wsMode3.classList.contains('active') && !_inField) {
+          e.preventDefault();
+          var isRedo = e.key === 'y' || e.key === 'Y' || (e.shiftKey && (e.key === 'z' || e.key === 'Z'));
+          var btn = document.getElementById(isRedo ? 'ws-btn-redo' : 'ws-btn-undo');
+          if (btn) btn.click();
+        }
       }
     });
   })();
@@ -8654,6 +9286,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         choicesGroup.style.display = 'none';
       }
 
+      if (window._tsCloseAllPanels) window._tsCloseAllPanels();
       fiPanel.style.display = 'flex';
       fiPanel.classList.add('open');
     }
@@ -8895,6 +9528,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     var wsLastFocusId = null;
     var wsUndoStack = [];
     var wsRedoStack = [];
+    var wsFrontMatter = '';
 
     var WS_FIELD_TYPES = {
       text:       { icon:'T',   badge:'Text Field',    hasOptions:false },
@@ -8908,6 +9542,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       radio:      { icon:'⊙',  badge:'Radio Buttons',  hasOptions:true  },
       check:      { icon:'☑',  badge:'Checkboxes',     hasOptions:true  },
       select:     { icon:'▾',   badge:'Dropdown',      hasOptions:true  },
+      table:      { icon:'⊞',  badge:'Table',          hasOptions:false },
       credential: { icon:'🔑',  badge:'Credential',    hasOptions:false },
       totp:       { icon:'🔐',  badge:'TOTP Code',     hasOptions:false },
       filename:   { icon:'📂',  badge:'Filename',      hasOptions:false },
@@ -8922,7 +9557,8 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     // ---- Serialization ----
 
     function wsSerialize() {
-      return wsBlocks.map(wsSerBlock).filter(function(s){ return s !== null && s !== ''; }).join('\n\n');
+      var body = wsBlocks.map(wsSerBlock).filter(function(s){ return s !== null && s !== ''; }).join('\n\n');
+      return wsFrontMatter ? wsFrontMatter + '\n\n' + body : body;
     }
 
     function wsSerBlock(b) {
@@ -8934,7 +9570,15 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       if (b.type === 'field') {
         var lines = [];
         var def = WS_FIELD_TYPES[b.fieldType] || {};
-        if (def.hasOptions && b.options && b.options.length) {
+        if (b.fieldType === 'table' && b.columns && b.columns.length) {
+          lines.push('@table ' + (b.label||'Label') + ': ' + b.columns.join(', '));
+        } else if (b.fieldType === 'parse' && b.regex) {
+          lines.push('@parse ' + (b.label||'Label') + ': /' + b.regex + '/');
+        } else if (b.fieldType === 'computed' && b.expr) {
+          lines.push('@computed ' + (b.label||'Label') + ': ' + b.expr);
+        } else if (b.fieldType === 'filename' && b.template) {
+          lines.push('@filename ' + (b.label||'Label') + ': ' + b.template);
+        } else if (def.hasOptions && b.options && b.options.length) {
           lines.push('@' + b.fieldType + ' ' + (b.label||'Label') + ': ' + b.options.join(', '));
         } else {
           lines.push('@' + b.fieldType + ' ' + (b.label||'Label'));
@@ -8969,17 +9613,28 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       var fieldMap = {
         text_field:'text', area_field:'area', date_field:'date', datetime_field:'datetime',
         number_field:'number', email_field:'email', phone_field:'phone', tel_field:'phone', url_field:'url',
-        radio_field:'radio', check_field:'check', select_field:'select',
+        radio_field:'radio', check_field:'check', select_field:'select', table_field:'table',
         credential_field:'credential', totp_field:'totp', filename_field:'filename',
         dir_field:'dir', parse_field:'parse', image_field:'image',
         richtext_field:'richtext', computed_field:'computed', signature_field:'signature'
       };
       if (fieldMap[n.type]) {
         var opts = (n.options||[]).map(function(o){ return typeof o === 'string' ? o : (o.label||''); });
+        var cols = (n.columns||[]).map(function(c) {
+          if (typeof c === 'string') return c;
+          var s = c.name || '';
+          if (c.type && c.type !== 'text') s += ' | ' + c.type;
+          if (c.opts && c.opts.length) s += ':' + c.opts.join('/');
+          return s;
+        });
         var m = n.meta || {};
-        return { type:'field', fieldType:fieldMap[n.type], label:n.label||'', options:opts,
+        var blk = { type:'field', fieldType:fieldMap[n.type], label:n.label||'', options:opts, columns:cols,
           meta:{ id:m.id||n.id, required:m.required, required_if:m.required_if,
                  visible_if:m.visible_if, validate:m.validate, warning_message:m.warning_message }, id:wsUid() };
+        if (n.regex    !== undefined) blk.regex    = n.regex;
+        if (n.expr     !== undefined) blk.expr     = n.expr;
+        if (n.template !== undefined) blk.template = n.template;
+        return blk;
       }
       return null;
     }
@@ -8987,7 +9642,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     // ---- Block manipulation ----
 
     function wsPushUndo() {
-      wsUndoStack.push(JSON.stringify(wsBlocks));
+      wsUndoStack.push(JSON.stringify({ blocks: wsBlocks, sel: wsSelectedId }));
       if (wsUndoStack.length > 50) wsUndoStack.shift();
       wsRedoStack = [];
     }
@@ -9069,10 +9724,12 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     function wsRenderCanvas() {
       var root = document.getElementById('ws-blocks-root');
       var empty = document.getElementById('ws-canvas-empty');
+      var scrollTop = root.scrollTop;
       root.innerHTML = '';
       if (!wsBlocks.length) { empty.style.display = ''; return; }
       empty.style.display = 'none';
       wsBlocks.forEach(function(b) { root.appendChild(wsCreateBlockEl(b, wsBlocks)); });
+      root.scrollTop = scrollTop;
       wsUpdateOutline();
     }
 
@@ -9219,6 +9876,14 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         });
         card.appendChild(chips);
       }
+      if (b.fieldType === 'table' && b.columns && b.columns.length) {
+        var colChips = document.createElement('div');
+        colChips.className = 'ws-field-opts-chips';
+        b.columns.forEach(function(col) {
+          var chip = document.createElement('span'); chip.className = 'ws-opt-chip'; chip.textContent = col; colChips.appendChild(chip);
+        });
+        card.appendChild(colChips);
+      }
       return card;
     }
 
@@ -9228,6 +9893,9 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
 
       var hdr = document.createElement('div');
       hdr.className = 'ws-section-hdr';
+      hdr.setAttribute('role', 'button');
+      hdr.setAttribute('tabindex', '0');
+      hdr.setAttribute('aria-expanded', b._collapsed ? 'false' : 'true');
 
       var toggle = document.createElement('span');
       toggle.textContent = '▼';
@@ -9251,11 +9919,16 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
 
       var body = document.createElement('div');
       body.className = 'ws-section-body';
-      var collapsed = false;
+      if (b._collapsed) body.classList.add('collapsed');
+      if (b._collapsed) toggle.textContent = '▶';
       hdr.addEventListener('click', function() {
-        collapsed = !collapsed;
-        body.classList.toggle('collapsed', collapsed);
-        toggle.textContent = collapsed ? '▶' : '▼';
+        b._collapsed = !b._collapsed;
+        body.classList.toggle('collapsed', b._collapsed);
+        toggle.textContent = b._collapsed ? '▶' : '▼';
+        hdr.setAttribute('aria-expanded', b._collapsed ? 'false' : 'true');
+      });
+      hdr.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); hdr.click(); }
       });
 
       b.children = b.children || [];
@@ -9371,6 +10044,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
 
     function wsSelectBlock(id) {
       wsSelectedId = id;
+      if (id) wsLastFocusId = id;
       document.querySelectorAll('#ws-blocks-root .ws-field-card').forEach(function(el){ el.classList.remove('selected'); });
       if (id) {
         var card = document.querySelector('#ws-blocks-root [data-block-id="' + id + '"] .ws-field-card');
@@ -9471,6 +10145,40 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         });
         body.appendChild(addOpt);
       }
+
+      if (b.fieldType === 'table') {
+        var colTitle = document.createElement('div');
+        colTitle.style.cssText = 'font-size:9px;font-weight:700;letter-spacing:.06em;color:var(--muted);padding:8px 0 2px';
+        colTitle.textContent = 'COLUMNS';
+        body.appendChild(colTitle);
+
+        var colList = document.createElement('div');
+        colList.className = 'ws-opt-list';
+        b.columns = b.columns || [];
+
+        function renderCols() {
+          colList.innerHTML = '';
+          b.columns.forEach(function(col, i) {
+            var row = document.createElement('div'); row.style.cssText = 'display:flex;gap:4px;margin-bottom:3px';
+            var inp = document.createElement('input'); inp.type='text'; inp.value=col; inp.className='ws-prop-input';
+            inp.addEventListener('input', function() { b.columns[i] = inp.value; wsRenderCanvas(); });
+            var del = document.createElement('button'); del.textContent='✕'; del.style.cssText='background:none;border:none;cursor:pointer;color:var(--muted)';
+            del.addEventListener('click', function() { b.columns.splice(i,1); renderCols(); wsRenderCanvas(); });
+            row.appendChild(inp); row.appendChild(del); colList.appendChild(row);
+          });
+        }
+        renderCols();
+        body.appendChild(colList);
+
+        var addCol = document.createElement('button');
+        addCol.style.cssText = 'font-size:11px;background:none;border:1px dashed var(--border);border-radius:3px;padding:2px 8px;cursor:pointer;color:var(--muted);margin-top:2px';
+        addCol.textContent = '+ Add column';
+        addCol.addEventListener('click', function() {
+          b.columns.push('Column '+(b.columns.length+1));
+          renderCols(); wsRenderCanvas();
+        });
+        body.appendChild(addCol);
+      }
     }
 
     function wsMkPropRow(label) {
@@ -9551,12 +10259,13 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       { label:'Dropdown',   icon:'▾', fn:function(aid){ wsInsertField('select',aid); } },
       { label:'Radio',      icon:'⊙', fn:function(aid){ wsInsertField('radio',aid); } },
       { label:'Checkboxes', icon:'☑', fn:function(aid){ wsInsertField('check',aid); } },
+      { label:'Table',      icon:'⊞', fn:function(aid){ wsInsertField('table',aid); } },
       { group:'STRUCTURE' },
       { label:'Section',    icon:'§', fn:function(aid){ wsInsertBlock({type:'section',title:'Section',children:[],id:wsUid()},aid); } },
     ];
 
     function wsInsertField(ft, afterId) {
-      var b = { type:'field', fieldType:ft, label:'Label', options:[], meta:{}, id:wsUid() };
+      var b = { type:'field', fieldType:ft, label:'Label', options:[], columns:[], meta:{}, id:wsUid() };
       b.meta.id = wsSlugify(b.label);
       wsInsertBlock(b, afterId);
     }
@@ -9599,6 +10308,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     // ---- Mode switching ----
 
     var wsCurrentMode = 'markdown';
+    var wsPrevTabId = 'file';
 
     function wsSwitchMode(mode) {
       wsCurrentMode = mode;
@@ -9609,15 +10319,26 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       var toggleBtn = document.getElementById('btn-mode-toggle');
 
       if (mode === 'visual') {
-        // Switch to visual mode
+        // Save the currently active tab before hiding it
+        var activeTab = document.querySelector('.ribbon-tab.active');
+        if (activeTab && activeTab.dataset.tab) wsPrevTabId = activeTab.dataset.tab;
+
+        // If the legacy rich-text WYSIWYG editor is open, sync it back first
+        var legacyWy = document.getElementById('wysiwyg-editor');
+        var legacyWyBtn = document.getElementById('btn-wysiwyg');
+        if (legacyWy && legacyWy.style.display !== 'none' && legacyWyBtn) legacyWyBtn.click();
+
         workspace.style.display = 'none';
         wsMode.classList.add('active');
-        // Load current markdown into blocks
         var editorEl = document.getElementById('editor');
         if (editorEl && editorEl.value.trim()) {
           try {
-            var ast = window.TesselParser ? new window.TesselParser().parse(editorEl.value) : null;
+            var T = window.Tessel;
+            var ast = T ? T.parse(editorEl.value) : null;
             if (ast) {
+              // Preserve front-matter for round-trip
+              var fmMatch = editorEl.value.match(/^(---[\s\S]*?---)/);
+              wsFrontMatter = fmMatch ? fmMatch[1] : '';
               wsBlocks = wsAstToBlocks(ast);
               wsSelectedId = null;
               wsRenderCanvas();
@@ -9629,42 +10350,41 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         } else {
           wsRenderCanvas();
         }
-        // Hide markdown ribbon panels, show WYSIWYG panels
-        // Switch active tab to ws-edit
         mdPanels.forEach(function(p){ p.style.display = 'none'; });
         wsPanels.forEach(function(p){ p.style.display = ''; });
         document.getElementById('rp-ws-edit').classList.add('active');
         document.getElementById('rp-ws-insert').classList.remove('active');
-        // Deactivate existing tab highlight
         document.querySelectorAll('.ribbon-tab').forEach(function(t){ t.classList.remove('active'); });
         toggleBtn.classList.add('ws-active');
         toggleBtn.textContent = '✎ Markdown';
       } else {
-        // Switch back to markdown mode — serialize blocks to markdown
         workspace.style.display = '';
         wsMode.classList.remove('active');
-        // Serialize blocks back to markdown
         if (wsBlocks.length) {
-          var md = wsSerialize();
-          var editorEl2 = document.getElementById('editor');
-          if (editorEl2 && md) {
-            editorEl2.value = md;
-            editorEl2.dispatchEvent(new Event('input'));
+          try {
+            var md = wsSerialize();
+            var editorEl2 = document.getElementById('editor');
+            if (editorEl2 && md) {
+              editorEl2.value = md;
+              editorEl2.dispatchEvent(new Event('input'));
+            }
+          } catch(ex) {
+            console.error('[Tessel] wsSerialize failed:', ex.message);
+            setStatus('Could not convert blocks to markdown — check console', 'err');
           }
         }
-        // Show markdown panels
         mdPanels.forEach(function(p){ p.style.display = ''; });
-        wsPanels.forEach(function(p){ p.style.display = 'none'; });
-        // Restore default active tab
-        var activePanel = document.querySelector('.ribbon-panel:not(.ws-panel).active');
-        if (!activePanel) {
+        wsPanels.forEach(function(p){ p.style.display = 'none'; p.classList.remove('active'); });
+        // Restore the tab that was active before entering visual mode
+        var restoredPanel = document.getElementById('rp-' + wsPrevTabId);
+        var restoredTab = document.querySelector('.ribbon-tab[data-tab="' + wsPrevTabId + '"]');
+        if (restoredPanel && restoredTab) {
+          restoredPanel.classList.add('active');
+          restoredTab.classList.add('active');
+        } else {
           document.getElementById('rp-file').classList.add('active');
           var fileTab = document.querySelector('.ribbon-tab[data-tab="file"]');
           if (fileTab) fileTab.classList.add('active');
-        } else {
-          var activePanelId = activePanel.id.replace('rp-','');
-          var matchTab = document.querySelector('.ribbon-tab[data-tab="' + activePanelId + '"]');
-          if (matchTab) matchTab.classList.add('active');
         }
         toggleBtn.classList.remove('ws-active');
         toggleBtn.textContent = '✎ Visual';
@@ -9703,15 +10423,21 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     document.getElementById('ws-btn-italic').addEventListener('click', function() { document.execCommand('italic'); });
     document.getElementById('ws-btn-undo').addEventListener('click', function() {
       if (!wsUndoStack.length) return;
-      wsRedoStack.push(JSON.stringify(wsBlocks));
-      wsBlocks = JSON.parse(wsUndoStack.pop());
+      wsRedoStack.push(JSON.stringify({ blocks: wsBlocks, sel: wsSelectedId }));
+      var snap = JSON.parse(wsUndoStack.pop());
+      wsBlocks = snap.blocks || snap; // back-compat if old format
+      wsSelectedId = snap.sel !== undefined ? snap.sel : null;
       wsRenderCanvas();
+      wsRenderProps();
     });
     document.getElementById('ws-btn-redo').addEventListener('click', function() {
       if (!wsRedoStack.length) return;
-      wsUndoStack.push(JSON.stringify(wsBlocks));
-      wsBlocks = JSON.parse(wsRedoStack.pop());
+      wsUndoStack.push(JSON.stringify({ blocks: wsBlocks, sel: wsSelectedId }));
+      var snap = JSON.parse(wsRedoStack.pop());
+      wsBlocks = snap.blocks || snap;
+      wsSelectedId = snap.sel !== undefined ? snap.sel : null;
       wsRenderCanvas();
+      wsRenderProps();
     });
     document.getElementById('ws-btn-save-draft').addEventListener('click', function() {
       try { localStorage.setItem('ts:ws-draft', JSON.stringify(wsBlocks)); setStatus('Draft saved'); } catch(e) {}

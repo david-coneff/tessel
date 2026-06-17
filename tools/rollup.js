@@ -19,7 +19,7 @@
  *
  * Build a fully self-contained Tessel Studio (no external deps):
  *   node tools/rollup.js --studio
- *   → writes dist/tessel-studio-standalone.html
+ *   → writes dist/tessel-studio.html
  */
 
 'use strict';
@@ -138,7 +138,7 @@ function buildStudio(outDir) {
   );
   // Update title to indicate standalone
   standalone = standalone.replace('<title>Tessel Studio</title>', '<title>Tessel Studio (standalone)</title>');
-  var outPath = path.join(outDir, 'tessel-studio-standalone.html');
+  var outPath = path.join(outDir, 'tessel-studio.html');
   fs.writeFileSync(outPath, standalone, 'utf8');
   console.log('Standalone Studio: ' + outPath + ' (' + Math.round(standalone.length / 1024) + ' KB)');
 }
