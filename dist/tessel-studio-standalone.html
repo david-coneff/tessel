@@ -25,7 +25,7 @@
 body.light {
   --bg:      #f0f0f2;
   --surface: #ffffff;
-  --border:  #d0d2d8;
+  --border:  #b0b4bc;
   --text:    #1a1b1e;
   --muted:   #7a7d87;
 }
@@ -296,6 +296,61 @@ button:disabled { opacity: .4; cursor: default; }
 }
 .ds-reset:hover { border-color: var(--accent); color: var(--accent); }
 
+/* ---- Studio theme panel (reuses doc-settings styles) ---- */
+#studio-theme-panel {
+  position: absolute;
+  top: var(--toolbar-h);
+  right: 0;
+  z-index: 200;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  min-width: 300px;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 6px 24px rgba(0,0,0,.35);
+}
+#studio-theme-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--accent);
+}
+#studio-theme-hdr button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+}
+#studio-theme-hdr button:hover { color: var(--text); }
+#studio-theme-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+#btn-studio-theme.active { background: var(--accent); color: var(--bg); }
+
+/* ---- WYSIWYG editor ---- */
+#editor-pane{display:flex;flex-direction:column}
+#wysiwyg-toolbar{display:flex;gap:3px;padding:4px 8px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap;flex-shrink:0}
+#wysiwyg-toolbar button{background:var(--btn-bg);border:1px solid var(--border);border-radius:3px;padding:2px 7px;font-size:.8em;color:var(--text);cursor:pointer;font-family:inherit}
+#wysiwyg-toolbar button:hover{background:var(--bg3);color:var(--accent)}
+#wysiwyg-editor{flex:1;overflow-y:auto;padding:14px 18px;outline:none;font-family:var(--font-mono);font-size:13px;line-height:1.6;color:var(--text);background:var(--bg);white-space:pre-wrap;word-wrap:break-word;min-height:0}
+#wysiwyg-editor h1,#wysiwyg-editor h2,#wysiwyg-editor h3{color:var(--accent);margin:.4em 0 .2em;white-space:normal}
+#wysiwyg-editor strong,#wysiwyg-editor b{color:var(--text)}
+#wysiwyg-editor a{color:var(--accent)}
+#wysiwyg-editor code{background:var(--bg2);padding:1px 4px;border-radius:3px;font-size:.88em}
+#wysiwyg-editor pre{background:var(--bg2);padding:8px 12px;border-radius:4px;overflow-x:auto;white-space:pre}
+#wysiwyg-editor blockquote{border-left:3px solid var(--border);padding-left:12px;color:var(--muted);margin:4px 0}
+#wysiwyg-editor ul,#wysiwyg-editor ol{padding-left:24px}
+#wysiwyg-editor .tessel-directive{display:block;background:rgba(137,180,250,.08);border:1px solid rgba(137,180,250,.25);border-radius:4px;padding:2px 8px;margin:3px 0;color:var(--accent);font-family:var(--font-mono);font-size:.88em;cursor:default;user-select:none;white-space:pre}
+#btn-wysiwyg.active,#btn-insert-img.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+
 /* ---- Error overlay inside editor ---- */
 #error-banner {
   display: none;
@@ -328,6 +383,11 @@ button:disabled { opacity: .4; cursor: default; }
   <span id="filename-display">No file open</span>
   <div class="spacer"></div>
   <button id="btn-doc-settings" title="Document defaults — applied to newly compiled documents">⚙ Document Settings</button>
+  <button id="btn-studio-theme" title="Studio theme customization">🎨 Theme</button>
+  <div class="sep"></div>
+  <button id="btn-wysiwyg" title="Toggle WYSIWYG / Markdown editing mode">✎ WYSIWYG</button>
+  <button id="btn-insert-img" title="Insert image (embedded as data URI)">⬡ Image</button>
+  <input type="file" id="pick-img" accept="image/*" style="display:none">
   <div class="sep"></div>
   <button id="btn-theme">☀ Light</button>
 </div>
@@ -387,7 +447,81 @@ button:disabled { opacity: .4; cursor: default; }
         </select>
       </div>
     </div>
+    <div class="ds-group">
+      <span class="ds-group-label">Theme</span>
+      <div class="ds-row">
+        <label for="ds-accent-dark">Accent (dark)</label>
+        <input type="color" id="ds-accent-dark" value="#89b4fa">
+      </div>
+      <div class="ds-row">
+        <label for="ds-accent-light">Accent (light)</label>
+        <input type="color" id="ds-accent-light" value="#0969da">
+      </div>
+      <div class="ds-row">
+        <label for="ds-border-contrast">Border contrast</label>
+        <input type="range" id="ds-border-contrast" min="50" max="200" step="5" value="100">
+        <span class="ds-val" id="ds-border-contrast-val">100%</span>
+      </div>
+    </div>
+    <div class="ds-group">
+      <span class="ds-group-label">Form Fields</span>
+      <div class="ds-row">
+        <label for="ds-check-style">Checkbox style</label>
+        <select id="ds-check-style">
+          <option value="check">Checkmark (✓)</option>
+          <option value="x">X mark (✕)</option>
+          <option value="square">Filled square (■)</option>
+        </select>
+      </div>
+    </div>
+    <div class="ds-group">
+      <span class="ds-group-label">Tables</span>
+      <div class="ds-row">
+        <label for="ds-tbl-min">Default min rows</label>
+        <input type="number" id="ds-tbl-min" min="1" max="20" value="1" style="width:56px">
+      </div>
+      <div class="ds-row">
+        <label for="ds-tbl-max">Default max rows (0 = unlimited)</label>
+        <input type="number" id="ds-tbl-max" min="0" max="100" value="0" style="width:56px">
+      </div>
+    </div>
     <button class="ds-reset" id="ds-reset" type="button">Reset to defaults</button>
+  </div>
+</div>
+
+<!-- Studio theme panel -->
+<div id="studio-theme-panel" style="display:none">
+  <div id="studio-theme-hdr">
+    <span>Studio Theme</span>
+    <button type="button" id="studio-theme-close" title="Close">✕</button>
+  </div>
+  <div id="studio-theme-body">
+    <p class="ds-hint">Customize the Studio editor appearance. These settings apply only to the Studio itself.</p>
+    <div class="ds-group">
+      <span class="ds-group-label">Dark Theme</span>
+      <div class="ds-row">
+        <label for="sth-accent-dark">Accent color</label>
+        <input type="color" id="sth-accent-dark" value="#89b4fa">
+      </div>
+      <div class="ds-row">
+        <label for="sth-border-dark">Border contrast</label>
+        <input type="range" id="sth-border-dark" min="50" max="200" step="5" value="100">
+        <span class="ds-val" id="sth-border-dark-val">100%</span>
+      </div>
+    </div>
+    <div class="ds-group">
+      <span class="ds-group-label">Light Theme</span>
+      <div class="ds-row">
+        <label for="sth-accent-light">Accent color</label>
+        <input type="color" id="sth-accent-light" value="#0969da">
+      </div>
+      <div class="ds-row">
+        <label for="sth-border-light">Border contrast</label>
+        <input type="range" id="sth-border-light" min="50" max="200" step="5" value="100">
+        <span class="ds-val" id="sth-border-light-val">100%</span>
+      </div>
+    </div>
+    <button class="ds-reset" id="sth-reset" type="button">Reset to defaults</button>
   </div>
 </div>
 
@@ -401,6 +535,18 @@ button:disabled { opacity: .4; cursor: default; }
       <span id="editor-lines" style="margin-left:auto"></span>
     </div>
     <textarea id="editor" spellcheck="false" placeholder="Open a .md file to get started, or start typing Tessel Markdown here…"></textarea>
+    <div id="wysiwyg-toolbar" style="display:none">
+      <button data-cmd="bold" title="Bold"><b>B</b></button>
+      <button data-cmd="italic" title="Italic"><i>I</i></button>
+      <button data-cmd="h1" title="Heading 1">H1</button>
+      <button data-cmd="h2" title="Heading 2">H2</button>
+      <button data-cmd="h3" title="Heading 3">H3</button>
+      <button data-cmd="insertUnorderedList" title="Bullet list">• List</button>
+      <button data-cmd="insertOrderedList" title="Numbered list">1. List</button>
+      <button data-cmd="createLink" title="Insert link">⎘ Link</button>
+      <button data-cmd="code" title="Inline code">`Code`</button>
+    </div>
+    <div id="wysiwyg-editor" contenteditable="true" spellcheck="true" style="display:none"></div>
   </div>
 
   <div id="drag-handle"></div>
@@ -463,10 +609,12 @@ button:disabled { opacity: .4; cursor: default; }
 var TESSEL_CSS = `
   :root{--bg:#1a1d23;--bg2:#22262e;--bg3:#2a2f3a;--border:#3a3f4d;--text:#cdd6f4;--muted:#7f8498;
     --accent:#89b4fa;--green:#a6e3a1;--yellow:#f9e2af;--orange:#fab387;--red:#f38ba8;
-    --code-bg:#181b21;--code-text:#a6e3a1;--radius:6px;--btn-bg:#2a2f3a;--bg2-rgb:34,38,46}
-  body.light{--bg:#ffffff;--bg2:#f4f5f7;--bg3:#eceff2;--border:#6b7a8a;--text:#1f2328;--muted:#57606a;
+    --code-bg:#181b21;--code-text:#a6e3a1;--radius:6px;--btn-bg:#2a2f3a;--bg2-rgb:34,38,46;
+    --border-mult:1}
+  body.light{--bg:#ffffff;--bg2:#f4f5f7;--bg3:#e8eaed;--border:#8a9ab0;--text:#1f2328;--muted:#57606a;
     --accent:#0969da;--green:#1a7f37;--yellow:#9a6700;--orange:#bc4c00;--red:#cf222e;
-    --code-bg:#f6f8fa;--code-text:#0a3069;--btn-bg:#eaeef2;--bg2-rgb:244,245,247}
+    --code-bg:#f6f8fa;--code-text:#0a3069;--btn-bg:#eaeef2;--bg2-rgb:244,245,247;
+    --border-mult:1}
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;overflow:hidden;margin:0;padding:0}
   body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
@@ -653,6 +801,8 @@ var TESSEL_CSS = `
   .md-table tr:last-child td{border-bottom:none}
   .md-table tr:hover td{background:rgba(137,180,250,.04)}
   body.light .md-table tr:hover td{background:rgba(9,105,218,.04)}
+  /* embedded images */
+  #bf-doc-body img{max-width:100%;height:auto;border-radius:var(--radius);margin:4px 0;display:block}
   /* collapsible subsections */
   details.subsection{margin:4px 0;border-top:1px solid var(--border)}
   details.subsection>summary.sub-summary{list-style:none;cursor:pointer;user-select:none;
@@ -835,6 +985,18 @@ var TESSEL_CSS = `
   #bf-enc-plain:hover{border-color:var(--muted);color:var(--text)}
   #bf-enc-cancel{background:transparent;color:var(--muted);flex:0 0 auto}
   #bf-enc-cancel:hover{color:var(--red)}
+  /* checkbox style preference */
+  .choice-field input[type=checkbox]{appearance:none;-webkit-appearance:none;
+    width:15px;height:15px;border:1.5px solid var(--border);border-radius:3px;
+    background:var(--bg2);cursor:pointer;vertical-align:middle;position:relative;
+    flex-shrink:0;transition:background .15s,border-color .15s;
+    display:inline-grid;place-items:center}
+  .choice-field input[type=checkbox]:checked{background:var(--accent);border-color:var(--accent)}
+  .choice-field input[type=checkbox]:checked::after{content:'\2713';display:block;
+    font-size:10px;line-height:1;color:var(--bg);font-weight:700}
+  body[data-check-style="x"] .choice-field input[type=checkbox]:checked::after{content:'\2715'}
+  body[data-check-style="square"] .choice-field input[type=checkbox]:checked::after{
+    content:'';width:7px;height:7px;background:var(--bg);border-radius:1px}
   /* choice fields */
   .choice-field{margin:10px 0}
   .choice-rows{display:grid;grid-template-columns:18px max-content 1fr;
@@ -861,6 +1023,11 @@ var TESSEL_CSS = `
   .add-row-btn{background:var(--btn-bg);color:var(--muted);border:1px dashed var(--border);
     border-radius:var(--radius);padding:4px 14px;cursor:pointer;font-size:.78em;font-family:inherit;margin-top:2px}
   .add-row-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .add-row-btn:disabled{opacity:.4;cursor:not-allowed}
+  .tbl-del-col{width:28px;text-align:center}
+  .input-table td select{width:100%;background:var(--code-bg);color:var(--text);
+    border:1px solid transparent;border-radius:3px;padding:4px 6px;font-family:inherit;font-size:inherit}
+  .input-table td select:focus{outline:none;border-color:var(--accent)}
   /* parse fields */
   .parse-field{margin:10px 0;background:var(--bg2);border:1px solid var(--border);
     border-radius:var(--radius);padding:10px 12px}
@@ -1684,16 +1851,40 @@ var TESSEL_RUNTIME_JS = String.raw`
 
   // ---- table fields ----
   (function(){
-    function getTableCols(div){
-      var heads=div.querySelectorAll('.input-table thead th');
-      var cols=[];for(var i=0;i<heads.length-1;i++)cols.push(heads[i].textContent.trim());
+    function getColDefs(div){
+      var heads=div.querySelectorAll('.input-table thead th:not(.tbl-del-col)');
+      var cols=[];
+      heads.forEach(function(th){
+        cols.push({name:th.textContent.trim(),type:th.dataset.colType||'text',
+          opts:(th.dataset.colOpts||'').split('|').filter(Boolean)});
+      });
       return cols;
+    }
+    function makeInput(col,value){
+      var inp;
+      switch(col.type){
+        case 'date':inp=document.createElement('input');inp.type='date';break;
+        case 'select':
+          inp=document.createElement('select');
+          inp.innerHTML='<option value="">—</option>'+col.opts.map(function(o){
+            return'<option value="'+o+'">'+o+'</option>';}).join('');
+          break;
+        case 'check':inp=document.createElement('input');inp.type='checkbox';break;
+        default:inp=document.createElement('input');inp.type='text';
+      }
+      if(col.type==='check')inp.checked=!!value;
+      else if(inp.tagName==='SELECT'||inp.type!=='checkbox')inp.value=value||'';
+      return inp;
     }
     function serializeTable(tbody,cols){
       var rows=[],trs=tbody.querySelectorAll('tr');
       trs.forEach(function(tr){
-        var row={},inputs=tr.querySelectorAll('input:not([type=hidden]),textarea');
-        for(var i=0;i<Math.min(inputs.length,cols.length);i++)row[cols[i]]=inputs[i].value;
+        var row={};
+        var inputs=tr.querySelectorAll('input:not([type=hidden]),select,textarea');
+        for(var i=0;i<Math.min(inputs.length,cols.length);i++){
+          var inp=inputs[i];
+          row[cols[i].name]=inp.type==='checkbox'?inp.checked:inp.value;
+        }
         rows.push(row);
       });
       return rows;
@@ -1703,44 +1894,54 @@ var TESSEL_RUNTIME_JS = String.raw`
       try{localStorage.setItem(ns+'note:'+slug,v);}catch(e){}
       if(hid)hid.value=v;
     }
+    function updateAddBtn(div,tbody){
+      var maxRows=parseInt(div.dataset.maxRows||0,10);
+      var addBtn=div.querySelector('.add-row-btn');if(!addBtn)return;
+      if(maxRows&&tbody.rows.length>=maxRows){addBtn.disabled=true;addBtn.title='Maximum rows reached';}
+      else{addBtn.disabled=false;addBtn.title='Add row';}
+    }
     function addRow(div,slug,cols,hid,rowData){
-      var tbody=document.getElementById('tbl-'+slug);
-      if(!tbody)return;
+      var tbody=document.getElementById('tbl-'+slug);if(!tbody)return;
+      var maxRows=parseInt(div.dataset.maxRows||0,10);
+      if(maxRows&&tbody.rows.length>=maxRows)return;
+      var minRows=parseInt(div.dataset.minRows||1,10);
       var tr=document.createElement('tr');
-      cols.forEach(function(col,idx){
+      cols.forEach(function(col){
         var td=document.createElement('td');
-        var inp;
-        if(idx===cols.length-1&&cols.length>1){inp=document.createElement('textarea');inp.rows=2;}
-        else{inp=document.createElement('input');inp.type='text';}
-        inp.value=rowData&&rowData[col]!=null?rowData[col]:'';
+        var inp=makeInput(col,rowData&&rowData[col.name]!=null?rowData[col.name]:'');
+        inp.addEventListener('change',function(){saveTable(slug,serializeTable(tbody,cols),hid);});
         inp.addEventListener('input',function(){saveTable(slug,serializeTable(tbody,cols),hid);});
         td.appendChild(inp);tr.appendChild(td);
       });
-      var td=document.createElement('td');
-      var del=document.createElement('button');del.type='button';del.textContent='×';del.className='row-del-btn';del.title='Remove row';
-      del.addEventListener('click',function(){tr.parentNode.removeChild(tr);saveTable(slug,serializeTable(tbody,cols),hid);});
+      var td=document.createElement('td');td.className='tbl-del-col';
+      var del=document.createElement('button');del.type='button';del.textContent='×';
+      del.className='row-del-btn';del.title='Remove row';
+      del.addEventListener('click',function(){
+        if(tbody.rows.length<=minRows)return;
+        tr.parentNode.removeChild(tr);
+        saveTable(slug,serializeTable(tbody,cols),hid);
+        updateAddBtn(div,tbody);
+      });
       td.appendChild(del);tr.appendChild(td);tbody.appendChild(tr);
+      updateAddBtn(div,tbody);
     }
     document.querySelectorAll('.table-field').forEach(function(div){
       var slug=div.dataset.slug;if(!slug)return;
-      var cols=getTableCols(div);
+      var cols=getColDefs(div);
       var tbody=document.getElementById('tbl-'+slug);if(!tbody)return;
       var hid=div.querySelector('input[type=hidden][data-note="'+slug+'"]');
+      var minRows=parseInt(div.dataset.minRows||1,10);
       var saved=null;
       try{var s=localStorage.getItem(ns+'note:'+slug);if(s)saved=JSON.parse(s);}catch(e){}
       if(saved&&saved.length){
         saved.forEach(function(row){addRow(div,slug,cols,hid,row);});
-      } else {
-        var preset=[];
-        if(hid&&hid.dataset.presetRows){try{preset=JSON.parse(hid.dataset.presetRows);}catch(e){}}
-        preset.forEach(function(rowLabel){
-          var row={};if(cols.length>0)row[cols[0]]=rowLabel;
-          addRow(div,slug,cols,hid,row);
-        });
-        if(preset.length&&tbody.rows.length)saveTable(slug,serializeTable(tbody,cols),hid);
       }
+      var rowCount=tbody.rows.length;
+      while(rowCount<minRows){addRow(div,slug,cols,hid,null);rowCount++;}
+      if(rowCount&&!saved)saveTable(slug,serializeTable(tbody,cols),hid);
       var addBtn=div.querySelector('.add-row-btn');
-      if(addBtn){addBtn.addEventListener('click',function(){addRow(div,slug,cols,hid,null);});}
+      if(addBtn)addBtn.addEventListener('click',function(){addRow(div,slug,cols,hid,null);});
+      updateAddBtn(div,tbody);
     });
   })();
 
@@ -2590,8 +2791,8 @@ var TESSEL_RUNTIME_JS = String.raw`
 
   // ---- settings panel ----
   (function(){
-    var KEYS={pad:'bf:settings:pad-h',font:'bf:settings:font',fontSize:'bf:settings:font-size'};
-    var DEFAULTS={pad:20,font:'',fontSize:14};
+    var KEYS={pad:'bf:settings:pad-h',font:'bf:settings:font',fontSize:'bf:settings:font-size',checkStyle:'bf:settings:check-style',accent:'bf:settings:accent',borderContrast:'bf:settings:border-contrast'};
+    var DEFAULTS={pad:20,font:'',fontSize:14,checkStyle:'check',accent:'',borderContrast:100};
     var panel=document.getElementById('bf-settings-panel');
     var btn=document.getElementById('bf-settings-btn');
     var closeBtn=document.getElementById('bf-settings-close');
@@ -2613,23 +2814,47 @@ var TESSEL_RUNTIME_JS = String.raw`
       document.body.style.fontSize=px+'px';
       var el=document.getElementById('bfs-font-size-val');if(el)el.textContent=px+'px';
     }
+    function applyCheckStyle(v){document.body.dataset.checkStyle=v||'check';}
+    function applyAccent(v){if(v)document.documentElement.style.setProperty('--accent',v);}
+    function applyBorderContrast(v){
+      var pct=parseInt(v,10)||100;
+      document.documentElement.style.setProperty('--border-mult',pct/100);
+      var el=document.getElementById('bfs-border-contrast-val');if(el)el.textContent=pct+'%';
+      // scale border opacity via filter on a bridge var
+      document.documentElement.style.setProperty('--border-opacity',Math.min(1,pct/100));
+    }
     // restore saved
     var savedPad=load(KEYS.pad,DEFAULTS.pad);
     var savedFont=load(KEYS.font,DEFAULTS.font);
     var savedFs=load(KEYS.fontSize,DEFAULTS.fontSize);
-    applyPad(savedPad);applyFont(savedFont);applyFontSize(savedFs);
+    var savedCs=load(KEYS.checkStyle,DEFAULTS.checkStyle);
+    var savedAccent=load(KEYS.accent,DEFAULTS.accent);
+    var savedBc=load(KEYS.borderContrast,DEFAULTS.borderContrast);
+    applyPad(savedPad);applyFont(savedFont);applyFontSize(savedFs);applyCheckStyle(savedCs);
+    if(savedAccent)applyAccent(savedAccent);applyBorderContrast(savedBc);
     var padSlider=document.getElementById('bfs-pad-h');
     var fontSel=document.getElementById('bfs-font');
     var fsSlider=document.getElementById('bfs-font-size');
+    var checkStyleSel=document.getElementById('bfs-check-style');
+    var accentPicker=document.getElementById('bfs-accent');
+    var borderSlider=document.getElementById('bfs-border-contrast');
     if(padSlider){padSlider.value=savedPad;padSlider.addEventListener('input',function(){applyPad(this.value);save(KEYS.pad,this.value);});}
     if(fontSel){fontSel.value=savedFont;fontSel.addEventListener('change',function(){applyFont(this.value);save(KEYS.font,this.value);});}
     if(fsSlider){fsSlider.value=savedFs;fsSlider.addEventListener('input',function(){applyFontSize(this.value);save(KEYS.fontSize,this.value);});}
+    if(checkStyleSel){checkStyleSel.value=savedCs;checkStyleSel.addEventListener('change',function(){applyCheckStyle(this.value);save(KEYS.checkStyle,this.value);});}
+    if(accentPicker){if(savedAccent)accentPicker.value=savedAccent;accentPicker.addEventListener('input',function(){applyAccent(this.value);save(KEYS.accent,this.value);});}
+    if(borderSlider){borderSlider.value=savedBc;borderSlider.addEventListener('input',function(){applyBorderContrast(this.value);save(KEYS.borderContrast,this.value);});}
     var resetBtn=document.getElementById('bfs-reset');
     if(resetBtn){resetBtn.addEventListener('click',function(){
-      applyPad(DEFAULTS.pad);applyFont(DEFAULTS.font);applyFontSize(DEFAULTS.fontSize);
+      applyPad(DEFAULTS.pad);applyFont(DEFAULTS.font);applyFontSize(DEFAULTS.fontSize);applyCheckStyle(DEFAULTS.checkStyle);
+      document.documentElement.style.removeProperty('--accent');
+      applyBorderContrast(DEFAULTS.borderContrast);
       if(padSlider)padSlider.value=DEFAULTS.pad;
       if(fontSel)fontSel.value=DEFAULTS.font;
       if(fsSlider)fsSlider.value=DEFAULTS.fontSize;
+      if(checkStyleSel)checkStyleSel.value=DEFAULTS.checkStyle;
+      if(accentPicker)accentPicker.value='#89b4fa';
+      if(borderSlider)borderSlider.value=DEFAULTS.borderContrast;
       Object.values(KEYS).forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
     });}
     btn.addEventListener('click',function(e){e.stopPropagation();panel.classList.toggle('open');});
@@ -2776,8 +3001,18 @@ function parseTableSpec(rest) {
   var colonIdx = rest.indexOf(':');
   if (colonIdx < 0) return { label: rest, columns: [] };
   var label = rest.slice(0, colonIdx).trim();
-  var cols = rest.slice(colonIdx + 1).trim().split(',').map(function(c) { return c.trim(); }).filter(Boolean);
-  return { label: label, columns: cols };
+  var colDefs = rest.slice(colonIdx + 1).trim().split(',').map(function(c){return c.trim();}).filter(Boolean);
+  var columns = colDefs.map(function(def) {
+    var pipeIdx = def.indexOf('|');
+    if (pipeIdx < 0) return { name: def, type: 'text', opts: [] };
+    var name = def.slice(0, pipeIdx).trim();
+    var typeStr = def.slice(pipeIdx + 1).trim();
+    var cPos = typeStr.indexOf(':');
+    var type = (cPos < 0 ? typeStr : typeStr.slice(0, cPos)).toLowerCase().trim();
+    var opts = cPos < 0 ? [] : typeStr.slice(cPos + 1).split('/').map(function(o){return o.trim();}).filter(Boolean);
+    return { name: name, type: type, opts: opts };
+  });
+  return { label: label, columns: columns };
 }
 
 /**
@@ -3583,13 +3818,18 @@ var TesselFields = (function() {
     var id = esc(meta.id || node.id);
     var label = esc(node.label);
     var columns = node.columns || [];
-    var presetRows = (meta.preset_rows || []).join('|');
+    var minRows = parseInt(meta.min_rows || 1, 10);
+    var maxRows = meta.max_rows ? parseInt(meta.max_rows, 10) : 0;
     var tv = tvAttrs(meta);
     var headers = columns.map(function(col) {
-      return '<th>' + esc(col.name) + '</th>';
-    }).join('') + '<th></th>';
+      var th = '<th data-col-type="' + esc(col.type || 'text') + '"';
+      if (col.opts && col.opts.length) th += ' data-col-opts="' + esc(col.opts.join('|')) + '"';
+      th += '>' + esc(col.name) + '</th>';
+      return th;
+    }).join('') + '<th class="tbl-del-col"></th>';
     return [
       '<div class="table-field notefield" data-slug="' + id + '"',
+      '  data-min-rows="' + minRows + '"' + (maxRows ? ' data-max-rows="' + maxRows + '"' : ''),
       '  ' + (meta.visible_if ? 'data-tv-visible-if="' + esc(meta.visible_if) + '"' : '') + '>',
       '  <label>' + label + reqMark(meta) + '</label>',
       '  <div class="input-table-wrap">',
@@ -3599,8 +3839,7 @@ var TesselFields = (function() {
       '    </table>',
       '    <button type="button" class="add-row-btn" title="Add row">+ Add row</button>',
       '  </div>',
-      '  <input type="hidden" data-note="' + id + '" ' + tv,
-      '    ' + (presetRows ? 'data-preset-rows="' + esc(JSON.stringify((meta.preset_rows||[]))) + '"' : '') + '>',
+      '  <input type="hidden" data-note="' + id + '" ' + tv + '>',
       fieldFooter(meta),
       '</div>'
     ].join('\n');
@@ -4049,6 +4288,29 @@ TesselCompiler.prototype._renderSettingsPanel = function() {
     '        <span class="bfs-val" id="bfs-font-size-val">14px</span>',
     '      </div>',
     '    </div>',
+    '    <div class="bfs-group">',
+    '      <span class="bfs-group-label">Theme</span>',
+    '      <div class="bfs-row">',
+    '        <label for="bfs-accent">Accent color</label>',
+    '        <input type="color" id="bfs-accent" value="#89b4fa" title="Accent / link color">',
+    '      </div>',
+    '      <div class="bfs-row">',
+    '        <label for="bfs-border-contrast">Border contrast</label>',
+    '        <input type="range" id="bfs-border-contrast" min="50" max="200" step="5" value="100">',
+    '        <span class="bfs-val" id="bfs-border-contrast-val">100%</span>',
+    '      </div>',
+    '    </div>',
+    '    <div class="bfs-group">',
+    '      <span class="bfs-group-label">Form Fields</span>',
+    '      <div class="bfs-row">',
+    '        <label for="bfs-check-style">Checkbox style</label>',
+    '        <select id="bfs-check-style">',
+    '          <option value="check">Checkmark (✓)</option>',
+    '          <option value="x">X mark (✕)</option>',
+    '          <option value="square">Filled square (■)</option>',
+    '        </select>',
+    '      </div>',
+    '    </div>',
     '    <button class="bfs-reset" id="bfs-reset" type="button">Reset to defaults</button>',
     '  </div>',
     '</div>'
@@ -4282,13 +4544,16 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       var html = T.compile(md);
       // inject studio document settings as initial CSS/data defaults
       var ds = getDocSettings();
-      var overrideCSS = '<style id="bf-doc-defaults">:root{--doc-pad-h:' + ds.padH + 'px}'
+      var bc = ds.borderContrast != null ? ds.borderContrast : 100;
+      var overrideCSS = '<style id="bf-doc-defaults">:root{--doc-pad-h:' + ds.padH + 'px;--border-mult:' + (bc/100).toFixed(2) + '}'
+        + (ds.accentDark && ds.accentDark !== '#89b4fa' ? ':root{--accent:' + ds.accentDark + '}' : '')
+        + (ds.accentLight && ds.accentLight !== '#0969da' ? 'body.light{--accent:' + ds.accentLight + '}' : '')
         + (ds.font ? 'body{font-family:' + ds.font + '}' : '')
         + (ds.fontSize !== 14 ? 'body{font-size:' + ds.fontSize + 'px}' : '')
         + '</style>';
       html = html.replace('</head>', overrideCSS + '\n</head>');
-      // embed date/time format prefs as data attributes on body for runtime use
-      html = html.replace('<body ', '<body data-date-fmt="' + ds.dateFmt + '" data-time-fmt="' + ds.timeFmt + '" ');
+      // embed date/time/form prefs as data attributes on body for runtime use
+      html = html.replace('<body ', '<body data-date-fmt="' + ds.dateFmt + '" data-time-fmt="' + ds.timeFmt + '" data-check-style="' + (ds.checkStyle||'check') + '" ');
       lastHtml = html;
       var elapsed = Date.now() - t0;
       var kb = (html.length / 1024).toFixed(1);
@@ -4497,7 +4762,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
 
   // ---- document settings ----
   var DOC_SETTINGS_KEY = 'tessel-studio:doc-settings';
-  var DOC_SETTINGS_DEFAULTS = { padH: 20, font: '', fontSize: 14, dateFmt: 'YYYY-MM-DD', timeFmt: '24' };
+  var DOC_SETTINGS_DEFAULTS = { padH: 20, font: '', fontSize: 14, dateFmt: 'YYYY-MM-DD', timeFmt: '24', checkStyle: 'check', tableMinRows: 1, tableMaxRows: 0, accentDark: '#89b4fa', accentLight: '#0969da', borderContrast: 100 };
 
   function getDocSettings() {
     try {
@@ -4515,32 +4780,52 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     var closeBtn = document.getElementById('doc-settings-close');
     if (!panel || !openBtn) return;
 
-    var padSlider  = document.getElementById('ds-pad-h');
-    var padVal     = document.getElementById('ds-pad-h-val');
-    var fontSel    = document.getElementById('ds-font');
-    var fsSel      = document.getElementById('ds-font-size');
-    var fsVal      = document.getElementById('ds-font-size-val');
-    var dateFmtSel = document.getElementById('ds-date-fmt');
-    var timeFmtSel = document.getElementById('ds-time-fmt');
-    var resetBtn   = document.getElementById('ds-reset');
+    var padSlider       = document.getElementById('ds-pad-h');
+    var padVal          = document.getElementById('ds-pad-h-val');
+    var fontSel         = document.getElementById('ds-font');
+    var fsSel           = document.getElementById('ds-font-size');
+    var fsVal           = document.getElementById('ds-font-size-val');
+    var dateFmtSel      = document.getElementById('ds-date-fmt');
+    var timeFmtSel      = document.getElementById('ds-time-fmt');
+    var checkStyleSel   = document.getElementById('ds-check-style');
+    var tblMinEl        = document.getElementById('ds-tbl-min');
+    var tblMaxEl        = document.getElementById('ds-tbl-max');
+    var accentDarkEl    = document.getElementById('ds-accent-dark');
+    var accentLightEl   = document.getElementById('ds-accent-light');
+    var borderContrastEl = document.getElementById('ds-border-contrast');
+    var borderContrastVal = document.getElementById('ds-border-contrast-val');
+    var resetBtn        = document.getElementById('ds-reset');
 
     function load() {
       var s = getDocSettings();
-      if (padSlider) { padSlider.value = s.padH; }
-      if (padVal)    { padVal.textContent = s.padH + 'px'; }
-      if (fontSel)   { fontSel.value = s.font; }
-      if (fsSel)     { fsSel.value = s.fontSize; }
-      if (fsVal)     { fsVal.textContent = s.fontSize + 'px'; }
-      if (dateFmtSel){ dateFmtSel.value = s.dateFmt; }
-      if (timeFmtSel){ timeFmtSel.value = s.timeFmt; }
+      if (padSlider)      { padSlider.value = s.padH; }
+      if (padVal)         { padVal.textContent = s.padH + 'px'; }
+      if (fontSel)        { fontSel.value = s.font; }
+      if (fsSel)          { fsSel.value = s.fontSize; }
+      if (fsVal)          { fsVal.textContent = s.fontSize + 'px'; }
+      if (dateFmtSel)     { dateFmtSel.value = s.dateFmt; }
+      if (timeFmtSel)     { timeFmtSel.value = s.timeFmt; }
+      if (checkStyleSel)  { checkStyleSel.value = s.checkStyle || 'check'; }
+      if (tblMinEl)       { tblMinEl.value = s.tableMinRows != null ? s.tableMinRows : 1; }
+      if (tblMaxEl)       { tblMaxEl.value = s.tableMaxRows != null ? s.tableMaxRows : 0; }
+      if (accentDarkEl)   { accentDarkEl.value = s.accentDark || '#89b4fa'; }
+      if (accentLightEl)  { accentLightEl.value = s.accentLight || '#0969da'; }
+      if (borderContrastEl){ borderContrastEl.value = s.borderContrast != null ? s.borderContrast : 100; }
+      if (borderContrastVal){ borderContrastVal.textContent = (s.borderContrast != null ? s.borderContrast : 100) + '%'; }
     }
     function persist() {
       saveDocSettings({
-        padH:     parseInt(padSlider ? padSlider.value : 20, 10),
-        font:     fontSel    ? fontSel.value    : '',
-        fontSize: parseInt(fsSel ? fsSel.value : 14, 10),
-        dateFmt:  dateFmtSel ? dateFmtSel.value : 'YYYY-MM-DD',
-        timeFmt:  timeFmtSel ? timeFmtSel.value : '24'
+        padH:          parseInt(padSlider ? padSlider.value : 20, 10),
+        font:          fontSel        ? fontSel.value        : '',
+        fontSize:      parseInt(fsSel ? fsSel.value : 14, 10),
+        dateFmt:       dateFmtSel     ? dateFmtSel.value     : 'YYYY-MM-DD',
+        timeFmt:       timeFmtSel     ? timeFmtSel.value     : '24',
+        checkStyle:    checkStyleSel  ? checkStyleSel.value  : 'check',
+        tableMinRows:  parseInt(tblMinEl ? tblMinEl.value : 1, 10),
+        tableMaxRows:  parseInt(tblMaxEl ? tblMaxEl.value : 0, 10),
+        accentDark:    accentDarkEl   ? accentDarkEl.value   : '#89b4fa',
+        accentLight:   accentLightEl  ? accentLightEl.value  : '#0969da',
+        borderContrast: parseInt(borderContrastEl ? borderContrastEl.value : 100, 10)
       });
     }
 
@@ -4550,9 +4835,17 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     if (fsSel) fsSel.addEventListener('input', function() {
       if (fsVal) fsVal.textContent = this.value + 'px'; persist();
     });
-    if (fontSel)    fontSel.addEventListener('change',    function() { persist(); });
-    if (dateFmtSel) dateFmtSel.addEventListener('change', function() { persist(); });
-    if (timeFmtSel) timeFmtSel.addEventListener('change', function() { persist(); });
+    if (borderContrastEl) borderContrastEl.addEventListener('input', function() {
+      if (borderContrastVal) borderContrastVal.textContent = this.value + '%'; persist();
+    });
+    if (fontSel)        fontSel.addEventListener('change',       function() { persist(); });
+    if (dateFmtSel)     dateFmtSel.addEventListener('change',    function() { persist(); });
+    if (timeFmtSel)     timeFmtSel.addEventListener('change',    function() { persist(); });
+    if (checkStyleSel)  checkStyleSel.addEventListener('change', function() { persist(); });
+    if (tblMinEl)       tblMinEl.addEventListener('input',       function() { persist(); });
+    if (tblMaxEl)       tblMaxEl.addEventListener('input',       function() { persist(); });
+    if (accentDarkEl)   accentDarkEl.addEventListener('input',   function() { persist(); });
+    if (accentLightEl)  accentLightEl.addEventListener('input',  function() { persist(); });
 
     if (resetBtn) resetBtn.addEventListener('click', function() {
       saveDocSettings(DOC_SETTINGS_DEFAULTS);
@@ -4599,6 +4892,293 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     // Auto-save draft on edit
     editor.addEventListener('input', function() {
       try { localStorage.setItem('tessel-studio:draft', editor.value); } catch(ex) {}
+    });
+  })();
+
+  // ---- studio theme panel ----
+  (function() {
+    var STH_KEY = 'tessel-studio:theme';
+    var STH_DEFAULTS = { accentDark: '#5b8af0', accentLight: '#5b8af0', borderDark: 100, borderLight: 100 };
+    function getSth() {
+      try { var s = localStorage.getItem(STH_KEY); return s ? Object.assign({}, STH_DEFAULTS, JSON.parse(s)) : Object.assign({}, STH_DEFAULTS); } catch(e) { return Object.assign({}, STH_DEFAULTS); }
+    }
+    function saveSth(o) { try { localStorage.setItem(STH_KEY, JSON.stringify(o)); } catch(e) {} }
+
+    function applyStudioTheme(s) {
+      var root = document.documentElement;
+      root.style.setProperty('--accent', s.accentDark);
+      root.style.setProperty('--accent2', s.accentDark);
+      // border contrast: scale the base border color brightness
+      // We do this by modifying a CSS variable that scales opacity
+      var bdPct = (s.borderDark||100) / 100;
+      root.style.setProperty('--border', adjustBorder('#3a3c42', bdPct));
+      if (document.body.classList.contains('light')) {
+        root.style.setProperty('--accent', s.accentLight);
+        var blPct = (s.borderLight||100) / 100;
+        root.style.setProperty('--border', adjustBorder('#b0b4bc', blPct));
+      }
+    }
+    function adjustBorder(hex, mult) {
+      // parse hex, multiply each channel toward black (darken) or white (lighten)
+      var r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+      if (mult > 1) { r=Math.min(255,Math.round(r+(255-r)*(mult-1))); g=Math.min(255,Math.round(g+(255-g)*(mult-1))); b=Math.min(255,Math.round(b+(255-b)*(mult-1))); }
+      else { r=Math.round(r*mult); g=Math.round(g*mult); b=Math.round(b*mult); }
+      return '#'+[r,g,b].map(function(x){return x.toString(16).padStart(2,'0');}).join('');
+    }
+
+    var panel    = document.getElementById('studio-theme-panel');
+    var openBtn  = document.getElementById('btn-studio-theme');
+    var closeBtn = document.getElementById('studio-theme-close');
+    if (!panel || !openBtn) return;
+
+    var adEl  = document.getElementById('sth-accent-dark');
+    var alEl  = document.getElementById('sth-accent-light');
+    var bdEl  = document.getElementById('sth-border-dark');
+    var bdVal = document.getElementById('sth-border-dark-val');
+    var blEl  = document.getElementById('sth-border-light');
+    var blVal = document.getElementById('sth-border-light-val');
+    var rstBtn = document.getElementById('sth-reset');
+
+    function load() {
+      var s = getSth();
+      if (adEl)  adEl.value  = s.accentDark;
+      if (alEl)  alEl.value  = s.accentLight;
+      if (bdEl)  { bdEl.value  = s.borderDark;  if(bdVal)  bdVal.textContent  = s.borderDark  + '%'; }
+      if (blEl)  { blEl.value  = s.borderLight; if(blVal)  blVal.textContent  = s.borderLight + '%'; }
+      applyStudioTheme(s);
+    }
+    function persist() {
+      var s = { accentDark: adEl?adEl.value:'#5b8af0', accentLight: alEl?alEl.value:'#5b8af0',
+        borderDark: parseInt(bdEl?bdEl.value:100,10), borderLight: parseInt(blEl?blEl.value:100,10) };
+      saveSth(s); applyStudioTheme(s);
+    }
+
+    if (adEl)  adEl.addEventListener('input',  function() { persist(); });
+    if (alEl)  alEl.addEventListener('input',  function() { persist(); });
+    if (bdEl)  bdEl.addEventListener('input',  function() { if(bdVal)bdVal.textContent=this.value+'%'; persist(); });
+    if (blEl)  blEl.addEventListener('input',  function() { if(blVal)blVal.textContent=this.value+'%'; persist(); });
+    if (rstBtn) rstBtn.addEventListener('click', function() { saveSth(STH_DEFAULTS); load(); });
+
+    openBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var open = panel.style.display !== 'none';
+      panel.style.display = open ? 'none' : 'flex';
+      openBtn.classList.toggle('active', !open);
+    });
+    if (closeBtn) closeBtn.addEventListener('click', function() { panel.style.display = 'none'; openBtn.classList.remove('active'); });
+    document.addEventListener('click', function(e) {
+      if (panel.style.display !== 'none' && !panel.contains(e.target) && e.target !== openBtn) {
+        panel.style.display = 'none'; openBtn.classList.remove('active');
+      }
+    });
+
+    // re-apply on theme toggle
+    document.getElementById('btn-theme').addEventListener('click', function() {
+      setTimeout(function() { applyStudioTheme(getSth()); }, 10);
+    }, true);
+
+    load();
+  })();
+
+  // ---- WYSIWYG mode ----
+  (function() {
+    var btnWysiwyg = document.getElementById('btn-wysiwyg');
+    if (!btnWysiwyg) return;
+    var wysiwygEl = document.getElementById('wysiwyg-editor');
+    var wysiwygToolbar = document.getElementById('wysiwyg-toolbar');
+    var edHdrSpan = document.querySelector('#editor-header span');
+    var isWysiwyg = false;
+
+    function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    function inlineMd(s) {
+      return escHtml(s)
+        .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/__(.*?)__/g,'<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g,'<em>$1</em>').replace(/_((?!\s).*?(?!\s))_/g,'<em>$1</em>')
+        .replace(/`([^`]+)`/g,'<code>$1</code>')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2">$1</a>');
+    }
+
+    function md2html(md) {
+      var lines = md.split('\n'), html = [], i = 0;
+      while (i < lines.length) {
+        var line = lines[i];
+        if (/^\s*@/.test(line)) {
+          html.push('<div class="tessel-directive" contenteditable="false">' + escHtml(line.trim()) + '</div>');
+          i++; continue;
+        }
+        if (line.trim() === '') { html.push('<p><br></p>'); i++; continue; }
+        var hm = line.match(/^(#{1,3})\s+(.*)/);
+        if (hm) { html.push('<h'+hm[1].length+'>'+inlineMd(hm[2])+'</h'+hm[1].length+'>'); i++; continue; }
+        if (/^>\s?/.test(line)) {
+          var bq = [];
+          while (i < lines.length && /^>/.test(lines[i])) { bq.push(lines[i].replace(/^>\s?/,'')); i++; }
+          html.push('<blockquote>'+bq.map(inlineMd).join('<br>')+'</blockquote>'); continue;
+        }
+        if (/^[-*]\s/.test(line)) {
+          var ul = [];
+          while (i < lines.length && /^[-*]\s/.test(lines[i])) { ul.push('<li>'+inlineMd(lines[i].replace(/^[-*]\s/,''))+'</li>'); i++; }
+          html.push('<ul>'+ul.join('')+'</ul>'); continue;
+        }
+        if (/^\d+\.\s/.test(line)) {
+          var ol = [];
+          while (i < lines.length && /^\d+\.\s/.test(lines[i])) { ol.push('<li>'+inlineMd(lines[i].replace(/^\d+\.\s/,''))+'</li>'); i++; }
+          html.push('<ol>'+ol.join('')+'</ol>'); continue;
+        }
+        if (line.startsWith('```')) {
+          var cb = []; i++;
+          while (i < lines.length && !lines[i].startsWith('```')) { cb.push(lines[i]); i++; }
+          i++; html.push('<pre><code>'+cb.map(escHtml).join('\n')+'</code></pre>'); continue;
+        }
+        var pLines = [];
+        while (i < lines.length && lines[i].trim() !== '' && !/^\s*@/.test(lines[i]) && !lines[i].match(/^[#>`\-*]/) && !lines[i].match(/^\d+\./) && !lines[i].startsWith('```')) {
+          pLines.push(lines[i]); i++;
+        }
+        if (pLines.length) html.push('<p>'+pLines.map(inlineMd).join('<br>')+'</p>');
+        else { html.push('<p>'+inlineMd(line)+'</p>'); i++; }
+      }
+      return html.join('\n');
+    }
+
+    function nodeToMd(node) {
+      if (node.nodeType === 3) return node.textContent;
+      if (node.nodeType !== 1) return '';
+      var tag = node.tagName.toLowerCase();
+      var inner = Array.from(node.childNodes).map(nodeToMd).join('');
+      if (tag === 'div' && node.classList && node.classList.contains('tessel-directive')) return '\n' + node.textContent.trim() + '\n';
+      switch (tag) {
+        case 'div': case 'p': return '\n' + inner + '\n';
+        case 'br': return '\n';
+        case 'h1': return '\n# ' + inner.trim() + '\n';
+        case 'h2': return '\n## ' + inner.trim() + '\n';
+        case 'h3': return '\n### ' + inner.trim() + '\n';
+        case 'strong': case 'b': return '**' + inner + '**';
+        case 'em': case 'i': return '*' + inner + '*';
+        case 'code': return node.parentElement && node.parentElement.tagName === 'PRE' ? inner : '`' + inner + '`';
+        case 'pre': return '\n```\n' + inner.trim() + '\n```\n';
+        case 'a': return '[' + inner + '](' + (node.getAttribute('href') || '') + ')';
+        case 'img': return '![' + (node.getAttribute('alt') || '') + '](' + (node.getAttribute('src') || '') + ')';
+        case 'ul': return '\n' + Array.from(node.querySelectorAll(':scope > li')).map(function(li){return '- '+nodeToMd(li).trim();}).join('\n') + '\n';
+        case 'ol': return '\n' + Array.from(node.querySelectorAll(':scope > li')).map(function(li,idx){return (idx+1)+'. '+nodeToMd(li).trim();}).join('\n') + '\n';
+        case 'li': return inner;
+        case 'blockquote': return '\n' + inner.trim().split('\n').map(function(l){return '> '+l;}).join('\n') + '\n';
+        default: return inner;
+      }
+    }
+
+    function html2md(html) {
+      var d = document.createElement('div'); d.innerHTML = html;
+      return nodeToMd(d).replace(/\n{3,}/g,'\n\n').trim();
+    }
+
+    function syncToTextarea() {
+      var md = html2md(wysiwygEl.innerHTML);
+      editor.value = md;
+      try { localStorage.setItem('tessel-studio:draft', md); } catch(e) {}
+      updateEditorMeta();
+    }
+
+    function enterWysiwyg() {
+      wysiwygEl.innerHTML = md2html(editor.value);
+      editor.style.display = 'none';
+      wysiwygEl.style.display = '';
+      if (wysiwygToolbar) wysiwygToolbar.style.display = 'flex';
+      if (edHdrSpan) edHdrSpan.textContent = 'Rich Edit';
+      btnWysiwyg.textContent = '⬡ Markdown';
+      btnWysiwyg.classList.add('active');
+      isWysiwyg = true;
+    }
+
+    function exitWysiwyg() {
+      syncToTextarea();
+      editor.style.display = '';
+      wysiwygEl.style.display = 'none';
+      if (wysiwygToolbar) wysiwygToolbar.style.display = 'none';
+      if (edHdrSpan) edHdrSpan.textContent = 'Markdown Source';
+      btnWysiwyg.textContent = '✎ WYSIWYG';
+      btnWysiwyg.classList.remove('active');
+      isWysiwyg = false;
+    }
+
+    btnWysiwyg.addEventListener('click', function() {
+      if (isWysiwyg) exitWysiwyg(); else enterWysiwyg();
+    });
+
+    if (wysiwygToolbar) {
+      wysiwygToolbar.addEventListener('mousedown', function(e) { e.preventDefault(); });
+      wysiwygToolbar.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-cmd]'); if (!btn) return;
+        var cmd = btn.dataset.cmd;
+        wysiwygEl.focus();
+        if (cmd === 'h1' || cmd === 'h2' || cmd === 'h3') {
+          document.execCommand('formatBlock', false, '<' + cmd + '>');
+        } else if (cmd === 'code') {
+          var sel = document.getSelection().toString() || 'code';
+          document.execCommand('insertHTML', false, '<code>' + sel + '</code>');
+        } else if (cmd === 'createLink') {
+          var url = prompt('Enter URL:'); if (url) document.execCommand('createLink', false, url);
+        } else {
+          document.execCommand(cmd, false, null);
+        }
+      });
+    }
+
+    if (wysiwygEl) {
+      var _wyDebounce = null;
+      wysiwygEl.addEventListener('input', function() {
+        clearTimeout(_wyDebounce);
+        _wyDebounce = setTimeout(function() {
+          syncToTextarea();
+          editor.dispatchEvent(new Event('input'));
+        }, 700);
+      });
+      wysiwygEl.addEventListener('paste', function(e) {
+        var items = e.clipboardData && e.clipboardData.items;
+        if (!items) return;
+        for (var i = 0; i < items.length; i++) {
+          if (items[i].type.startsWith('image/')) {
+            e.preventDefault();
+            var file = items[i].getAsFile();
+            var reader = new FileReader();
+            reader.onload = function(ev) {
+              document.execCommand('insertImage', false, ev.target.result);
+            };
+            reader.readAsDataURL(file);
+            break;
+          }
+        }
+      });
+    }
+  })();
+
+  // ---- insert image ----
+  (function() {
+    var btn = document.getElementById('btn-insert-img');
+    var pick = document.getElementById('pick-img');
+    if (!btn || !pick) return;
+    btn.addEventListener('click', function() { pick.click(); });
+    pick.addEventListener('change', function() {
+      var f = this.files && this.files[0]; if (!f) return; this.value = '';
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        var dataUri = ev.target.result;
+        var alt = f.name.replace(/\.[^.]+$/, '');
+        var wyEl = document.getElementById('wysiwyg-editor');
+        if (wyEl && wyEl.style.display !== 'none') {
+          wyEl.focus();
+          document.execCommand('insertImage', false, dataUri);
+          var imgs = wyEl.querySelectorAll('img');
+          imgs.forEach(function(img) { img.style.maxWidth = '100%'; img.alt = img.alt || alt; });
+        } else {
+          var mdSnippet = '![' + alt + '](' + dataUri + ')';
+          var s = editor.selectionStart || editor.value.length;
+          var cur = editor.value;
+          editor.value = cur.slice(0, s) + '\n' + mdSnippet + '\n' + cur.slice(s);
+          editor.selectionStart = editor.selectionEnd = s + mdSnippet.length + 2;
+          editor.dispatchEvent(new Event('input'));
+        }
+      };
+      reader.readAsDataURL(f);
     });
   })();
 
