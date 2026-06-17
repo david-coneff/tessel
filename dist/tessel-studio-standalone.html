@@ -38,8 +38,16 @@ body {
   background: var(--bg);
   color: var(--text);
   height: 100vh;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-areas:
+    "pri-top  pri-top   pri-top   pri-top   pri-top"
+    "sec-top  sec-top   sec-top   sec-top   sec-top"
+    "pri-left sec-left  center    sec-right pri-right"
+    "sec-bot  sec-bot   sec-bot   sec-bot   sec-bot"
+    "pri-bot  pri-bot   pri-bot   pri-bot   pri-bot"
+    "status   status    status    status    status";
+  grid-template-columns: auto auto 1fr auto auto;
+  grid-template-rows: auto auto 1fr auto auto auto;
   overflow: hidden;
 }
 
@@ -47,22 +55,7 @@ body {
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
 /* ---- Ribbon Toolbar ---- */
-#toolbar {
-  flex: 0 0 var(--toolbar-h);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-}
-#ribbon-tabs {
-  flex: 0 0 var(--ribbon-tab-h);
-  display: flex;
-  align-items: stretch;
-  gap: 0;
-  padding: 0 8px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg);
-}
+/* #toolbar wrapper removed — #ribbon-tabs and #ribbon-row are direct grid children */
 #ribbon-tabs .logo {
   font-weight: 700;
   font-size: 13px;
@@ -99,16 +92,6 @@ body {
 }
 #ribbon-tabs .rt-globals button:hover { color: var(--text); background: var(--btn-bg); }
 #ribbon-tabs .rt-globals .sep { width: 1px; height: 18px; background: var(--border); margin: 0 2px; }
-#ribbon-row {
-  flex: 0 0 var(--ribbon-row-h);
-  display: flex;
-  align-items: center;
-  gap: 0;
-  padding: 0 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-#ribbon-row::-webkit-scrollbar { display: none; }
 .ribbon-panel { display: none; align-items: center; gap: 2px; width: 100%; }
 .ribbon-panel.active { display: flex; }
 .rb-group {
@@ -168,58 +151,57 @@ body {
 #toolbar .sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
 #toolbar .spacer { flex: 1; }
 
-/* ---- Ribbon panel docking ---- */
-/* dock-bottom: toolbar moves below workspace */
-body.panel-dock-bottom {
-  flex-direction: column-reverse;
-}
-body.panel-dock-bottom #toolbar {
-  border-bottom: none;
-  border-top: 1px solid var(--border);
-}
-body.panel-dock-bottom #ribbon-row {
-  order: -1; /* panel row on top within toolbar in bottom-dock */
-}
-body.panel-dock-bottom #ribbon-tabs {
-  border-bottom: none;
-  border-top: 1px solid var(--border);
-}
+/* ---- Ribbon panel docking (CSS Grid — independent per ribbon) ---- */
 
-/* dock-left / dock-right: toolbar becomes a vertical sidebar */
-body.panel-dock-left,
-body.panel-dock-right {
-  flex-direction: row;
-}
-body.panel-dock-left #toolbar,
-body.panel-dock-right #toolbar {
-  flex: 0 0 auto;
-  width: auto;
-  border-bottom: none;
+/* Default grid-area assignments */
+#ribbon-tabs    { grid-area: pri-top; }
+#ribbon-row     { grid-area: sec-top; }
+#studio-workspace { grid-area: center; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+#statusbar      { grid-area: status; }
+
+/* Primary ribbon: grid-area by dock class */
+#ribbon-tabs.dock-top    { grid-area: pri-top; }
+#ribbon-tabs.dock-bottom { grid-area: pri-bot; }
+#ribbon-tabs.dock-left   { grid-area: pri-left; }
+#ribbon-tabs.dock-right  { grid-area: pri-right; }
+
+/* Secondary ribbon: grid-area by dock class */
+#ribbon-row.dock-top    { grid-area: sec-top; }
+#ribbon-row.dock-bottom { grid-area: sec-bot; }
+#ribbon-row.dock-left   { grid-area: sec-left; }
+#ribbon-row.dock-right  { grid-area: sec-right; }
+
+/* ---- Horizontal ribbon layout (top / bottom) ---- */
+#ribbon-tabs {
+  display: flex;
   flex-direction: row;
   align-items: stretch;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 0 8px;
+  gap: 0;
+  min-height: var(--ribbon-tab-h);
 }
-body.panel-dock-left #toolbar  { border-right: 1px solid var(--border); }
-body.panel-dock-right #toolbar { border-left:  1px solid var(--border); order: 1; }
-body.panel-dock-right #workspace,
-body.panel-dock-right #ws-mode { order: 0; }
-body.panel-dock-right #statusbar { order: 2; }
-
-/* In left/right dock, the tab strip runs vertically on the outer edge */
-body.panel-dock-left #ribbon-tabs,
-body.panel-dock-right #ribbon-tabs {
-  flex: 0 0 var(--ribbon-tab-h);
+#ribbon-tabs.dock-bottom {
+  border-bottom: none;
+  border-top: 1px solid var(--border);
+}
+#ribbon-tabs.dock-left,
+#ribbon-tabs.dock-right {
   flex-direction: column;
   align-items: center;
-  gap: 0;
   padding: 6px 0;
   border-bottom: none;
   overflow-y: auto;
   scrollbar-width: none;
+  min-height: 0;
 }
-body.panel-dock-left  #ribbon-tabs { border-right: 1px solid var(--border); }
-body.panel-dock-right #ribbon-tabs { border-left:  1px solid var(--border); }
-body.panel-dock-left #ribbon-tabs .logo,
-body.panel-dock-right #ribbon-tabs .logo {
+#ribbon-tabs.dock-left  { border-right: 1px solid var(--border); }
+#ribbon-tabs.dock-right { border-left:  1px solid var(--border); }
+
+/* Logo in vertical mode */
+#ribbon-tabs.dock-left .logo,
+#ribbon-tabs.dock-right .logo {
   writing-mode: vertical-rl;
   padding: 10px 0;
   margin: 0 0 4px;
@@ -227,92 +209,74 @@ body.panel-dock-right #ribbon-tabs .logo {
   border-bottom: 1px solid var(--border);
   font-size: 11px;
 }
-body.panel-dock-left #ribbon-tabs .rt-spacer,
-body.panel-dock-right #ribbon-tabs .rt-spacer { flex: 1; }
-body.panel-dock-left #ribbon-tabs .rt-globals,
-body.panel-dock-right #ribbon-tabs .rt-globals {
-  flex-direction: column;
-  padding: 4px 0;
-}
-body.panel-dock-left  #ribbon-tabs .rt-globals .sep,
-body.panel-dock-right #ribbon-tabs .rt-globals .sep {
-  width: 16px; height: 1px; margin: 2px 0;
-}
-.ribbon-tab {
-  writing-mode: initial; /* overridden below for docked */
-}
-body.panel-dock-left .ribbon-tab,
-body.panel-dock-right .ribbon-tab {
+/* Tab buttons in vertical mode */
+#ribbon-tabs.dock-left .ribbon-tab,
+#ribbon-tabs.dock-right .ribbon-tab {
   writing-mode: vertical-rl;
   padding: 10px 4px;
   border-bottom: none;
   border-right: 2px solid transparent;
-  text-orientation: mixed;
 }
-body.panel-dock-left  .ribbon-tab.active { border-right-color: var(--accent); }
-body.panel-dock-right .ribbon-tab.active { border-left-color: var(--accent); border-right-color: transparent; }
-body.panel-dock-left #btn-mode-toggle,
-body.panel-dock-right #btn-mode-toggle {
-  writing-mode: vertical-rl;
-  padding: 8px 4px;
-  font-size: .68em;
-}
+#ribbon-tabs.dock-left  .ribbon-tab.active { border-right-color: var(--accent); color: var(--accent); }
+#ribbon-tabs.dock-right .ribbon-tab.active { border-left-color: var(--accent); border-right-color: transparent; color: var(--accent); }
+/* Globals in vertical mode */
+#ribbon-tabs.dock-left .rt-spacer,
+#ribbon-tabs.dock-right .rt-spacer { flex: 1; }
+#ribbon-tabs.dock-left .rt-globals,
+#ribbon-tabs.dock-right .rt-globals { flex-direction: column; padding: 4px 0; }
+#ribbon-tabs.dock-left .rt-globals .sep,
+#ribbon-tabs.dock-right .rt-globals .sep { width: 16px; height: 1px; margin: 2px 0; }
+/* Mode toggle in vertical */
+#ribbon-tabs.dock-left #btn-mode-toggle,
+#ribbon-tabs.dock-right #btn-mode-toggle { writing-mode: vertical-rl; padding: 8px 3px; font-size: .68em; }
 
-/* The ribbon panel row runs vertically in left/right mode */
-body.panel-dock-left #ribbon-row,
-body.panel-dock-right #ribbon-row {
+/* ---- Secondary ribbon layout ---- */
+#ribbon-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  min-height: var(--ribbon-row-h);
+}
+#ribbon-row::-webkit-scrollbar { display: none; }
+#ribbon-row.dock-bottom {
+  border-bottom: none;
+  border-top: 1px solid var(--border);
+}
+#ribbon-row.dock-left,
+#ribbon-row.dock-right {
   flex-direction: column;
   align-items: flex-start;
   overflow-x: visible;
   overflow-y: auto;
   padding: 6px 4px;
-  height: 100%;
-  width: var(--ribbon-row-docked-w, 180px);
-  flex: none;
+  width: 180px;
+  min-height: 0;
   border-bottom: none;
 }
-body.panel-dock-left  #ribbon-row { border-right: 1px solid var(--border); }
-body.panel-dock-right #ribbon-row { border-left:  1px solid var(--border); }
-body.panel-dock-left .ribbon-panel,
-body.panel-dock-right .ribbon-panel {
-  flex-direction: column;
-  align-items: flex-start;
-  width: 100%;
+#ribbon-row.dock-left  { border-right: 1px solid var(--border); }
+#ribbon-row.dock-right { border-left:  1px solid var(--border); }
+/* Panel groups in vertical secondary */
+#ribbon-row.dock-left .ribbon-panel,
+#ribbon-row.dock-right .ribbon-panel { flex-direction: column; align-items: flex-start; width: 100%; }
+#ribbon-row.dock-left .rb-group,
+#ribbon-row.dock-right .rb-group {
+  flex-direction: column; align-items: flex-start;
+  border-right: none; border-bottom: 1px solid var(--border);
+  padding: 4px 0; margin: 0 0 2px; width: 100%;
 }
-body.panel-dock-left .rb-group,
-body.panel-dock-right .rb-group {
-  flex-direction: column;
-  align-items: flex-start;
-  border-right: none;
-  border-bottom: 1px solid var(--border);
-  padding: 4px 0;
-  margin: 0 0 2px;
-  width: 100%;
-}
-body.panel-dock-left .rb-group:last-child,
-body.panel-dock-right .rb-group:last-child { border-bottom: none; }
-body.panel-dock-left .rb-btn,
-body.panel-dock-right .rb-btn {
-  width: 100%;
-  justify-content: flex-start;
-}
-body.panel-dock-left .rb-select,
-body.panel-dock-right .rb-select { width: 100%; }
+#ribbon-row.dock-left .rb-group:last-child,
+#ribbon-row.dock-right .rb-group:last-child { border-bottom: none; }
+#ribbon-row.dock-left .rb-btn,
+#ribbon-row.dock-right .rb-btn { width: 100%; justify-content: flex-start; }
+#ribbon-row.dock-left .rb-select,
+#ribbon-row.dock-right .rb-select { width: 100%; }
 
-/* Workspace + ws-mode must fill remaining space in left/right dock */
-body.panel-dock-left #workspace,
-body.panel-dock-left #ws-mode,
-body.panel-dock-right #workspace,
-body.panel-dock-right #ws-mode {
-  flex: 1;
-  min-width: 0;
-}
-/* Status bar full-width at bottom in left/right modes */
-body.panel-dock-left  #statusbar,
-body.panel-dock-right #statusbar {
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-}
+/* Active dock button highlight */
 .rb-dock-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
 
 button {
@@ -344,6 +308,7 @@ button:disabled { opacity: .4; cursor: default; }
 #workspace {
   flex: 1;
   display: flex;
+  min-height: 0;
   overflow: hidden;
   min-height: 0;
 }
@@ -840,10 +805,8 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
 </head>
 <body>
 
-<!-- Ribbon Toolbar -->
-<div id="toolbar">
-  <!-- Row 1: Tab strip -->
-  <div id="ribbon-tabs">
+<!-- Primary ribbon (tab strip) — grid-area set by dock class -->
+<div id="ribbon-tabs">
     <span class="logo"><svg viewBox="0 0 120 120" width="18" height="18" style="vertical-align:middle;margin-right:4px"><polygon points="8,60 34,60 47,82.5 73,82.5 86,105 99,82.5 86,60 99,37.5 86,15 60,15 47,37.5 21,37.5" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/></svg>Tessel</span>
     <button class="ribbon-tab active" data-tab="file">File</button>
     <button class="ribbon-tab" data-tab="fields">Fields</button>
@@ -862,8 +825,8 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
     </div>
   </div>
 
-  <!-- Row 2: Ribbon panel (context-sensitive) -->
-  <div id="ribbon-row">
+<!-- Secondary ribbon (context panel) — grid-area set by dock class -->
+<div id="ribbon-row">
 
     <!-- FILE panel -->
     <div class="ribbon-panel active" id="rp-file">
@@ -879,11 +842,18 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
         <button class="rb-btn" id="btn-wysiwyg" title="Toggle WYSIWYG / Markdown editing mode"><span class="rb-icon">✎</span>WYSIWYG</button>
       </div>
       <div class="rb-group">
-        <span style="font-size:10px;color:var(--muted);margin-right:3px;white-space:nowrap">Panel dock</span>
-        <button class="rb-btn rb-dock-btn" data-dock="top"    title="Dock controls panel to top (default)">⊤ Top</button>
-        <button class="rb-btn rb-dock-btn" data-dock="bottom" title="Dock controls panel to bottom">⊥ Bottom</button>
-        <button class="rb-btn rb-dock-btn" data-dock="left"   title="Dock controls panel to left">◧ Left</button>
-        <button class="rb-btn rb-dock-btn" data-dock="right"  title="Dock controls panel to right">◨ Right</button>
+        <span style="font-size:10px;color:var(--muted);white-space:nowrap;display:block;margin-bottom:1px">Tab strip</span>
+        <button class="rb-btn rb-dock-btn" data-target="primary" data-dock="top"    title="Tab strip: dock top">⊤</button>
+        <button class="rb-btn rb-dock-btn" data-target="primary" data-dock="bottom" title="Tab strip: dock bottom">⊥</button>
+        <button class="rb-btn rb-dock-btn" data-target="primary" data-dock="left"   title="Tab strip: dock left">◧</button>
+        <button class="rb-btn rb-dock-btn" data-target="primary" data-dock="right"  title="Tab strip: dock right">◨</button>
+      </div>
+      <div class="rb-group">
+        <span style="font-size:10px;color:var(--muted);white-space:nowrap;display:block;margin-bottom:1px">Controls</span>
+        <button class="rb-btn rb-dock-btn" data-target="secondary" data-dock="top"    title="Controls panel: dock top">⊤</button>
+        <button class="rb-btn rb-dock-btn" data-target="secondary" data-dock="bottom" title="Controls panel: dock bottom">⊥</button>
+        <button class="rb-btn rb-dock-btn" data-target="secondary" data-dock="left"   title="Controls panel: dock left">◧</button>
+        <button class="rb-btn rb-dock-btn" data-target="secondary" data-dock="right"  title="Controls panel: dock right">◨</button>
       </div>
       <div class="rb-group">
         <span id="filename-display" id="rb-filename">No file open</span>
@@ -1063,7 +1033,6 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
     </div>
 
   </div><!-- #ribbon-row -->
-</div><!-- #toolbar -->
 
 <!-- History panel -->
 <div id="history-panel">
@@ -1352,6 +1321,9 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
   </div>
 </div>
 
+<!-- Document workspace (grid-area: center) -->
+<div id="studio-workspace">
+
 <!-- Split workspace -->
 <div id="workspace">
 
@@ -1436,6 +1408,8 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
 
 <!-- Floating insert menu for WYSIWYG mode -->
 <div id="ws-insert-float"></div>
+
+</div><!-- #studio-workspace -->
 
 <!-- Status bar -->
 <div id="statusbar">
@@ -6480,30 +6454,42 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     });
   })();
 
-  // ---- Panel docking ----
+  // ---- Independent ribbon docking ----
   (function() {
-    var DOCK_KEY = 'tessel-studio:panel-dock';
-    var DOCKS = ['top', 'bottom', 'left', 'right'];
+    var KEY_PRI = 'tessel-studio:dock-primary';
+    var KEY_SEC = 'tessel-studio:dock-secondary';
+    var DOCKS   = ['top', 'bottom', 'left', 'right'];
 
-    function applyDock(dock) {
-      DOCKS.forEach(function(d) { document.body.classList.remove('panel-dock-' + d); });
-      if (dock && dock !== 'top') document.body.classList.add('panel-dock-' + dock);
-      // Update button active states
-      document.querySelectorAll('.rb-dock-btn').forEach(function(btn) {
-        btn.classList.toggle('active', btn.dataset.dock === (dock || 'top'));
+    var elPri = document.getElementById('ribbon-tabs');
+    var elSec = document.getElementById('ribbon-row');
+
+    function applyDock(el, dock, target) {
+      DOCKS.forEach(function(d) { el.classList.remove('dock-' + d); });
+      el.classList.add('dock-' + dock);
+      // Sync active state on matching buttons
+      document.querySelectorAll('.rb-dock-btn[data-target="' + target + '"]').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.dock === dock);
       });
     }
 
-    // Restore saved preference
-    var saved = localStorage.getItem(DOCK_KEY) || 'top';
-    applyDock(saved);
+    // Restore saved preferences
+    var priDock = localStorage.getItem(KEY_PRI) || 'top';
+    var secDock = localStorage.getItem(KEY_SEC) || 'top';
+    applyDock(elPri, priDock, 'primary');
+    applyDock(elSec, secDock, 'secondary');
 
     // Wire buttons
     document.querySelectorAll('.rb-dock-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
-        var dock = btn.dataset.dock;
-        applyDock(dock);
-        localStorage.setItem(DOCK_KEY, dock);
+        var target = btn.dataset.target;
+        var dock   = btn.dataset.dock;
+        if (target === 'primary') {
+          applyDock(elPri, dock, 'primary');
+          localStorage.setItem(KEY_PRI, dock);
+        } else {
+          applyDock(elSec, dock, 'secondary');
+          localStorage.setItem(KEY_SEC, dock);
+        }
       });
     });
   })();
