@@ -86,6 +86,10 @@ function usage() {
 // Converts h2-delimited sections to @section/@endsection blocks so the
 // Tessel parser renders them as <details> elements — matching md_to_html.py
 // --collapsible behavior.
+//
+// The ## heading line is replaced with `@section <heading text>` so the
+// heading text becomes the section title. The bare `## ` line is NOT kept
+// (doing so would emit the heading outside the <details> element).
 function injectSections(source) {
   // Preserve front-matter
   var fm = '', body = source;
@@ -102,13 +106,14 @@ function injectSections(source) {
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i];
     // Match h2 headings (## ...) but not h3+ (### ...)
-    if (/^## /.test(line)) {
+    var h2Match = line.match(/^## (.+)$/);
+    if (h2Match) {
       if (inSection) {
         out.push('@endsection');
         out.push('');
       }
-      out.push(line);
-      out.push('@section');
+      // Replace the ## heading line with @section <title>
+      out.push('@section ' + h2Match[1]);
       inSection = true;
     } else {
       out.push(line);
