@@ -653,6 +653,62 @@ button:disabled { opacity: .4; cursor: default; }
 #studio-theme-hdr button:hover { color: var(--text); }
 #studio-theme-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
 #btn-studio-theme.active { background: var(--accent); color: var(--bg); }
+#btn-toolbar-customize.active { background: var(--accent); color: var(--bg); }
+#toolbar-customize-panel {
+  position: fixed;
+  top: var(--toolbar-h);
+  right: 0;
+  width: 280px;
+  height: calc(100vh - var(--toolbar-h) - var(--status-h));
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -4px 0 20px rgba(0,0,0,.4);
+  z-index: 201;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#toolbar-customize-hdr {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px 8px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+#toolbar-customize-hdr span { flex: 1; }
+#toolbar-customize-close {
+  background: none; border: none; color: var(--muted);
+  cursor: pointer; font-size: 13px; padding: 1px 5px; border-radius: 3px;
+}
+#toolbar-customize-close:hover { color: var(--red); }
+#toolbar-customize-body { flex: 1; overflow-y: auto; padding: 10px 14px; font-size: 12px; }
+#toolbar-customize-footer { flex: 0 0 auto; padding: 10px 14px; border-top: 1px solid var(--border); }
+.tc-section { margin-bottom: 16px; }
+.tc-section-label {
+  display: block; font-size: 10px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .08em;
+  margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border);
+}
+.tc-row {
+  display: flex; align-items: center; gap: 8px; margin: 3px 0; cursor: pointer; user-select: none;
+}
+.tc-row input[type=checkbox] { accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+.tc-row label { font-size: 11px; color: var(--text); cursor: pointer; flex: 1; }
+.tc-group-hdr {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10px; color: var(--muted); margin: 10px 0 4px;
+  cursor: pointer; user-select: none;
+}
+.tc-group-hdr::before { content: '▸'; font-size: 9px; }
+.tc-group-hdr.open::before { content: '▾'; }
+.tc-group-rows { margin-left: 12px; }
+.tc-hint { color: var(--muted); font-size: 10px; line-height: 1.5; margin-bottom: 12px; }
 
 /* ---- WYSIWYG editor ---- */
 #editor-pane{display:flex;flex-direction:column}
@@ -831,6 +887,7 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
       <button id="btn-a11y-audit" title="Accessibility compliance audit — check compiled document for WCAG issues">♿ Audit</button>
       <div class="sep"></div>
       <button id="btn-studio-theme" title="Studio theme customization">🎨</button>
+      <button id="btn-toolbar-customize" title="Customize toolbar — show or hide ribbon buttons">⊞</button>
       <button id="btn-theme" title="Toggle light/dark mode">☀</button>
     </div>
   </div>
@@ -860,64 +917,64 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
     <!-- FIELDS panel -->
     <div class="ribbon-panel" id="rp-fields">
       <div class="rb-group">
-        <button class="rb-btn rb-insert" data-insert="@text " title="Single-line text input"><span class="rb-icon">✏</span>Text</button>
-        <button class="rb-btn rb-insert" data-insert="@area " title="Multi-line textarea"><span class="rb-icon">☰</span>Area</button>
-        <button class="rb-btn rb-insert" data-insert="@date " title="Date picker"><span class="rb-icon">📅</span>Date</button>
-        <button class="rb-btn rb-insert" data-insert="@datetime " title="Date and time picker"><span class="rb-icon">🕐</span>Datetime</button>
+        <button class="rb-btn rb-insert" data-insert="@text " data-rbid="fields-text" title="Single-line text input"><span class="rb-icon">✏</span>Text</button>
+        <button class="rb-btn rb-insert" data-insert="@area " data-rbid="fields-area" title="Multi-line textarea"><span class="rb-icon">☰</span>Area</button>
+        <button class="rb-btn rb-insert" data-insert="@date " data-rbid="fields-date" title="Date picker"><span class="rb-icon">📅</span>Date</button>
+        <button class="rb-btn rb-insert" data-insert="@datetime " data-rbid="fields-datetime" title="Date and time picker"><span class="rb-icon">🕐</span>Datetime</button>
       </div>
       <div class="rb-group">
-        <button class="rb-btn rb-insert" data-insert="@number " title="Numeric input"><span class="rb-icon">#</span>Number</button>
-        <button class="rb-btn rb-insert" data-insert="@email " title="Email address input"><span class="rb-icon">@</span>Email</button>
-        <button class="rb-btn rb-insert" data-insert="@phone " title="Phone number input"><span class="rb-icon">☎</span>Phone</button>
-        <button class="rb-btn rb-insert" data-insert="@url " title="URL input"><span class="rb-icon">🔗</span>URL</button>
+        <button class="rb-btn rb-insert" data-insert="@number " data-rbid="fields-number" title="Numeric input"><span class="rb-icon">#</span>Number</button>
+        <button class="rb-btn rb-insert" data-insert="@email " data-rbid="fields-email" title="Email address input"><span class="rb-icon">@</span>Email</button>
+        <button class="rb-btn rb-insert" data-insert="@phone " data-rbid="fields-phone" title="Phone number input"><span class="rb-icon">☎</span>Phone</button>
+        <button class="rb-btn rb-insert" data-insert="@url " data-rbid="fields-url" title="URL input"><span class="rb-icon">🔗</span>URL</button>
       </div>
       <div class="rb-group">
-        <button class="rb-btn rb-insert" data-insert="@image " title="Image upload field"><span class="rb-icon">🖼</span>Image</button>
-        <button class="rb-btn rb-insert" data-insert="@richtext " title="Rich-text editor"><span class="rb-icon">✦</span>Richtext</button>
-        <button class="rb-btn rb-insert" data-insert="@computed : " title="Computed / derived field"><span class="rb-icon">⚙</span>Computed</button>
+        <button class="rb-btn rb-insert" data-insert="@image " data-rbid="fields-image" title="Image upload field"><span class="rb-icon">🖼</span>Image</button>
+        <button class="rb-btn rb-insert" data-insert="@richtext " data-rbid="fields-richtext" title="Rich-text editor"><span class="rb-icon">✦</span>Richtext</button>
+        <button class="rb-btn rb-insert" data-insert="@computed : " data-rbid="fields-computed" title="Computed / derived field"><span class="rb-icon">⚙</span>Computed</button>
       </div>
       <div class="rb-group">
-        <button class="rb-btn rb-insert" data-insert="@radio : opt1, opt2" title="Radio button group"><span class="rb-icon">⦿</span>Radio</button>
-        <button class="rb-btn rb-insert" data-insert="@check : opt1, opt2" title="Checkbox group"><span class="rb-icon">☑</span>Check</button>
-        <button class="rb-btn rb-insert" data-insert="@select : opt1 | opt2" title="Dropdown select"><span class="rb-icon">▼</span>Select</button>
+        <button class="rb-btn rb-insert" data-insert="@radio : opt1, opt2" data-rbid="fields-radio" title="Radio button group"><span class="rb-icon">⦿</span>Radio</button>
+        <button class="rb-btn rb-insert" data-insert="@check : opt1, opt2" data-rbid="fields-check" title="Checkbox group"><span class="rb-icon">☑</span>Check</button>
+        <button class="rb-btn rb-insert" data-insert="@select : opt1 | opt2" data-rbid="fields-select" title="Dropdown select"><span class="rb-icon">▼</span>Select</button>
       </div>
       <div class="rb-group">
-        <button class="rb-btn rb-insert" data-insert="@totp " title="TOTP secret + QR code"><span class="rb-icon">🔐</span>TOTP</button>
-        <button class="rb-btn rb-insert" data-insert="@credential " title="Password / credential field"><span class="rb-icon">🗝</span>Credential</button>
-        <button class="rb-btn rb-insert" data-insert="@signature " title="Cryptographic signature field"><span class="rb-icon">✍</span>Signature</button>
+        <button class="rb-btn rb-insert" data-insert="@totp " data-rbid="fields-totp" title="TOTP secret + QR code"><span class="rb-icon">🔐</span>TOTP</button>
+        <button class="rb-btn rb-insert" data-insert="@credential " data-rbid="fields-credential" title="Password / credential field"><span class="rb-icon">🗝</span>Credential</button>
+        <button class="rb-btn rb-insert" data-insert="@signature " data-rbid="fields-signature" title="Cryptographic signature field"><span class="rb-icon">✍</span>Signature</button>
       </div>
       <div class="rb-group">
-        <button class="rb-btn" id="btn-insert-table" title="Insert a typed table field (opens Table Builder)"><span class="rb-icon">⊞</span>Table</button>
-        <button class="rb-btn rb-insert" data-insert="@parse : /regex/" title="Regex-parsed input"><span class="rb-icon">⊂</span>Parse</button>
-        <button class="rb-btn rb-insert" data-insert="@filename : {{SLUG}}_{{STAMP}}.txt" title="Filename template"><span class="rb-icon">📎</span>Filename</button>
-        <button class="rb-btn rb-insert" data-insert="@dir " title="Directory path field"><span class="rb-icon">📁</span>Dir</button>
+        <button class="rb-btn" id="btn-insert-table" data-rbid="fields-table" title="Insert a typed table field (opens Table Builder)"><span class="rb-icon">⊞</span>Table</button>
+        <button class="rb-btn rb-insert" data-insert="@parse : /regex/" data-rbid="fields-parse" title="Regex-parsed input"><span class="rb-icon">⊂</span>Parse</button>
+        <button class="rb-btn rb-insert" data-insert="@filename : {{SLUG}}_{{STAMP}}.txt" data-rbid="fields-filename" title="Filename template"><span class="rb-icon">📎</span>Filename</button>
+        <button class="rb-btn rb-insert" data-insert="@dir " data-rbid="fields-dir" title="Directory path field"><span class="rb-icon">📁</span>Dir</button>
       </div>
     </div>
 
     <!-- CONTENT panel -->
     <div class="ribbon-panel" id="rp-content">
       <div class="rb-group">
-        <button class="rb-btn rb-insert" data-insert="@section &#10;{id=}&#10;" title="Collapsible section"><span class="rb-icon">§</span>Section</button>
-        <button class="rb-btn rb-insert" data-insert="@endsection&#10;" title="End section">@endsection</button>
-        <button class="rb-btn rb-insert" data-insert="@subsection &#10;" title="Subsection"><span class="rb-icon">⊂</span>Subsection</button>
-        <button class="rb-btn rb-insert" data-insert="@endsubsection&#10;" title="End subsection">@endsubsection</button>
+        <button class="rb-btn rb-insert" data-insert="@section &#10;{id=}&#10;" data-rbid="content-section" title="Collapsible section"><span class="rb-icon">§</span>Section</button>
+        <button class="rb-btn rb-insert" data-insert="@endsection&#10;" data-rbid="content-endsection" title="End section">@endsection</button>
+        <button class="rb-btn rb-insert" data-insert="@subsection &#10;" data-rbid="content-subsection" title="Subsection"><span class="rb-icon">⊂</span>Subsection</button>
+        <button class="rb-btn rb-insert" data-insert="@endsubsection&#10;" data-rbid="content-endsubsection" title="End subsection">@endsubsection</button>
       </div>
       <div class="rb-group">
-        <button class="rb-btn rb-insert-heading" data-level="1" title="Heading 1">H1</button>
-        <button class="rb-btn rb-insert-heading" data-level="2" title="Heading 2">H2</button>
-        <button class="rb-btn rb-insert-heading" data-level="3" title="Heading 3">H3</button>
-        <button class="rb-btn rb-insert-heading" data-level="4" title="Heading 4">H4</button>
+        <button class="rb-btn rb-insert-heading" data-level="1" data-rbid="content-h1" title="Heading 1">H1</button>
+        <button class="rb-btn rb-insert-heading" data-level="2" data-rbid="content-h2" title="Heading 2">H2</button>
+        <button class="rb-btn rb-insert-heading" data-level="3" data-rbid="content-h3" title="Heading 3">H3</button>
+        <button class="rb-btn rb-insert-heading" data-level="4" data-rbid="content-h4" title="Heading 4">H4</button>
       </div>
       <div class="rb-group">
-        <button class="rb-btn rb-insert" data-insert="&#10;---&#10;&#10;" title="Horizontal rule"><span class="rb-icon">―</span>HR</button>
-        <button class="rb-btn rb-insert" data-insert="&#10;> " title="Blockquote"><span class="rb-icon">❝</span>Quote</button>
-        <button class="rb-btn rb-insert" data-insert="&#10;```&#10;&#10;```&#10;" title="Code block"><span class="rb-icon">⌥</span>Code</button>
+        <button class="rb-btn rb-insert" data-insert="&#10;---&#10;&#10;" data-rbid="content-hr" title="Horizontal rule"><span class="rb-icon">―</span>HR</button>
+        <button class="rb-btn rb-insert" data-insert="&#10;> " data-rbid="content-quote" title="Blockquote"><span class="rb-icon">❝</span>Quote</button>
+        <button class="rb-btn rb-insert" data-insert="&#10;```&#10;&#10;```&#10;" data-rbid="content-code" title="Code block"><span class="rb-icon">⌥</span>Code</button>
       </div>
       <div class="rb-group">
-        <button class="rb-btn" id="btn-insert-img" title="Insert inline image (embedded as data URI)"><span class="rb-icon">⬡</span>Embed Image</button>
+        <button class="rb-btn" id="btn-insert-img" data-rbid="content-embedimg" title="Insert inline image (embedded as data URI)"><span class="rb-icon">⬡</span>Embed Image</button>
         <input type="file" id="pick-img" accept="image/*" style="display:none">
-        <button class="rb-btn rb-insert" data-insert="@if {{VAR}}&#10;&#10;@endif&#10;" title="Conditional block"><span class="rb-icon">⁇</span>If/Endif</button>
-        <button class="rb-btn rb-insert" data-insert="@param &#10;{type=text}" title="Template parameter declaration"><span class="rb-icon">$</span>Param</button>
+        <button class="rb-btn rb-insert" data-insert="@if {{VAR}}&#10;&#10;@endif&#10;" data-rbid="content-ifendif" title="Conditional block"><span class="rb-icon">⁇</span>If/Endif</button>
+        <button class="rb-btn rb-insert" data-insert="@param &#10;{type=text}" data-rbid="content-param" title="Template parameter declaration"><span class="rb-icon">$</span>Param</button>
       </div>
     </div>
 
@@ -1338,6 +1395,87 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
       <button type="button" id="tbl-builder-cancel">Cancel</button>
       <button type="button" id="tbl-builder-insert" class="primary">Insert at cursor</button>
     </div>
+  </div>
+</div>
+
+<!-- Toolbar customize panel -->
+<div id="toolbar-customize-panel" style="display:none">
+  <div id="toolbar-customize-hdr">
+    <span>Customize Toolbar</span>
+    <button type="button" id="toolbar-customize-close" title="Close">✕</button>
+  </div>
+  <div id="toolbar-customize-body">
+    <p class="tc-hint">Show or hide individual buttons in the Fields and Content ribbon panels. Groups with all buttons hidden are collapsed automatically.</p>
+
+    <div class="tc-section">
+      <span class="tc-section-label">Fields panel</span>
+      <div class="tc-group-hdr open" data-tc-group="fields-basic">Basic inputs</div>
+      <div class="tc-group-rows" id="tcg-fields-basic">
+        <div class="tc-row"><input type="checkbox" id="tc-fields-text"     data-for="fields-text"><label for="tc-fields-text">✏ Text</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-area"     data-for="fields-area"><label for="tc-fields-area">☰ Area</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-date"     data-for="fields-date"><label for="tc-fields-date">📅 Date</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-datetime" data-for="fields-datetime"><label for="tc-fields-datetime">🕐 Datetime</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-number"   data-for="fields-number"><label for="tc-fields-number"># Number</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-email"    data-for="fields-email"><label for="tc-fields-email">@ Email</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-phone"    data-for="fields-phone"><label for="tc-fields-phone">☎ Phone</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-url"      data-for="fields-url"><label for="tc-fields-url">🔗 URL</label></div>
+      </div>
+      <div class="tc-group-hdr open" data-tc-group="fields-choice">Choices</div>
+      <div class="tc-group-rows" id="tcg-fields-choice">
+        <div class="tc-row"><input type="checkbox" id="tc-fields-radio"    data-for="fields-radio"><label for="tc-fields-radio">⦿ Radio</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-check"    data-for="fields-check"><label for="tc-fields-check">☑ Check</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-select"   data-for="fields-select"><label for="tc-fields-select">▼ Select</label></div>
+      </div>
+      <div class="tc-group-hdr open" data-tc-group="fields-rich">Rich content</div>
+      <div class="tc-group-rows" id="tcg-fields-rich">
+        <div class="tc-row"><input type="checkbox" id="tc-fields-image"    data-for="fields-image"><label for="tc-fields-image">🖼 Image</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-richtext" data-for="fields-richtext"><label for="tc-fields-richtext">✦ Richtext</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-table"    data-for="fields-table"><label for="tc-fields-table">⊞ Table</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-signature" data-for="fields-signature"><label for="tc-fields-signature">✍ Signature</label></div>
+      </div>
+      <div class="tc-group-hdr open" data-tc-group="fields-advanced">Advanced / developer</div>
+      <div class="tc-group-rows" id="tcg-fields-advanced">
+        <div class="tc-row"><input type="checkbox" id="tc-fields-computed"   data-for="fields-computed"><label for="tc-fields-computed">⚙ Computed</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-parse"      data-for="fields-parse"><label for="tc-fields-parse">⊂ Parse</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-filename"   data-for="fields-filename"><label for="tc-fields-filename">📎 Filename</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-dir"        data-for="fields-dir"><label for="tc-fields-dir">📁 Dir</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-totp"       data-for="fields-totp"><label for="tc-fields-totp">🔐 TOTP</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-fields-credential" data-for="fields-credential"><label for="tc-fields-credential">🗝 Credential</label></div>
+      </div>
+    </div>
+
+    <div class="tc-section">
+      <span class="tc-section-label">Content panel</span>
+      <div class="tc-group-hdr open" data-tc-group="content-structure">Structure</div>
+      <div class="tc-group-rows" id="tcg-content-structure">
+        <div class="tc-row"><input type="checkbox" id="tc-content-section"        data-for="content-section"><label for="tc-content-section">§ Section / @endsection</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-content-subsection"     data-for="content-subsection"><label for="tc-content-subsection">⊂ Subsection / @endsubsection</label></div>
+      </div>
+      <div class="tc-group-hdr open" data-tc-group="content-headings">Headings</div>
+      <div class="tc-group-rows" id="tcg-content-headings">
+        <div class="tc-row"><input type="checkbox" id="tc-content-h1" data-for="content-h1"><label for="tc-content-h1">H1</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-content-h2" data-for="content-h2"><label for="tc-content-h2">H2</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-content-h3" data-for="content-h3"><label for="tc-content-h3">H3</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-content-h4" data-for="content-h4"><label for="tc-content-h4">H4</label></div>
+      </div>
+      <div class="tc-group-hdr open" data-tc-group="content-blocks">Block elements</div>
+      <div class="tc-group-rows" id="tcg-content-blocks">
+        <div class="tc-row"><input type="checkbox" id="tc-content-hr"       data-for="content-hr"><label for="tc-content-hr">― HR</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-content-quote"    data-for="content-quote"><label for="tc-content-quote">❝ Quote</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-content-code"     data-for="content-code"><label for="tc-content-code">⌥ Code block</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-content-embedimg" data-for="content-embedimg"><label for="tc-content-embedimg">⬡ Embed Image</label></div>
+      </div>
+      <div class="tc-group-hdr open" data-tc-group="content-advanced">Advanced / developer</div>
+      <div class="tc-group-rows" id="tcg-content-advanced">
+        <div class="tc-row"><input type="checkbox" id="tc-content-ifendif" data-for="content-ifendif"><label for="tc-content-ifendif">⁇ If / @endif</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-content-param"   data-for="content-param"><label for="tc-content-param">$ Param</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-content-endsection"    data-for="content-endsection"><label for="tc-content-endsection">@endsection (standalone)</label></div>
+        <div class="tc-row"><input type="checkbox" id="tc-content-endsubsection" data-for="content-endsubsection"><label for="tc-content-endsubsection">@endsubsection (standalone)</label></div>
+      </div>
+    </div>
+  </div>
+  <div id="toolbar-customize-footer">
+    <button type="button" class="ds-reset" id="tc-reset">Reset to defaults</button>
   </div>
 </div>
 
@@ -7233,6 +7371,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       e.stopPropagation();
       var open = panel.style.display !== 'none';
       panel.style.display = open ? 'none' : 'flex';
+      if (!open) { var tc = document.getElementById('toolbar-customize-panel'); if (tc) tc.style.display = 'none'; var tcb = document.getElementById('btn-toolbar-customize'); if (tcb) tcb.classList.remove('active'); }
     });
     if (closeBtn) closeBtn.addEventListener('click', function() { panel.style.display = 'none'; });
     document.addEventListener('click', function(e) {
@@ -7497,6 +7636,7 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       var open = panel.style.display !== 'none';
       panel.style.display = open ? 'none' : 'flex';
       openBtn.classList.toggle('active', !open);
+      if (!open) { var tc = document.getElementById('toolbar-customize-panel'); if (tc) tc.style.display = 'none'; var tcb = document.getElementById('btn-toolbar-customize'); if (tcb) tcb.classList.remove('active'); }
     });
     if (closeBtn) closeBtn.addEventListener('click', function() { panel.style.display = 'none'; openBtn.classList.remove('active'); });
     document.addEventListener('click', function(e) {
@@ -7511,6 +7651,119 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     }, true);
 
     load();
+  })();
+
+  // ---- Toolbar button customization ----
+  (function() {
+    var BTN_PREFS_KEY = 'tessel-studio:btn-prefs';
+
+    // Some rbids are logically linked: hiding one should hide its companion
+    var LINKED = {
+      'content-section':    ['content-endsection'],
+      'content-subsection': ['content-endsubsection'],
+    };
+
+    function getPrefs() {
+      try { var s = localStorage.getItem(BTN_PREFS_KEY); return s ? JSON.parse(s) : {}; } catch(e) { return {}; }
+    }
+    function savePrefs(prefs) {
+      try { localStorage.setItem(BTN_PREFS_KEY, JSON.stringify(prefs)); } catch(e) {}
+    }
+
+    function applyPrefs(prefs) {
+      // Show/hide individual [data-rbid] buttons
+      document.querySelectorAll('[data-rbid]').forEach(function(btn) {
+        btn.style.display = (prefs[btn.getAttribute('data-rbid')] === false) ? 'none' : '';
+      });
+      // Auto-hide rb-groups that have no visible buttons (Fields + Content panels only)
+      ['rp-fields', 'rp-content'].forEach(function(pid) {
+        var panel = document.getElementById(pid);
+        if (!panel) return;
+        panel.querySelectorAll('.rb-group').forEach(function(grp) {
+          var hasVisible = false;
+          grp.querySelectorAll('button').forEach(function(b) {
+            if (b.style.display !== 'none') hasVisible = true;
+          });
+          grp.style.display = hasVisible ? '' : 'none';
+        });
+      });
+    }
+
+    function loadCheckboxes(prefs) {
+      document.querySelectorAll('#toolbar-customize-body input[type=checkbox][data-for]').forEach(function(cb) {
+        cb.checked = (prefs[cb.getAttribute('data-for')] !== false);
+      });
+    }
+
+    var panel   = document.getElementById('toolbar-customize-panel');
+    var openBtn = document.getElementById('btn-toolbar-customize');
+    var closeBtn = document.getElementById('toolbar-customize-close');
+    var resetBtn = document.getElementById('tc-reset');
+    if (!panel || !openBtn) return;
+
+    function openPanel() {
+      // Close other drawers
+      ['doc-settings-panel', 'studio-theme-panel'].forEach(function(id) {
+        var p = document.getElementById(id);
+        if (p) p.style.display = 'none';
+      });
+      document.getElementById('btn-doc-settings') && document.getElementById('btn-doc-settings').classList.remove('active');
+      document.getElementById('btn-studio-theme') && document.getElementById('btn-studio-theme').classList.remove('active');
+
+      panel.style.display = 'flex';
+      openBtn.classList.add('active');
+      loadCheckboxes(getPrefs());
+    }
+    function closePanel() {
+      panel.style.display = 'none';
+      openBtn.classList.remove('active');
+    }
+
+    openBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      panel.style.display !== 'none' ? closePanel() : openPanel();
+    });
+    if (closeBtn) closeBtn.addEventListener('click', closePanel);
+    document.addEventListener('click', function(e) {
+      if (panel.style.display !== 'none' && !panel.contains(e.target) && e.target !== openBtn) closePanel();
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && panel.style.display !== 'none') closePanel();
+    });
+
+    // Checkbox change
+    document.querySelectorAll('#toolbar-customize-body input[type=checkbox][data-for]').forEach(function(cb) {
+      cb.addEventListener('change', function() {
+        var prefs = getPrefs();
+        var id = cb.getAttribute('data-for');
+        if (cb.checked) { delete prefs[id]; } else { prefs[id] = false; }
+        // Propagate to linked rbids
+        (LINKED[id] || []).forEach(function(lid) {
+          if (cb.checked) { delete prefs[lid]; } else { prefs[lid] = false; }
+        });
+        savePrefs(prefs);
+        applyPrefs(prefs);
+      });
+    });
+
+    // Collapsible sub-groups in the drawer
+    document.querySelectorAll('.tc-group-hdr').forEach(function(hdr) {
+      var grpId = hdr.getAttribute('data-tc-group');
+      var rows = document.getElementById('tcg-' + grpId);
+      hdr.addEventListener('click', function() {
+        var open = hdr.classList.toggle('open');
+        if (rows) rows.style.display = open ? '' : 'none';
+      });
+    });
+
+    if (resetBtn) resetBtn.addEventListener('click', function() {
+      savePrefs({});
+      loadCheckboxes({});
+      applyPrefs({});
+    });
+
+    // Apply on page load
+    applyPrefs(getPrefs());
   })();
 
   // ---- WYSIWYG mode ----
