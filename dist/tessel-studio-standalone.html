@@ -841,20 +841,7 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
       <div class="rb-group">
         <button class="rb-btn" id="btn-wysiwyg" title="Toggle WYSIWYG / Markdown editing mode"><span class="rb-icon">✎</span>WYSIWYG</button>
       </div>
-      <div class="rb-group">
-        <span style="font-size:10px;color:var(--muted);white-space:nowrap;display:block;margin-bottom:1px">Tab strip</span>
-        <button class="rb-btn rb-dock-btn" data-target="primary" data-dock="top"    title="Tab strip: dock top">⊤</button>
-        <button class="rb-btn rb-dock-btn" data-target="primary" data-dock="bottom" title="Tab strip: dock bottom">⊥</button>
-        <button class="rb-btn rb-dock-btn" data-target="primary" data-dock="left"   title="Tab strip: dock left">◧</button>
-        <button class="rb-btn rb-dock-btn" data-target="primary" data-dock="right"  title="Tab strip: dock right">◨</button>
-      </div>
-      <div class="rb-group">
-        <span style="font-size:10px;color:var(--muted);white-space:nowrap;display:block;margin-bottom:1px">Controls</span>
-        <button class="rb-btn rb-dock-btn" data-target="secondary" data-dock="top"    title="Controls panel: dock top">⊤</button>
-        <button class="rb-btn rb-dock-btn" data-target="secondary" data-dock="bottom" title="Controls panel: dock bottom">⊥</button>
-        <button class="rb-btn rb-dock-btn" data-target="secondary" data-dock="left"   title="Controls panel: dock left">◧</button>
-        <button class="rb-btn rb-dock-btn" data-target="secondary" data-dock="right"  title="Controls panel: dock right">◨</button>
-      </div>
+
       <div class="rb-group">
         <span id="filename-display" id="rb-filename">No file open</span>
       </div>
@@ -1280,6 +1267,29 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
         <label for="sth-border-light">Border contrast</label>
         <input type="range" id="sth-border-light" min="50" max="200" step="5" value="100">
         <span class="ds-val" id="sth-border-light-val">100%</span>
+      </div>
+    </div>
+    <div class="ds-group">
+      <span class="ds-group-label">Layout</span>
+      <div class="ds-row" style="flex-direction:column;align-items:flex-start;gap:6px">
+        <div style="display:flex;align-items:center;gap:6px;width:100%">
+          <label style="min-width:72px;font-size:11px">Tab strip</label>
+          <div style="display:flex;gap:3px">
+            <button class="rb-btn rb-dock-btn sth-dock-btn" data-target="primary" data-dock="top"    title="Top">⊤ Top</button>
+            <button class="rb-btn rb-dock-btn sth-dock-btn" data-target="primary" data-dock="bottom" title="Bottom">⊥ Bot</button>
+            <button class="rb-btn rb-dock-btn sth-dock-btn" data-target="primary" data-dock="left"   title="Left">◧ Left</button>
+            <button class="rb-btn rb-dock-btn sth-dock-btn" data-target="primary" data-dock="right"  title="Right">◨ Right</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;width:100%">
+          <label style="min-width:72px;font-size:11px">Controls</label>
+          <div style="display:flex;gap:3px">
+            <button class="rb-btn rb-dock-btn sth-dock-btn" data-target="secondary" data-dock="top"    title="Top">⊤ Top</button>
+            <button class="rb-btn rb-dock-btn sth-dock-btn" data-target="secondary" data-dock="bottom" title="Bottom">⊥ Bot</button>
+            <button class="rb-btn rb-dock-btn sth-dock-btn" data-target="secondary" data-dock="left"   title="Left">◧ Left</button>
+            <button class="rb-btn rb-dock-btn sth-dock-btn" data-target="secondary" data-dock="right"  title="Right">◨ Right</button>
+          </div>
+        </div>
       </div>
     </div>
     <button class="ds-reset" id="sth-reset" type="button">Reset to defaults</button>
