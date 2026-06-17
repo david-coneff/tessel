@@ -168,6 +168,153 @@ body {
 #toolbar .sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
 #toolbar .spacer { flex: 1; }
 
+/* ---- Ribbon panel docking ---- */
+/* dock-bottom: toolbar moves below workspace */
+body.panel-dock-bottom {
+  flex-direction: column-reverse;
+}
+body.panel-dock-bottom #toolbar {
+  border-bottom: none;
+  border-top: 1px solid var(--border);
+}
+body.panel-dock-bottom #ribbon-row {
+  order: -1; /* panel row on top within toolbar in bottom-dock */
+}
+body.panel-dock-bottom #ribbon-tabs {
+  border-bottom: none;
+  border-top: 1px solid var(--border);
+}
+
+/* dock-left / dock-right: toolbar becomes a vertical sidebar */
+body.panel-dock-left,
+body.panel-dock-right {
+  flex-direction: row;
+}
+body.panel-dock-left #toolbar,
+body.panel-dock-right #toolbar {
+  flex: 0 0 auto;
+  width: auto;
+  border-bottom: none;
+  flex-direction: row;
+  align-items: stretch;
+}
+body.panel-dock-left #toolbar  { border-right: 1px solid var(--border); }
+body.panel-dock-right #toolbar { border-left:  1px solid var(--border); order: 1; }
+body.panel-dock-right #workspace,
+body.panel-dock-right #ws-mode { order: 0; }
+body.panel-dock-right #statusbar { order: 2; }
+
+/* In left/right dock, the tab strip runs vertically on the outer edge */
+body.panel-dock-left #ribbon-tabs,
+body.panel-dock-right #ribbon-tabs {
+  flex: 0 0 var(--ribbon-tab-h);
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 6px 0;
+  border-bottom: none;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+body.panel-dock-left  #ribbon-tabs { border-right: 1px solid var(--border); }
+body.panel-dock-right #ribbon-tabs { border-left:  1px solid var(--border); }
+body.panel-dock-left #ribbon-tabs .logo,
+body.panel-dock-right #ribbon-tabs .logo {
+  writing-mode: vertical-rl;
+  padding: 10px 0;
+  margin: 0 0 4px;
+  border-right: none;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+body.panel-dock-left #ribbon-tabs .rt-spacer,
+body.panel-dock-right #ribbon-tabs .rt-spacer { flex: 1; }
+body.panel-dock-left #ribbon-tabs .rt-globals,
+body.panel-dock-right #ribbon-tabs .rt-globals {
+  flex-direction: column;
+  padding: 4px 0;
+}
+body.panel-dock-left  #ribbon-tabs .rt-globals .sep,
+body.panel-dock-right #ribbon-tabs .rt-globals .sep {
+  width: 16px; height: 1px; margin: 2px 0;
+}
+.ribbon-tab {
+  writing-mode: initial; /* overridden below for docked */
+}
+body.panel-dock-left .ribbon-tab,
+body.panel-dock-right .ribbon-tab {
+  writing-mode: vertical-rl;
+  padding: 10px 4px;
+  border-bottom: none;
+  border-right: 2px solid transparent;
+  text-orientation: mixed;
+}
+body.panel-dock-left  .ribbon-tab.active { border-right-color: var(--accent); }
+body.panel-dock-right .ribbon-tab.active { border-left-color: var(--accent); border-right-color: transparent; }
+body.panel-dock-left #btn-mode-toggle,
+body.panel-dock-right #btn-mode-toggle {
+  writing-mode: vertical-rl;
+  padding: 8px 4px;
+  font-size: .68em;
+}
+
+/* The ribbon panel row runs vertically in left/right mode */
+body.panel-dock-left #ribbon-row,
+body.panel-dock-right #ribbon-row {
+  flex-direction: column;
+  align-items: flex-start;
+  overflow-x: visible;
+  overflow-y: auto;
+  padding: 6px 4px;
+  height: 100%;
+  width: var(--ribbon-row-docked-w, 180px);
+  flex: none;
+  border-bottom: none;
+}
+body.panel-dock-left  #ribbon-row { border-right: 1px solid var(--border); }
+body.panel-dock-right #ribbon-row { border-left:  1px solid var(--border); }
+body.panel-dock-left .ribbon-panel,
+body.panel-dock-right .ribbon-panel {
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+}
+body.panel-dock-left .rb-group,
+body.panel-dock-right .rb-group {
+  flex-direction: column;
+  align-items: flex-start;
+  border-right: none;
+  border-bottom: 1px solid var(--border);
+  padding: 4px 0;
+  margin: 0 0 2px;
+  width: 100%;
+}
+body.panel-dock-left .rb-group:last-child,
+body.panel-dock-right .rb-group:last-child { border-bottom: none; }
+body.panel-dock-left .rb-btn,
+body.panel-dock-right .rb-btn {
+  width: 100%;
+  justify-content: flex-start;
+}
+body.panel-dock-left .rb-select,
+body.panel-dock-right .rb-select { width: 100%; }
+
+/* Workspace + ws-mode must fill remaining space in left/right dock */
+body.panel-dock-left #workspace,
+body.panel-dock-left #ws-mode,
+body.panel-dock-right #workspace,
+body.panel-dock-right #ws-mode {
+  flex: 1;
+  min-width: 0;
+}
+/* Status bar full-width at bottom in left/right modes */
+body.panel-dock-left  #statusbar,
+body.panel-dock-right #statusbar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+}
+.rb-dock-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+
 button {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -730,6 +877,13 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
       </div>
       <div class="rb-group">
         <button class="rb-btn" id="btn-wysiwyg" title="Toggle WYSIWYG / Markdown editing mode"><span class="rb-icon">✎</span>WYSIWYG</button>
+      </div>
+      <div class="rb-group">
+        <span style="font-size:10px;color:var(--muted);margin-right:3px;white-space:nowrap">Panel dock</span>
+        <button class="rb-btn rb-dock-btn" data-dock="top"    title="Dock controls panel to top (default)">⊤ Top</button>
+        <button class="rb-btn rb-dock-btn" data-dock="bottom" title="Dock controls panel to bottom">⊥ Bottom</button>
+        <button class="rb-btn rb-dock-btn" data-dock="left"   title="Dock controls panel to left">◧ Left</button>
+        <button class="rb-btn rb-dock-btn" data-dock="right"  title="Dock controls panel to right">◨ Right</button>
       </div>
       <div class="rb-group">
         <span id="filename-display" id="rb-filename">No file open</span>
@@ -6323,6 +6477,34 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       var light = document.body.classList.toggle('light');
       btn.textContent = light ? '☾ Dark' : '☀ Light';
       localStorage.setItem('tessel-studio:theme', light ? 'light' : 'dark');
+    });
+  })();
+
+  // ---- Panel docking ----
+  (function() {
+    var DOCK_KEY = 'tessel-studio:panel-dock';
+    var DOCKS = ['top', 'bottom', 'left', 'right'];
+
+    function applyDock(dock) {
+      DOCKS.forEach(function(d) { document.body.classList.remove('panel-dock-' + d); });
+      if (dock && dock !== 'top') document.body.classList.add('panel-dock-' + dock);
+      // Update button active states
+      document.querySelectorAll('.rb-dock-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.dock === (dock || 'top'));
+      });
+    }
+
+    // Restore saved preference
+    var saved = localStorage.getItem(DOCK_KEY) || 'top';
+    applyDock(saved);
+
+    // Wire buttons
+    document.querySelectorAll('.rb-dock-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var dock = btn.dataset.dock;
+        applyDock(dock);
+        localStorage.setItem(DOCK_KEY, dock);
+      });
     });
   })();
 
