@@ -120,11 +120,11 @@ body.layout-h #ctrl-panel-text > .dropdown { display: flex; align-items: center;
   font-size: 14px; padding: 2px 4px; line-height: 1; border-radius: 3px; flex-shrink: 0;
 }
 #ctrl-pane-collapse:hover { background: var(--surface2); color: var(--text); }
-#ctrl-pane-body { flex: 1; overflow-y: auto; }
+#ctrl-pane-body { flex: 1; overflow-y: auto; overflow-x: hidden; min-width: 0; }
 
 /* ctrl-panel inside the pane */
-.ctrl-panel { display: none; flex-direction: column; }
-.ctrl-panel.active { display: flex; }
+.ctrl-panel { display: none; }
+.ctrl-panel.active { display: flex; flex-direction: column; width: 100%; min-width: 0; }
 .ctrl-group-label {
   font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--muted);
   letter-spacing: .5px; padding: 8px 10px 2px; flex-shrink: 0;
