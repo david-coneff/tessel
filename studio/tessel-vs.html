@@ -1380,7 +1380,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
         <div class="opts-section-label">Export</div>
         <div class="opts-toggle-row">
           <span>Embed fonts in exported HTML</span>
-          <button class="opts-toggle" id="opts-embed-fonts">Off</button>
+          <button class="opts-toggle" id="opts-embed-fonts"></button>
         </div>
         <p class="opts-helper-text" style="margin-top:4px;">When on, custom font data is inlined into the exported file so it renders correctly without internet access.</p>
       </div>
@@ -4111,8 +4111,7 @@ function dockPanel(panelId, zone) {
   }
   function syncEmbedBtn() {
     var on = isEmbedFonts();
-    embedBtn.textContent = on ? 'On' : 'Off';
-    embedBtn.classList.toggle('active', on);
+    embedBtn.classList.toggle('on', on);
   }
   embedBtn.addEventListener('click', function() {
     try { localStorage.setItem('tvs:opts:embed-fonts', isEmbedFonts() ? '0' : '1'); } catch(e) {}
