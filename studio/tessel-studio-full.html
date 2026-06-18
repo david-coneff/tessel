@@ -736,10 +736,11 @@ function createParaEl(b) {
     }
     if (e.key === 'Backspace' && el.textContent === '' && el.innerHTML === '') {
       e.preventDefault();
-      var idx = blocks.indexOf(b);
+      var flat = flatBlockList(blocks);
+      var idx = flat.findIndex(function(x){ return x.id === b.id; });
       deleteBlock(b.id);
-      if (idx > 0 && blocks[idx-1]) {
-        var prevEl = document.querySelector('[data-block-id="' + blocks[idx-1].id + '"] [contenteditable]');
+      if (idx > 0 && flat[idx-1]) {
+        var prevEl = document.querySelector('[data-block-id="' + flat[idx-1].id + '"] [contenteditable]');
         if (prevEl) prevEl.focus();
       }
     }
@@ -851,6 +852,26 @@ function createSectionEl(b) {
   titleEl.textContent = b.title || 'Section';
   titleEl.addEventListener('input', function() { b.title = titleEl.textContent; markUnsaved(); });
   titleEl.addEventListener('click', function(e) { e.stopPropagation(); });
+  titleEl.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (!b.children) b.children = [];
+      if (!b.children.length) {
+        var nb = { type:'paragraph', text:'', id:uid() };
+        b.children.push(nb);
+        renderCanvas();
+        markUnsaved();
+        setTimeout(function() {
+          var el2 = document.querySelector('[data-block-id="' + nb.id + '"] [contenteditable]');
+          if (el2) el2.focus();
+        }, 30);
+      } else {
+        var firstChild = b.children[0];
+        var el2 = document.querySelector('[data-block-id="' + firstChild.id + '"] [contenteditable]');
+        if (el2) el2.focus();
+      }
+    }
+  });
 
   var delBtn = document.createElement('button');
   delBtn.className = 'section-del-btn';
@@ -1197,9 +1218,24 @@ function loadDraft() {
   } catch(e) {}
 }
 
-function setStatus(msg) { document.getElementById('status-bar').textContent = msg; }
+function flatBlockList(arr) {
+  var result = [];
+  arr.forEach(function(b) {
+    result.push(b);
+    if (b.type === 'section' && b.children) result = result.concat(flatBlockList(b.children));
+  });
+  return result;
+}
+
+var _statusTimer = null;
+function setStatus(msg) {
+  document.getElementById('status-bar').textContent = msg;
+  if (_statusTimer) clearTimeout(_statusTimer);
+  _statusTimer = setTimeout(function() { document.getElementById('status-bar').textContent = 'Ready'; }, 4000);
+}
 
 function openMd(file) {
+  if (typeof Tessel === 'undefined') { setStatus('Tessel bundle not loaded — cannot open .md files'); return; }
   _filename = file.name.replace(/\.md$/i, '');
   var rd = new FileReader();
   rd.onload = function(e) {
@@ -1223,6 +1259,7 @@ function openHtml(file) {
     var m = html.match(/<script[^>]+type="text\/tessel-source"[^>]*data-encoding="base64"[^>]*>([\s\S]*?)<\/script>/i)
            || html.match(/<script[^>]+data-encoding="base64"[^>]+type="text\/tessel-source"[^>]*>([\s\S]*?)<\/script>/i);
     if (!m) { setStatus('No tessel source found in this HTML file.'); return; }
+    if (typeof Tessel === 'undefined') { setStatus('Tessel bundle not loaded — cannot open .html files'); return; }
     try {
       var bytes = Uint8Array.from(atob(m[1].trim()), function(c){ return c.charCodeAt(0); });
       var src = new TextDecoder('utf-8').decode(bytes);
@@ -1238,6 +1275,7 @@ function openHtml(file) {
 }
 
 function getCompiledHtml() {
+  if (typeof Tessel === 'undefined') throw new Error('Tessel bundle not loaded — run: node tools/rollup.js');
   var md = serializeBlocks(blocks);
   return Tessel.compile(md);
 }
