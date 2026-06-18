@@ -337,54 +337,154 @@ select.prop-input { cursor: pointer; }
 .block-wrap.dragging { opacity: .4; }
 .block-wrap.drag-over-top { border-top: 3px solid var(--accent); }
 .block-wrap.drag-over-bottom { border-bottom: 3px solid var(--accent); }
+
+/* BADGE BUTTONS (sub-toolbar toggles) */
+.badge-btn {
+  display: flex; align-items: center; gap: 5px;
+  padding: 4px 10px; font-size: 11px; font-weight: 600;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 4px; cursor: pointer; color: var(--text);
+  transition: border-color .12s, background .12s;
+}
+.badge-btn svg { flex-shrink: 0; }
+.badge-btn:hover { border-color: var(--accent); }
+.badge-btn.active { background: var(--accent); border-color: #3d6dd4; color: #fff; }
+
+/* SUB-TOOLBAR */
+#sub-toolbar {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  flex-shrink: 0; overflow: hidden;
+  max-height: 0; transition: max-height .18s ease;
+}
+#sub-toolbar.open { max-height: 44px; }
+.sub-panel {
+  display: none; align-items: center; gap: 3px;
+  padding: 4px 10px; height: 44px;
+}
+.sub-panel.active { display: flex; }
+.sub-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
+.sub-field-btn {
+  display: flex; align-items: center; gap: 4px; padding: 3px 8px;
+  font-size: 11px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 4px; cursor: pointer; color: var(--text); white-space: nowrap;
+  line-height: 1.4;
+}
+.sub-field-btn:hover { border-color: var(--accent); }
+.sub-field-icon { font-size: 12px; line-height: 1; }
 </style>
 </head>
 <body>
 
-<!-- TOOLBAR -->
+<!-- PRIMARY TOOLBAR -->
 <div id="toolbar">
-  <span class="logo">Tessel <span>VS</span></span>
-  <div class="tb-sep"></div>
-
-  <button id="btn-new" title="New document">New</button>
-
-  <div class="dropdown" id="dd-open">
-    <button id="btn-open-dd">Open &#9662;</button>
-    <div class="dropdown-menu" id="dm-open">
-      <div class="dm-item" id="open-md-item"><span class="dm-icon">&#128196;</span>Open .md file</div>
+  <!-- File menu -->
+  <div class="dropdown" id="dd-file">
+    <button id="btn-file-dd">File &#9662;</button>
+    <div class="dropdown-menu" id="dm-file">
+      <div class="dm-item" id="btn-new"><span class="dm-icon">&#128196;</span>New</div>
+      <div class="dm-divider"></div>
+      <div class="dm-item" id="open-md-item"><span class="dm-icon">&#128194;</span>Open .md file</div>
       <div class="dm-item" id="open-html-item"><span class="dm-icon">&#127760;</span>Open .html file</div>
+      <div class="dm-divider"></div>
+      <div class="dm-item" id="btn-save"><span class="dm-icon">&#128190;</span>Save Draft <span style="margin-left:auto;opacity:.5;font-size:10px">Ctrl+S</span></div>
+      <div class="dm-item" id="btn-export"><span class="dm-icon">&#8595;</span>Export HTML <span style="margin-left:auto;opacity:.5;font-size:10px">Ctrl+E</span></div>
     </div>
   </div>
 
-  <button id="btn-save" title="Save draft (Ctrl+S)">Save</button>
-
   <div class="tb-sep"></div>
 
+  <!-- Badge buttons — toggle sub-toolbar panels -->
+  <button class="badge-btn" id="badge-text" data-panel="panel-text" title="Text controls">
+    <svg width="14" height="15" viewBox="0 0 14 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="2.5" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+      <path d="M1 4.5 Q3.5 3 7 4.5 Q10.5 6 13 4.5" stroke="currentColor" stroke-width="1" fill="none" stroke-linecap="round"/>
+      <path d="M1 11 Q3.5 12.5 7 11 Q10.5 9.5 13 11" stroke="currentColor" stroke-width="1" fill="none" stroke-linecap="round"/>
+      <line x1="3.5" y1="7" x2="10.5" y2="7" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+    </svg>
+    Text
+  </button>
+
+  <button class="badge-btn" id="badge-form" data-panel="panel-form" title="Form field controls">
+    <svg width="13" height="15" viewBox="0 0 13 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="1" width="11" height="13" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+      <rect x="2.5" y="3.5" width="2.5" height="2.5" rx=".5" stroke="currentColor" stroke-width="1"/>
+      <line x1="6.5" y1="4.75" x2="10" y2="4.75" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+      <rect x="2.5" y="7.25" width="2.5" height="2.5" rx=".5" stroke="currentColor" stroke-width="1"/>
+      <line x1="6.5" y1="8.5" x2="10" y2="8.5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+      <rect x="2.5" y="11" width="2.5" height="2.5" rx=".5" stroke="currentColor" stroke-width="1"/>
+      <line x1="6.5" y1="12.25" x2="10" y2="12.25" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+    </svg>
+    Form
+  </button>
+
+  <!-- Undo/Redo -->
+  <div class="tb-sep"></div>
   <button id="btn-undo" class="tb-icon" title="Undo (Ctrl+Z)" disabled>&#8592;</button>
   <button id="btn-redo" class="tb-icon" title="Redo (Ctrl+Y)" disabled>&#8594;</button>
 
+  <!-- Preview -->
   <div class="tb-sep"></div>
-
-  <button id="btn-h1" class="tb-icon" title="Heading 1" disabled>H1</button>
-  <button id="btn-h2" class="tb-icon" title="Heading 2" disabled>H2</button>
-  <button id="btn-h3" class="tb-icon" title="Heading 3" disabled>H3</button>
-  <button id="btn-para" class="tb-icon" title="Paragraph" disabled>&#182;</button>
-  <button id="btn-hr" class="tb-icon" title="Insert divider">&#8212;</button>
-
-  <div class="tb-sep"></div>
-
-  <div class="dropdown" id="dd-insert">
-    <button id="btn-insert-dd">Insert &#9662;</button>
-    <div class="dropdown-menu" id="dm-insert"></div>
-  </div>
-
-  <div class="tb-sep"></div>
-
-  <button id="btn-export" title="Export HTML (Ctrl+E)">Export HTML</button>
   <button id="btn-preview" class="primary" title="Preview compiled document">Preview</button>
 
+  <!-- Logo + theme pushed to right -->
   <div class="spacer"></div>
+  <span class="logo">Tessel <span>VS</span></span>
+  <div class="tb-sep"></div>
   <button id="btn-theme" class="tb-icon" title="Toggle theme">&#9728;</button>
+</div>
+
+<!-- SECONDARY TOOLBAR (badge panels) -->
+<div id="sub-toolbar">
+
+  <!-- Text controls panel -->
+  <div class="sub-panel" id="panel-text">
+    <button id="btn-h1" class="tb-icon" title="Heading 1">H1</button>
+    <button id="btn-h2" class="tb-icon" title="Heading 2">H2</button>
+    <button id="btn-h3" class="tb-icon" title="Heading 3">H3</button>
+    <button id="btn-para" class="tb-icon" title="Paragraph">&#182;</button>
+    <button id="btn-hr" class="tb-icon" title="Insert divider">&#8212;</button>
+    <div class="sub-sep"></div>
+    <div class="dropdown" id="dd-insert">
+      <button id="btn-insert-dd">Insert Block &#9662;</button>
+      <div class="dropdown-menu" id="dm-insert"></div>
+    </div>
+  </div>
+
+  <!-- Form fields panel -->
+  <div class="sub-panel" id="panel-form">
+    <!-- Basic text inputs -->
+    <button class="sub-field-btn" data-insert-field="text"><span class="sub-field-icon">T</span>Text</button>
+    <button class="sub-field-btn" data-insert-field="area"><span class="sub-field-icon">&#128196;</span>Area</button>
+    <button class="sub-field-btn" data-insert-field="number"><span class="sub-field-icon">#</span>Number</button>
+    <button class="sub-field-btn" data-insert-field="email"><span class="sub-field-icon">@</span>Email</button>
+    <button class="sub-field-btn" data-insert-field="phone"><span class="sub-field-icon">&#9990;</span>Phone</button>
+    <button class="sub-field-btn" data-insert-field="url"><span class="sub-field-icon">&#128279;</span>URL</button>
+    <div class="sub-sep"></div>
+    <!-- Date/time -->
+    <button class="sub-field-btn" data-insert-field="date"><span class="sub-field-icon">&#128197;</span>Date</button>
+    <button class="sub-field-btn" data-insert-field="datetime"><span class="sub-field-icon">&#128336;</span>DateTime</button>
+    <div class="sub-sep"></div>
+    <!-- Choice -->
+    <button class="sub-field-btn" data-insert-field="select"><span class="sub-field-icon">&#9660;</span>Select</button>
+    <button class="sub-field-btn" data-insert-field="radio"><span class="sub-field-icon">&#8857;</span>Radio</button>
+    <button class="sub-field-btn" data-insert-field="check"><span class="sub-field-icon">&#9745;</span>Check</button>
+    <div class="sub-sep"></div>
+    <!-- Rich content -->
+    <button class="sub-field-btn" data-insert-field="image"><span class="sub-field-icon">&#128444;</span>Image</button>
+    <button class="sub-field-btn" data-insert-field="richtext"><span class="sub-field-icon">&#10000;</span>Rich Text</button>
+    <button class="sub-field-btn" data-insert-field="computed"><span class="sub-field-icon">&#9889;</span>Computed</button>
+    <button class="sub-field-btn" data-insert-field="signature"><span class="sub-field-icon">&#10002;</span>Sig</button>
+    <div class="sub-sep"></div>
+    <!-- File/parse -->
+    <button class="sub-field-btn" data-insert-field="filename"><span class="sub-field-icon">&#128194;</span>Filename</button>
+    <button class="sub-field-btn" data-insert-field="dir"><span class="sub-field-icon">&#128193;</span>Dir</button>
+    <button class="sub-field-btn" data-insert-field="parse"><span class="sub-field-icon">&#128269;</span>Parse</button>
+    <div class="sub-sep"></div>
+    <!-- Secure -->
+    <button class="sub-field-btn" data-insert-field="credential"><span class="sub-field-icon">&#128273;</span>Credential</button>
+    <button class="sub-field-btn" data-insert-field="totp"><span class="sub-field-icon">&#128272;</span>TOTP</button>
+  </div>
+
 </div>
 
 <!-- HIDDEN FILE INPUTS -->
@@ -1323,9 +1423,17 @@ function showInsertFloat(afterId, anchorEl) {
 }
 
 function updateToolbarState(b) {
-  var isText = b && (b.type === 'heading' || b.type === 'paragraph');
+  // H1–H3 / ¶ buttons in sub-toolbar always enabled — they apply to lastFocusedTextBlockId
+  // Highlight the active block type if Text panel is open
+  var activeType = b ? b.type : null;
+  var activeLevel = b && b.level;
   ['btn-h1','btn-h2','btn-h3','btn-para'].forEach(function(id) {
-    document.getElementById(id).disabled = !isText;
+    var el = document.getElementById(id);
+    var matches = (id === 'btn-para' && activeType === 'paragraph') ||
+                  (id === 'btn-h1'  && activeType === 'heading' && activeLevel === 1) ||
+                  (id === 'btn-h2'  && activeType === 'heading' && activeLevel === 2) ||
+                  (id === 'btn-h3'  && activeType === 'heading' && activeLevel === 3);
+    el.classList.toggle('active', matches);
   });
 }
 
@@ -1447,6 +1555,12 @@ document.addEventListener('click', function(e) {
   if (!e.target.closest('.dropdown') && !e.target.closest('#insert-float') && !e.target.closest('.block-add-btn')) {
     closeAllDropdowns();
   }
+  // Close sub-toolbar on canvas click (outside badge buttons and sub-toolbar itself)
+  if (!e.target.closest('.badge-btn') && !e.target.closest('#sub-toolbar')) {
+    document.querySelectorAll('.badge-btn').forEach(function(b){ b.classList.remove('active'); });
+    document.querySelectorAll('.sub-panel').forEach(function(p){ p.classList.remove('active'); });
+    document.getElementById('sub-toolbar').classList.remove('open');
+  }
 });
 
 function setupDropdown(btnId, menuId) {
@@ -1459,14 +1573,45 @@ function setupDropdown(btnId, menuId) {
   });
 }
 
-setupDropdown('btn-open-dd', 'dm-open');
+setupDropdown('btn-file-dd', 'dm-file');
 setupDropdown('btn-insert-dd', 'dm-insert');
 buildInsertMenuHTML();
+
+// Badge button sub-toolbar toggle
+(function() {
+  var subBar = document.getElementById('sub-toolbar');
+  document.querySelectorAll('.badge-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var panelId = btn.dataset.panel;
+      var panel = document.getElementById(panelId);
+      var isActive = btn.classList.contains('active');
+      // deactivate all
+      document.querySelectorAll('.badge-btn').forEach(function(b){ b.classList.remove('active'); });
+      document.querySelectorAll('.sub-panel').forEach(function(p){ p.classList.remove('active'); });
+      if (!isActive) {
+        btn.classList.add('active');
+        panel.classList.add('active');
+        subBar.classList.add('open');
+      } else {
+        subBar.classList.remove('open');
+      }
+    });
+  });
+})();
+
+// Form field insert buttons in sub-toolbar
+document.querySelectorAll('.sub-field-btn[data-insert-field]').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    insertField(btn.dataset.insertField, lastFocusedTextBlockId || null);
+  });
+});
 
 document.getElementById('btn-undo').addEventListener('click', undo);
 document.getElementById('btn-redo').addEventListener('click', redo);
 
 document.getElementById('btn-new').addEventListener('click', function() {
+  closeAllDropdowns();
   if (_unsaved && !confirm('Discard unsaved changes?')) return;
   blocks = []; selectedBlockId = null;
   undoStack = []; redoStack = [];
@@ -1480,7 +1625,8 @@ document.getElementById('open-md-item').addEventListener('click', function() { c
 document.getElementById('open-html-item').addEventListener('click', function() { closeAllDropdowns(); document.getElementById('pick-html').click(); });
 document.getElementById('pick-md').addEventListener('change', function() { var f = this.files && this.files[0]; if (!f) return; this.value=''; openMd(f); });
 document.getElementById('pick-html').addEventListener('change', function() { var f = this.files && this.files[0]; if (!f) return; this.value=''; openHtml(f); });
-document.getElementById('btn-save').addEventListener('click', saveDraft);
+document.getElementById('btn-save').addEventListener('click', function() { closeAllDropdowns(); saveDraft(); });
+document.getElementById('btn-export').addEventListener('click', function() { closeAllDropdowns(); exportHtml(); });
 
 document.getElementById('btn-h1').addEventListener('click', function() { convertFocusedBlock('heading', 1); });
 document.getElementById('btn-h2').addEventListener('click', function() { convertFocusedBlock('heading', 2); });
@@ -1510,7 +1656,6 @@ document.getElementById('btn-hr').addEventListener('click', function() {
   insertBlock({ type:'hr', id:uid() }, lastFocusedTextBlockId || null);
 });
 
-document.getElementById('btn-export').addEventListener('click', exportHtml);
 document.getElementById('btn-preview').addEventListener('click', showPreview);
 document.getElementById('preview-close').addEventListener('click', function() {
   document.getElementById('preview-modal').classList.remove('show');
