@@ -663,6 +663,15 @@ body.no-transitions #props-panel { transition: none !important; }
 }
 .opts-action-btn:hover { border-color: var(--accent); background: rgba(91,138,240,.08); color: var(--accent); }
 .opts-import-status { font-size: 11px; margin-top: 8px; min-height: 16px; }
+.opts-undo-depth-wrap { display: flex; gap: 4px; align-items: center; }
+.opts-num-input {
+  width: 60px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 4px; color: var(--text); font-size: 11px; padding: 3px 6px;
+  outline: none; -moz-appearance: textfield;
+}
+.opts-num-input::-webkit-inner-spin-button,
+.opts-num-input::-webkit-outer-spin-button { opacity: 1; }
+.opts-num-input:focus { border-color: var(--accent); }
 .opts-coll-body { display: none; padding-left: 10px; }
 .opts-coll-body.open { display: block; }
 .opts-coll-sub > .opts-coll-btn { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 4px 6px; }
@@ -1055,17 +1064,21 @@ body.no-transitions #props-panel { transition: none !important; }
         <div class="opts-section-label">Undo History</div>
         <div class="opts-toggle-row" style="margin-bottom:10px;">
           <span>Max undo steps</span>
-          <select id="opts-undo-depth" class="opts-select">
-            <option value="10">10 steps</option>
-            <option value="25">25 steps</option>
-            <option value="50">50 steps</option>
-            <option value="100" selected>100 steps</option>
-            <option value="200">200 steps</option>
-            <option value="500">500 steps</option>
-            <option value="1000">1,000 steps</option>
-            <option value="5000">5,000 steps</option>
-            <option value="10000">10,000 steps</option>
-          </select>
+          <div class="opts-undo-depth-wrap">
+            <input type="number" id="opts-undo-depth-num" class="opts-num-input" min="1" max="10000" value="100">
+            <select id="opts-undo-depth-preset" class="opts-select" title="Quick presets">
+              <option value="">Presets…</option>
+              <option value="10">10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="200">200</option>
+              <option value="500">500</option>
+              <option value="1000">1,000</option>
+              <option value="5000">5,000</option>
+              <option value="10000">10,000</option>
+            </select>
+          </div>
         </div>
         <div class="opts-toggle-row">
           <span>Save undo history with document</span>
@@ -2865,9 +2878,17 @@ function dockPanel(panelId, zone) {
     if (freq > 0) { autoSaveTimer = setInterval(function() { if (_unsaved) saveDraft(); }, freq * 1000); }
   }
 
-  var freqSel = document.getElementById('opts-autosave-freq');
-  var depthSel = document.getElementById('opts-undo-depth');
-  var persistBtn = document.getElementById('opts-persist-undo');
+  var freqSel      = document.getElementById('opts-autosave-freq');
+  var depthNum     = document.getElementById('opts-undo-depth-num');
+  var depthPreset  = document.getElementById('opts-undo-depth-preset');
+  var persistBtn   = document.getElementById('opts-persist-undo');
+
+  function applyUndoDepth(depth) {
+    depth = Math.max(1, Math.min(10000, depth));
+    try { localStorage.setItem('tvs:opts:undo-depth', depth); } catch(e) {}
+    while (undoStack.length > depth) undoStack.shift();
+    updateUndoButtons();
+  }
 
   // Restore saved values
   (function() {
@@ -2875,10 +2896,7 @@ function dockPanel(panelId, zone) {
     for (var i = 0; i < freqSel.options.length; i++) {
       if (parseInt(freqSel.options[i].value, 10) === freq) { freqSel.selectedIndex = i; break; }
     }
-    var depth = getUndoDepth();
-    for (var j = 0; j < depthSel.options.length; j++) {
-      if (parseInt(depthSel.options[j].value, 10) === depth) { depthSel.selectedIndex = j; break; }
-    }
+    depthNum.value = getUndoDepth();
     var persist = isPersistUndo();
     persistBtn.classList.toggle('on', persist);
   })();
@@ -2888,12 +2906,26 @@ function dockPanel(panelId, zone) {
     restartAutoSave();
   });
 
-  depthSel.addEventListener('change', function() {
-    var depth = parseInt(depthSel.value, 10);
-    try { localStorage.setItem('tvs:opts:undo-depth', depth); } catch(e) {}
-    // Trim existing stack if needed
-    while (undoStack.length > depth) undoStack.shift();
-    updateUndoButtons();
+  // Number input: apply on blur or Enter; clamp to [1, 10000]
+  depthNum.addEventListener('change', function() {
+    var v = parseInt(depthNum.value, 10);
+    if (isNaN(v) || v < 1) v = 1;
+    if (v > 10000) v = 10000;
+    depthNum.value = v;
+    depthPreset.value = ''; // clear preset highlight if custom value
+    applyUndoDepth(v);
+  });
+  depthNum.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') depthNum.blur();
+  });
+
+  // Preset dropdown: sets the number input and applies immediately
+  depthPreset.addEventListener('change', function() {
+    if (!depthPreset.value) return;
+    var v = parseInt(depthPreset.value, 10);
+    depthNum.value = v;
+    depthPreset.value = ''; // reset to "Presets…" so it acts as a one-shot picker
+    applyUndoDepth(v);
   });
 
   persistBtn.addEventListener('click', function() {
