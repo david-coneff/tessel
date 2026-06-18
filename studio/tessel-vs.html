@@ -71,6 +71,34 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 
 /* BODY LAYOUT */
 .body { flex: 1; display: flex; overflow: hidden; }
+#content-row { flex: 1; display: flex; overflow: hidden; min-width: 0; }
+
+/* ── HORIZONTAL LAYOUT MODE ── */
+body.layout-h .body          { flex-direction: column; }
+body.layout-h #content-row   { flex: 1; }
+body.layout-h #controls-pane {
+  width: auto; height: 44px; max-height: 44px;
+  flex-direction: row; overflow-x: auto; overflow-y: hidden;
+  border-right: none; border-bottom: 1px solid var(--border);
+  transition: max-height .2s ease;
+}
+body.layout-h #controls-pane.collapsed { max-height: 0; height: 0; overflow: hidden; border-bottom-color: transparent; }
+body.layout-h #ctrl-pane-header {
+  border-bottom: none; border-right: 1px solid var(--border);
+  min-width: 88px; height: 44px; flex-shrink: 0;
+}
+body.layout-h #ctrl-pane-body  { flex: 1; overflow-x: auto; overflow-y: hidden; display: flex; }
+body.layout-h .ctrl-panel.active { flex-direction: row; align-items: center; gap: 0; padding: 0 4px; }
+body.layout-h .ctrl-group-label { display: none; }
+body.layout-h .ctrl-divider     { width: 1px; height: 22px; margin: 0 4px; flex-shrink: 0; }
+body.layout-h .ctrl-btn {
+  border-left: none; border-bottom: 2px solid transparent;
+  padding: 0 10px; height: 44px; flex-shrink: 0; border-radius: 0; white-space: nowrap;
+}
+body.layout-h .ctrl-btn:hover  { background: var(--surface2); border-bottom-color: var(--accent); border-left-color: transparent; }
+body.layout-h .ctrl-btn.active { background: rgba(91,138,240,.1); border-bottom-color: var(--accent); border-left-color: transparent; color: var(--accent); }
+/* also need the dropdown inside the text panel to sit nicely */
+body.layout-h #ctrl-panel-text > .dropdown { display: flex; align-items: center; padding: 0 6px; }
 
 /* CONTROLS PANE */
 #controls-pane {
@@ -378,6 +406,46 @@ select.prop-input { cursor: pointer; }
 .block-wrap.drag-over-top { border-top: 3px solid var(--accent); }
 .block-wrap.drag-over-bottom { border-bottom: 3px solid var(--accent); }
 
+/* OPTIONS DIALOG */
+#options-dialog {
+  display: none; position: fixed; z-index: 900;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,.4);
+  width: 340px; min-width: 260px;
+  top: 80px; left: 50%; transform: translateX(-50%);
+  user-select: none;
+}
+#options-dialog.show { display: block; }
+#options-dialog-header {
+  display: flex; align-items: center; padding: 10px 14px;
+  border-bottom: 1px solid var(--border); cursor: move; gap: 8px;
+}
+#options-dialog-header h2 { font-size: 13px; font-weight: 600; flex: 1; }
+#options-dialog-close {
+  background: none; border: none; cursor: pointer; color: var(--muted);
+  font-size: 16px; padding: 2px 5px; line-height: 1; border-radius: 4px;
+}
+#options-dialog-close:hover { background: var(--surface2); color: var(--text); }
+#options-dialog-body { padding: 16px; }
+
+.opts-section-title {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  color: var(--muted); letter-spacing: .5px; margin-bottom: 10px;
+}
+.opts-layout-toggle {
+  display: flex; gap: 8px;
+}
+.opts-layout-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 10px 8px; border: 1.5px solid var(--border); border-radius: 6px;
+  background: var(--surface2); cursor: pointer; color: var(--muted);
+  font-size: 11px; font-weight: 500; transition: border-color .15s, color .15s;
+}
+.opts-layout-btn:hover { border-color: var(--accent); color: var(--text); }
+.opts-layout-btn.active { border-color: var(--accent); background: rgba(91,138,240,.12); color: var(--accent); }
+.opts-layout-btn svg { opacity: .7; }
+.opts-layout-btn.active svg { opacity: 1; }
+
 /* BADGE BUTTONS (controls pane toggles) */
 .badge-btn {
   display: flex; align-items: center; gap: 5px;
@@ -406,6 +474,8 @@ select.prop-input { cursor: pointer; }
       <div class="dm-divider"></div>
       <div class="dm-item" id="btn-save"><span class="dm-icon">&#128190;</span>Save Draft <span style="margin-left:auto;opacity:.5;font-size:10px">Ctrl+S</span></div>
       <div class="dm-item" id="btn-export"><span class="dm-icon">&#8595;</span>Export HTML <span style="margin-left:auto;opacity:.5;font-size:10px">Ctrl+E</span></div>
+      <div class="dm-divider"></div>
+      <div class="dm-item" id="btn-options"><span class="dm-icon">&#9881;</span>Options&#8230;</div>
     </div>
   </div>
 
@@ -525,32 +595,34 @@ select.prop-input { cursor: pointer; }
     </div>
   </div>
 
-  <!-- OUTLINE -->
-  <div id="outline-panel">
-    <h3>Outline</h3>
-    <div id="outline-list"><div style="padding:10px;font-size:11px;color:var(--muted)">No headings yet</div></div>
-  </div>
+  <!-- CONTENT ROW: outline + canvas + props (flex row, enables layout switching) -->
+  <div id="content-row">
 
-  <!-- CANVAS -->
-  <div id="canvas-wrap">
-    <div id="canvas">
-      <div id="canvas-empty">
-        <div style="font-size:32px">&#128221;</div>
-        <div>Start building your document</div>
-        <p>Use the toolbar to insert blocks, or click Insert &#9662; to add content</p>
+    <div id="outline-panel">
+      <h3>Outline</h3>
+      <div id="outline-list"><div style="padding:10px;font-size:11px;color:var(--muted)">No headings yet</div></div>
+    </div>
+
+    <div id="canvas-wrap">
+      <div id="canvas">
+        <div id="canvas-empty">
+          <div style="font-size:32px">&#128221;</div>
+          <div>Start building your document</div>
+          <p>Use the toolbar to insert blocks, or click Insert &#9662; to add content</p>
+        </div>
+        <div id="blocks-root"></div>
       </div>
-      <div id="blocks-root"></div>
     </div>
-  </div>
 
-  <!-- PROPERTIES PANEL -->
-  <div id="props-panel">
-    <h3>Properties</h3>
-    <div id="props-body">
-      <div id="props-empty">Select a field block to edit its properties</div>
+    <div id="props-panel">
+      <h3>Properties</h3>
+      <div id="props-body">
+        <div id="props-empty">Select a field block to edit its properties</div>
+      </div>
     </div>
-  </div>
-</div>
+
+  </div><!-- #content-row -->
+</div><!-- .body -->
 
 <!-- INSERT FLOAT MENU -->
 <div id="insert-float"></div>
@@ -563,6 +635,36 @@ select.prop-input { cursor: pointer; }
       <button id="preview-close">&#10005; Close</button>
     </div>
     <iframe id="preview-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-modals"></iframe>
+  </div>
+</div>
+
+<!-- OPTIONS DIALOG -->
+<div id="options-dialog">
+  <div id="options-dialog-header">
+    <span style="font-size:16px;">&#9881;</span>
+    <h2>Options</h2>
+    <button id="options-dialog-close" title="Close">&#10005;</button>
+  </div>
+  <div id="options-dialog-body">
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px;">Layout</div>
+    <div style="display:flex;gap:10px;">
+      <button class="opts-layout-btn" id="opts-layout-v" data-layout="v">
+        <svg width="40" height="34" viewBox="0 0 40 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="1" y="1" width="38" height="32" rx="3" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="1" y="1" width="12" height="32" rx="3" fill="currentColor" opacity=".18"/>
+          <line x1="13" y1="1" x2="13" y2="33" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+        Vertical (left panel)
+      </button>
+      <button class="opts-layout-btn" id="opts-layout-h" data-layout="h">
+        <svg width="40" height="34" viewBox="0 0 40 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="1" y="1" width="38" height="32" rx="3" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="1" y="1" width="38" height="11" rx="3" fill="currentColor" opacity=".18"/>
+          <line x1="1" y1="12" x2="39" y2="12" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+        Horizontal (top bar)
+      </button>
+    </div>
   </div>
 </div>
 
@@ -1749,6 +1851,87 @@ loadDraft();
 renderProps();
 updateToolbarState(null);
 updateUndoButtons();
+
+// ── Options dialog ──────────────────────────────────────────────────────────
+(function() {
+  var dialog  = document.getElementById('options-dialog');
+  var btnOpen = document.getElementById('btn-options');
+  var btnClose= document.getElementById('options-dialog-close');
+  var btnV    = document.getElementById('opts-layout-v');
+  var btnH    = document.getElementById('opts-layout-h');
+
+  function openDialog() {
+    closeAllDropdowns();
+    dialog.classList.add('show');
+    // centre if not yet dragged
+    if (!dialog._dragged) {
+      dialog.style.left = Math.round((window.innerWidth - dialog.offsetWidth) / 2) + 'px';
+      dialog.style.top  = '80px';
+      dialog.style.transform = '';
+    }
+    syncLayoutBtns();
+  }
+  function closeDialog() { dialog.classList.remove('show'); }
+
+  function syncLayoutBtns() {
+    var isH = document.body.classList.contains('layout-h');
+    btnV.classList.toggle('active', !isH);
+    btnH.classList.toggle('active',  isH);
+  }
+
+  function applyLayout(mode) {
+    if (mode === 'h') {
+      document.body.classList.add('layout-h');
+    } else {
+      document.body.classList.remove('layout-h');
+    }
+    try { localStorage.setItem('tvs:layout', mode); } catch(e) {}
+    syncLayoutBtns();
+  }
+
+  // Restore saved layout
+  (function() {
+    var saved = (function(){ try { return localStorage.getItem('tvs:layout'); } catch(e) { return null; } })();
+    if (saved === 'h') applyLayout('h');
+  })();
+
+  btnOpen.addEventListener('click', function(e) { e.stopPropagation(); openDialog(); });
+  btnClose.addEventListener('click', closeDialog);
+  btnV.addEventListener('click', function() { applyLayout('v'); });
+  btnH.addEventListener('click', function() { applyLayout('h'); });
+
+  // Drag with viewport clamping
+  var header = document.getElementById('options-dialog-header');
+  header.addEventListener('mousedown', function(e) {
+    if (e.target === btnClose) return;
+    var startX = e.clientX - dialog.offsetLeft;
+    var startY = e.clientY - dialog.offsetTop;
+    dialog.style.transform = '';
+    dialog._dragged = true;
+    function onMove(e) {
+      var x = e.clientX - startX;
+      var y = e.clientY - startY;
+      x = Math.max(0, Math.min(window.innerWidth  - dialog.offsetWidth,  x));
+      y = Math.max(0, Math.min(window.innerHeight - dialog.offsetHeight, y));
+      dialog.style.left = x + 'px';
+      dialog.style.top  = y + 'px';
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    e.preventDefault();
+  });
+
+  // Close on outside click
+  document.addEventListener('click', function(e) {
+    if (dialog.classList.contains('show') && !dialog.contains(e.target) && e.target !== btnOpen) {
+      closeDialog();
+    }
+  });
+})();
 
 })();
 </script>
