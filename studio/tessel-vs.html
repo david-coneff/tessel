@@ -1528,6 +1528,13 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
  * - Mobile/touch layout optimizations
  * - Mode pill toggle to merge with Tessel Studio Markdown (split-pane IDE view)
  * - Inline richtext formatting toolbar (bold/italic/link in paragraph blocks)
+ * - File metadata dialog (File menu): standard fields (title, author, created,
+ *   modified, description, tags) + author-defined custom header fields with typed
+ *   values (text, number, integer, date, datetime, boolean); persisted as YAML
+ *   front-matter at the top of exported .md files and round-tripped on open
+ * - Filename / document-title state variable bound to .md front-matter `title:`
+ *   field; md header variable constructor for templating dynamic values into
+ *   block content at export time (e.g. {{title}}, {{author}}, {{date}})
  */
 (function() {
 'use strict';
