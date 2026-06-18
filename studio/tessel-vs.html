@@ -615,6 +615,11 @@ body.no-transitions #props-panel { transition: none !important; }
 }
 .opts-dock-btn:hover { border-color: var(--accent); color: var(--text); }
 .opts-dock-btn.active { background: rgba(91,138,240,.15); border-color: var(--accent); color: var(--accent); }
+.opts-items-list { display: flex; flex-direction: column; }
+.opts-item-group { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: .05em; margin: 8px 0 4px; }
+.opts-item-row { display: flex; align-items: center; gap: 8px; padding: 2px 0; cursor: pointer; }
+.opts-item-row input[type=checkbox] { width: 13px; height: 13px; cursor: pointer; accent-color: var(--accent); flex-shrink: 0; }
+.opts-item-row label { font-size: 12px; color: var(--text); cursor: pointer; user-select: none; }
 
 /* BADGE BUTTONS (controls pane toggles) */
 .badge-btn {
@@ -743,16 +748,16 @@ body.no-transitions #props-panel { transition: none !important; }
         <button class="ctrl-pane-collapse-btn" title="Collapse panel">&#8249;</button>
       </div>
       <div class="ctrl-pane-body">
-        <div class="ctrl-group-label">Block Type</div>
+        <div class="ctrl-group-label" id="fmt-group-blocktype">Block Type</div>
         <button class="ctrl-btn" id="btn-h1"><span class="ctrl-btn-icon">H1</span>Heading 1</button>
         <button class="ctrl-btn" id="btn-h2"><span class="ctrl-btn-icon">H2</span>Heading 2</button>
         <button class="ctrl-btn" id="btn-h3"><span class="ctrl-btn-icon">H3</span>Heading 3</button>
         <button class="ctrl-btn" id="btn-para"><span class="ctrl-btn-icon">&#182;</span>Paragraph</button>
-        <div class="ctrl-group-label">Inline Style</div>
+        <div class="ctrl-group-label" id="fmt-group-inline">Inline Style</div>
         <button class="ctrl-btn" id="btn-bold"><span class="ctrl-btn-icon"><b>B</b></span>Bold</button>
         <button class="ctrl-btn" id="btn-italic"><span class="ctrl-btn-icon"><i>I</i></span>Italic</button>
         <button class="ctrl-btn" id="btn-underline"><span class="ctrl-btn-icon"><u>U</u></span>Underline</button>
-        <div class="ctrl-group-label">Font</div>
+        <div class="ctrl-group-label" id="fmt-group-font">Font</div>
         <button class="ctrl-btn" id="btn-font-georgia"><span class="ctrl-btn-icon" style="font-family:Georgia,serif">Gg</span>Georgia</button>
         <button class="ctrl-btn" id="btn-font-franklin"><span class="ctrl-btn-icon" style="font-family:'Franklin Gothic Book',sans-serif">Ff</span>Franklin Gothic</button>
         <button class="ctrl-btn" id="btn-font-verdana"><span class="ctrl-btn-icon" style="font-family:Verdana,sans-serif">Vv</span>Verdana</button>
@@ -950,6 +955,12 @@ body.no-transitions #props-panel { transition: none !important; }
       <span>Animate panel open / close</span>
       <button class="opts-toggle on" id="opts-transitions-toggle" title="Toggle transitions"></button>
     </div>
+    <div class="opts-divider"></div>
+    <div class="opts-section-label">Text Pane Items</div>
+    <div id="opts-text-items" class="opts-items-list"></div>
+    <div class="opts-divider"></div>
+    <div class="opts-section-label">Format Pane Items</div>
+    <div id="opts-format-items" class="opts-items-list"></div>
   </div>
 </div>
 
@@ -2112,17 +2123,69 @@ makeCtrlPane({ paneId: 'format-pane', badgeId: 'badge-format', lsKey: 'tvs:forma
 makeCtrlPane({ paneId: 'text-pane',   badgeId: 'badge-text',   lsKey: 'tvs:text-pane-state' });
 makeCtrlPane({ paneId: 'form-pane',   badgeId: 'badge-form',   lsKey: 'tvs:form-pane-state' });
 
+var FORMAT_PANE_ITEMS = [
+  { group: 'Block Type', labelId: 'fmt-group-blocktype' },
+  { label: 'Heading 1',  btnId: 'btn-h1' },
+  { label: 'Heading 2',  btnId: 'btn-h2' },
+  { label: 'Heading 3',  btnId: 'btn-h3' },
+  { label: 'Paragraph',  btnId: 'btn-para' },
+  { group: 'Inline Style', labelId: 'fmt-group-inline' },
+  { label: 'Bold',       btnId: 'btn-bold' },
+  { label: 'Italic',     btnId: 'btn-italic' },
+  { label: 'Underline',  btnId: 'btn-underline' },
+  { group: 'Font', labelId: 'fmt-group-font' },
+  { label: 'Georgia',         btnId: 'btn-font-georgia' },
+  { label: 'Franklin Gothic', btnId: 'btn-font-franklin' },
+  { label: 'Verdana',         btnId: 'btn-font-verdana' },
+];
+
+function getHiddenItems(pane) {
+  try { var v = localStorage.getItem('tvs:hidden:' + pane); return new Set(v ? JSON.parse(v) : []); } catch(e) { return new Set(); }
+}
+function setItemHidden(pane, label, hidden) {
+  var set = getHiddenItems(pane);
+  if (hidden) set.add(label); else set.delete(label);
+  try { localStorage.setItem('tvs:hidden:' + pane, JSON.stringify(Array.from(set))); } catch(e) {}
+  if (pane === 'text') buildTextPaneButtons();
+  if (pane === 'format') applyFormatPaneVisibility();
+}
+
+function applyFormatPaneVisibility() {
+  var hidden = getHiddenItems('format');
+  var groupLabelId = null;
+  var groupHasVisible = false;
+  FORMAT_PANE_ITEMS.forEach(function(item) {
+    if (item.group) {
+      if (groupLabelId) document.getElementById(groupLabelId).style.display = groupHasVisible ? '' : 'none';
+      groupLabelId = item.labelId;
+      groupHasVisible = false;
+    } else {
+      var isHidden = hidden.has(item.label);
+      document.getElementById(item.btnId).style.display = isHidden ? 'none' : '';
+      if (!isHidden) groupHasVisible = true;
+    }
+  });
+  if (groupLabelId) document.getElementById(groupLabelId).style.display = groupHasVisible ? '' : 'none';
+}
+
 function buildTextPaneButtons() {
   var body = document.getElementById('text-pane-body');
   if (!body) return;
   body.innerHTML = '';
+  var hidden = getHiddenItems('text');
+  var pendingGroup = null;
   INSERT_MENU_ITEMS.forEach(function(item) {
     if (item.group) {
-      var lbl = document.createElement('div');
-      lbl.className = 'ctrl-group-label';
-      lbl.textContent = item.group;
-      body.appendChild(lbl);
+      pendingGroup = item.group;
     } else {
+      if (hidden.has(item.label)) return;
+      if (pendingGroup) {
+        var lbl = document.createElement('div');
+        lbl.className = 'ctrl-group-label';
+        lbl.textContent = pendingGroup;
+        body.appendChild(lbl);
+        pendingGroup = null;
+      }
       var btn = document.createElement('button');
       btn.className = 'ctrl-btn';
       btn.innerHTML = '<span class="ctrl-btn-icon">' + esc(item.icon) + '</span>' + esc(item.label);
@@ -2134,6 +2197,7 @@ function buildTextPaneButtons() {
   });
 }
 buildTextPaneButtons();
+applyFormatPaneVisibility();
 
 // Form pane field-insert buttons
 document.querySelectorAll('#form-pane .ctrl-btn[data-insert-field]').forEach(function(btn) {
@@ -2387,6 +2451,49 @@ function dockPanel(panelId, zone) {
     var saved = (function(){ try { return localStorage.getItem('tvs:transitions'); } catch(e) { return null; } })();
     if (saved === '0') applyTransitions(false);
   })();
+
+  // Item visibility checklists
+  function buildChecklist(containerId, pane, items) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
+    var hidden = getHiddenItems(pane);
+    var uid = 0;
+    items.forEach(function(item) {
+      if (item.group) {
+        var g = document.createElement('div');
+        g.className = 'opts-item-group';
+        g.textContent = item.group;
+        container.appendChild(g);
+      } else {
+        var id = 'opts-item-' + pane + '-' + (uid++);
+        var row = document.createElement('div');
+        row.className = 'opts-item-row';
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.id = id;
+        cb.checked = !hidden.has(item.label);
+        cb.addEventListener('change', function() { setItemHidden(pane, item.label, !cb.checked); });
+        var lbl = document.createElement('label');
+        lbl.htmlFor = id;
+        lbl.textContent = item.label;
+        row.appendChild(cb);
+        row.appendChild(lbl);
+        container.appendChild(row);
+      }
+    });
+  }
+
+  var _checklistsBuilt = false;
+  var origOpen = openDialog;
+  openDialog = function() {
+    origOpen();
+    if (!_checklistsBuilt) {
+      buildChecklist('opts-text-items',   'text',   INSERT_MENU_ITEMS);
+      buildChecklist('opts-format-items', 'format', FORMAT_PANE_ITEMS);
+      _checklistsBuilt = true;
+    }
+  };
 
   btnOpen.addEventListener('click', function(e) { e.stopPropagation(); openDialog(); });
   btnClose.addEventListener('click', closeDialog);
