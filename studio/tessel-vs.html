@@ -3198,13 +3198,28 @@ function getCompiledHtml() {
 function exportHtml() {
   try {
     var html = getCompiledHtml();
-    var blob = new Blob([html], {type:'text/html'});
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url; a.download = _filename + '.html';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(function(){ URL.revokeObjectURL(url); }, 1200);
-    setStatus('Exported ' + _filename + '.html');
+    var fname = _filename + '.html';
+    if (window.showSaveFilePicker) {
+      window.showSaveFilePicker({
+        suggestedName: fname,
+        types: [{ description: 'HTML file', accept: { 'text/html': ['.html'] } }]
+      }).then(function(fh) {
+        return fh.createWritable().then(function(w) {
+          return w.write(html).then(function() { return w.close(); });
+        }).then(function() { setStatus('Saved ' + fname); });
+      }).catch(function(ex) {
+        if (ex.name !== 'AbortError') setStatus('Save error: ' + ex.message);
+      });
+    } else {
+      // Fallback: browser download
+      var blob = new Blob([html], {type:'text/html'});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = fname;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 1200);
+      setStatus('Exported ' + fname);
+    }
   } catch(ex) { setStatus('Export error: ' + ex.message); }
 }
 
