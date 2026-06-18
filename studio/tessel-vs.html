@@ -3525,27 +3525,32 @@ function dockPanel(panelId, zone) {
     var panel = document.getElementById(panelId);
     if (!panel) return;
 
-    // Activate draggable only when mousedown on a grip
+    // Keep panel always draggable; track whether drag started from a grip
+    panel.draggable = true;
+    var _gripActive = false;
+    var _styleTimer = null;
+
     panel.querySelectorAll('[data-pane-grip="' + panelId + '"]').forEach(function(grip) {
       grip.addEventListener('mousedown', function(e) {
-        if (e.button !== 0) return;
-        panel.draggable = true;
+        if (e.button === 0) _gripActive = true;
       });
     });
 
     panel.addEventListener('dragstart', function(e) {
-      if (!panel.draggable) { e.preventDefault(); return; }
+      if (!_gripActive) { e.preventDefault(); _gripActive = false; return; }
+      _gripActive = false;
       paneDragId = panelId;
       document.body.classList.add('pane-dragging-active');
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', panelId);
       var myZone = getZoneOf(panelId);
-      // Use rAF so the drag image is captured before we apply opacity
-      requestAnimationFrame(function() {
+      // Defer style changes so the drag ghost is captured in the original state.
+      // Use a cancellable timer — dragend cancels it if the drag ends before it fires.
+      _styleTimer = setTimeout(function() {
+        _styleTimer = null;
         panel.classList.add('pane-dragging');
-        // pointer-events:none lets dragover fire on siblings even when ghost overlaps
         panel.style.pointerEvents = 'none';
-      });
+      }, 0);
       ZONES.forEach(function(z) {
         edgeTargets[z].style.pointerEvents = (z === myZone) ? 'none' : 'auto';
         edgeTargets[z].style.opacity = (z === myZone) ? '0.3' : '1';
@@ -3553,7 +3558,8 @@ function dockPanel(panelId, zone) {
     });
 
     panel.addEventListener('dragend', function() {
-      panel.draggable = false;
+      if (_styleTimer !== null) { clearTimeout(_styleTimer); _styleTimer = null; }
+      _gripActive = false;
       panel.style.pointerEvents = '';
       paneDragId = null;
       panel.classList.remove('pane-dragging');
@@ -3652,11 +3658,11 @@ function dockPanel(panelId, zone) {
     });
   });
 
-  // Reset draggable on any mouseup (handles clicks that don't become drags)
+  // Reset pointer-events on any mouseup (panels stay draggable=true permanently)
   document.addEventListener('mouseup', function() {
     PANE_IDS.forEach(function(id) {
       var el = document.getElementById(id);
-      if (el) { el.draggable = false; el.style.pointerEvents = ''; }
+      if (el) { el.style.pointerEvents = ''; }
     });
   });
 
