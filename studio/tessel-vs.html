@@ -3105,7 +3105,7 @@ var TesselCompiler = (function() {
       var fm = line.match(/^@(\w+)\s+(.*)/);
       if (fm) {
         var ft = fm[1].toLowerCase();
-        var validFt = /^(text|area|date|radio|check|select|credential|totp|filename|dir|parse|number|email|phone|url|datetime|image|richtext|computed|signature)$/;
+        var validFt = /^(text|area|date|radio|check|select|credential|totp|filename|dir|parse|number|email|phone|url|datetime|image|richtext|computed|signature|attachment)$/;
         if (validFt.test(ft)) {
           var rest = fm[2];
           var opts = [];
@@ -3250,11 +3250,206 @@ function saveFile(fname, content, mimeType, lsKey) {
   }
 }
 
+// ── MiniZip — minimal STORE-method ZIP writer (no external deps) ─────────────
+var MiniZip = (function() {
+  var enc = new TextEncoder();
+
+  function crc32(buf) {
+    if (!MiniZip._t) {
+      MiniZip._t = new Int32Array(256);
+      for (var n = 0; n < 256; n++) {
+        var c = n;
+        for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        MiniZip._t[n] = c;
+      }
+    }
+    var crc = -1;
+    for (var i = 0; i < buf.length; i++) crc = (MiniZip._t[(crc ^ buf[i]) & 0xFF]) ^ (crc >>> 8);
+    return (crc ^ -1) >>> 0;
+  }
+
+  function u16(v) { return [(v) & 0xFF, (v >> 8) & 0xFF]; }
+  function u32(v) { return [(v) & 0xFF, (v >> 8) & 0xFF, (v >> 16) & 0xFF, (v >>> 24) & 0xFF]; }
+
+  function concat(arrays) {
+    var total = 0;
+    for (var i = 0; i < arrays.length; i++) total += arrays[i].length;
+    var out = new Uint8Array(total), off = 0;
+    for (var j = 0; j < arrays.length; j++) { out.set(arrays[j], off); off += arrays[j].length; }
+    return out;
+  }
+
+  function dataUrlToBytes(dataUrl) {
+    var b64 = dataUrl.indexOf(',') !== -1 ? dataUrl.split(',')[1] : dataUrl;
+    var bin = atob(b64);
+    var out = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
+  function toBytes(data) {
+    if (typeof data === 'string') return /^data:/.test(data) ? dataUrlToBytes(data) : enc.encode(data);
+    return data;
+  }
+
+  // files: [{name: string, data: string|Uint8Array}]
+  function create(files) {
+    var now = new Date();
+    var dtime = ((now.getHours() & 0x1F) << 11) | ((now.getMinutes() & 0x3F) << 5) | ((now.getSeconds() >> 1) & 0x1F);
+    var ddate = (((now.getFullYear() - 1980) & 0x7F) << 9) | (((now.getMonth() + 1) & 0xF) << 5) | (now.getDate() & 0x1F);
+    var locals = [], centrals = [], offsets = [], offset = 0;
+
+    files.forEach(function(f) {
+      offsets.push(offset);
+      var nameB = enc.encode(f.name);
+      var data  = toBytes(f.data);
+      var crc   = crc32(data);
+      var sz    = data.length;
+      var lh    = new Uint8Array([].concat(
+        [0x50,0x4B,0x03,0x04], u16(20), u16(0), u16(0),
+        u16(dtime), u16(ddate), u32(crc), u32(sz), u32(sz),
+        u16(nameB.length), u16(0)
+      ));
+      locals.push(lh, nameB, data);
+      offset += lh.length + nameB.length + sz;
+
+      var cd = new Uint8Array([].concat(
+        [0x50,0x4B,0x01,0x02], u16(20), u16(20), u16(0), u16(0),
+        u16(dtime), u16(ddate), u32(crc), u32(sz), u32(sz),
+        u16(nameB.length), u16(0), u16(0), u16(0), u16(0), u32(0),
+        u32(offsets[offsets.length - 1])
+      ));
+      centrals.push(cd, nameB);
+    });
+
+    var cdSize   = centrals.reduce(function(s, p) { return s + p.length; }, 0);
+    var eocd     = new Uint8Array([].concat(
+      [0x50,0x4B,0x05,0x06], u16(0), u16(0),
+      u16(files.length), u16(files.length),
+      u32(cdSize), u32(offset), u16(0)
+    ));
+    return concat(locals.concat(centrals).concat([eocd]));
+  }
+
+  return { create: create, dataUrlToBytes: dataUrlToBytes, toBytes: toBytes };
+})();
+
+// ── Attachment helpers ────────────────────────────────────────────────────────
+
+// Walk block tree and collect all binary assets (attachment files + image data-URLs)
+function collectAttachments(blks, list) {
+  list = list || [];
+  (blks || []).forEach(function(b) {
+    if (b.type === 'attachment') {
+      (b.files || []).forEach(function(f) {
+        // Deduplicate by name within this block
+        if (!list.find(function(x) { return x.name === f.name; }))
+          list.push({ name: f.name, data: f.data, mimeType: f.type });
+      });
+    }
+    if (b.type === 'field' && b.fieldType === 'image' && b.meta && /^data:/.test(b.meta.src || '')) {
+      var extM = b.meta.src.match(/^data:image\/(\w+);/);
+      var fname = slugify(b.label || 'image') + '.' + (extM ? extM[1] : 'png');
+      if (!list.find(function(x) { return x.name === fname; }))
+        list.push({ name: fname, data: b.meta.src, mimeType: 'image/' + (extM ? extM[1] : 'png') });
+    }
+    if (b.type === 'section') collectAttachments(b.children, list);
+  });
+  return list;
+}
+
+// Serialize block tree to .md, replacing data-URL blobs with relative paths
+function serializeBlockForExport(b, assetDir) {
+  if (b.type === 'attachment') {
+    if (!b.files || !b.files.length) return '';
+    var lines = ['@attachment', '{'];
+    b.files.forEach(function(f) { lines.push('  file = ' + assetDir + '/' + f.name); });
+    lines.push('}');
+    return lines.join('\n');
+  }
+  if (b.type === 'field' && b.fieldType === 'image' && b.meta && /^data:/.test(b.meta.src || '')) {
+    var extM = b.meta.src.match(/^data:image\/(\w+);/);
+    var fname = slugify(b.label || 'image') + '.' + (extM ? extM[1] : 'png');
+    var lines = ['@image ' + (b.label || 'Label'), '{'];
+    if (b.meta.id) lines.push('  id = ' + b.meta.id);
+    if (b.meta.required) lines.push('  required = true');
+    lines.push('  src = ' + assetDir + '/' + fname);
+    lines.push('}');
+    return lines.join('\n');
+  }
+  if (b.type === 'section') {
+    var inner = (b.children || []).map(function(c) { return serializeBlockForExport(c, assetDir); })
+      .filter(Boolean).join('\n\n');
+    return '@section ' + (b.title || 'Section') + '\n\n' + inner + '\n\n@endsection';
+  }
+  return serializeBlock(b);
+}
+
+function serializeBlocksForExport(blks, assetDir) {
+  return blks.map(function(b) { return serializeBlockForExport(b, assetDir); })
+    .filter(function(s) { return s !== null && s !== undefined && s !== ''; })
+    .join('\n\n');
+}
+
+// ── exportMd — save .md; when assets exist, write a sibling directory ─────────
 function exportMd() {
-  try {
-    var md = serializeBlocks(blocks);
-    saveFile(_filename + '.md', md, 'text/markdown', 'tvs:opts:export-mode-md');
-  } catch(ex) { setStatus('Export error: ' + ex.message); }
+  var attachments = collectAttachments(blocks);
+  var fname   = _filename + '.md';
+  var assetDir = _filename; // sibling directory name (no extension)
+  var md = attachments.length
+    ? serializeBlocksForExport(blocks, assetDir)
+    : serializeBlocks(blocks);
+  var mode = (function() { try { return localStorage.getItem('tvs:opts:export-mode-md') || 'picker'; } catch(e) { return 'picker'; } })();
+
+  if (!attachments.length) {
+    // Simple case — no assets, behave as before
+    saveFile(fname, md, 'text/markdown', 'tvs:opts:export-mode-md');
+    return;
+  }
+
+  // Assets present — need to write a sibling directory
+  if (mode === 'picker' && window.showDirectoryPicker) {
+    window.showDirectoryPicker({ mode: 'readwrite' }).then(function(dirHandle) {
+      // Write the .md file
+      return dirHandle.getFileHandle(fname, { create: true }).then(function(fh) {
+        return fh.createWritable().then(function(w) {
+          return w.write(md).then(function() { return w.close(); });
+        });
+      }).then(function() {
+        // Create asset subdirectory
+        return dirHandle.getDirectoryHandle(assetDir, { create: true });
+      }).then(function(assetHandle) {
+        // Write each asset file
+        return attachments.reduce(function(p, asset) {
+          return p.then(function() {
+            return assetHandle.getFileHandle(asset.name, { create: true }).then(function(fh) {
+              return fh.createWritable().then(function(w) {
+                var bytes = MiniZip.toBytes(asset.data);
+                return w.write(bytes).then(function() { return w.close(); });
+              });
+            });
+          });
+        }, Promise.resolve());
+      }).then(function() {
+        setStatus('Saved ' + fname + ' + ' + attachments.length + ' asset' + (attachments.length !== 1 ? 's' : '') + ' in ' + assetDir + '/');
+      });
+    }).catch(function(ex) {
+      if (ex.name !== 'AbortError') setStatus('Save error: ' + ex.message);
+    });
+  } else {
+    // Silent download — bundle as a ZIP
+    var zipFiles = [{ name: fname, data: md }];
+    attachments.forEach(function(a) { zipFiles.push({ name: assetDir + '/' + a.name, data: a.data }); });
+    var zipBytes = MiniZip.create(zipFiles);
+    var blob = new Blob([zipBytes], { type: 'application/zip' });
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href = url; a.download = _filename + '.zip';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 1200);
+    setStatus('Exported ' + _filename + '.zip (' + attachments.length + ' asset' + (attachments.length !== 1 ? 's' : '') + ')');
+  }
+}
 }
 
 function exportHtml() {
