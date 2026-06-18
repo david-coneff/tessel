@@ -166,6 +166,7 @@ body.layout-h #ctrl-panel-text > .dropdown { display: flex; align-items: center;
   transition: width .2s ease; width: 148px;
 }
 #outline-panel.collapsed { width: 28px; }
+#outline-panel.off { width: 0; overflow: hidden; }
 #outline-content {
   flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0;
   border-right: 1px solid var(--border);
@@ -369,6 +370,7 @@ body.layout-h #ctrl-panel-text > .dropdown { display: flex; align-items: center;
   transition: width .2s ease; width: 260px;
 }
 #props-panel.collapsed { width: 28px; }
+#props-panel.off { width: 0; overflow: hidden; }
 #props-tab {
   width: 28px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center;
   border-left: 1px solid var(--border); cursor: pointer; padding: 6px 0; gap: 0;
@@ -581,6 +583,27 @@ body.layout-h.no-transitions #controls-pane { transition: none !important; }
       <line x1="6.5" y1="12.25" x2="10" y2="12.25" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
     </svg>
     Form
+  </button>
+
+  <div class="tb-sep"></div>
+
+  <button class="badge-btn" id="badge-outline" title="Outline panel">
+    <svg width="14" height="15" viewBox="0 0 14 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="1" y1="3" x2="13" y2="3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      <line x1="3.5" y1="7" x2="13" y2="7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+      <line x1="3.5" y1="11" x2="13" y2="11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+      <line x1="5.5" y1="13" x2="13" y2="13" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+    </svg>
+    Outline
+  </button>
+
+  <button class="badge-btn" id="badge-props" title="Properties panel">
+    <svg width="14" height="15" viewBox="0 0 14 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="7" cy="5" r="2.5" stroke="currentColor" stroke-width="1.2"/>
+      <path d="M2 13c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+      <line x1="9.5" y1="5" x2="12.5" y2="5" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-dasharray="1 1.2"/>
+    </svg>
+    Props
   </button>
 
   <!-- Undo/Redo -->
@@ -1995,37 +2018,69 @@ renderProps();
 updateToolbarState(null);
 updateUndoButtons();
 
-// ── Outline panel collapse ───────────────────────────────────────────────────
-(function() {
-  var panel = document.getElementById('outline-panel');
-  var tab   = document.getElementById('outline-tab');
-  var arrow = document.getElementById('btn-outline-collapse');
-  function setCollapsed(c) {
-    panel.classList.toggle('collapsed', c);
-    // arrow points → (toward canvas) when collapsed, ← when expanded
-    arrow.innerHTML = c ? '&#8250;' : '&#8249;';
-    try { localStorage.setItem('tvs:outline-open', c ? '0' : '1'); } catch(e) {}
-  }
-  tab.addEventListener('click', function() { setCollapsed(!panel.classList.contains('collapsed')); });
-  var saved = (function(){ try{ return localStorage.getItem('tvs:outline-open'); }catch(e){ return null; } })();
-  if (saved === '0') setCollapsed(true);
-})();
+// ── Side panel factory (outline + props) ────────────────────────────────────
+// States: open (full) | collapsed (tab strip) | off (fully hidden, badge only)
+function makeSidePanel(cfg) {
+  // cfg: { panelId, tabId, arrowId, badgeId, arrowOpen, arrowCollapsed, lsKey }
+  var panel = document.getElementById(cfg.panelId);
+  var tab   = document.getElementById(cfg.tabId);
+  var arrow = document.getElementById(cfg.arrowId);
+  var badge = document.getElementById(cfg.badgeId);
 
-// ── Properties panel collapse ────────────────────────────────────────────────
-(function() {
-  var panel = document.getElementById('props-panel');
-  var tab   = document.getElementById('props-tab');
-  var arrow = document.getElementById('btn-props-collapse');
-  function setCollapsed(c) {
-    panel.classList.toggle('collapsed', c);
-    // arrow points ← (toward canvas) when collapsed, → when expanded
-    arrow.innerHTML = c ? '&#8249;' : '&#8250;';
-    try { localStorage.setItem('tvs:props-open', c ? '0' : '1'); } catch(e) {}
+  function ls(v)  { try { return localStorage.getItem(v); } catch(e) { return null; } }
+  function lss(k,v){ try { localStorage.setItem(k, v); } catch(e) {} }
+
+  function open() {
+    panel.classList.remove('collapsed', 'off');
+    arrow.innerHTML = cfg.arrowOpen;
+    badge.classList.add('active');
+    lss(cfg.lsKey, 'open');
   }
-  tab.addEventListener('click', function() { setCollapsed(!panel.classList.contains('collapsed')); });
-  var saved = (function(){ try{ return localStorage.getItem('tvs:props-open'); }catch(e){ return null; } })();
-  if (saved === '0') setCollapsed(true);
-})();
+  function collapse() {
+    panel.classList.remove('off');
+    panel.classList.add('collapsed');
+    arrow.innerHTML = cfg.arrowCollapsed;
+    badge.classList.add('active'); // badge stays on when collapsed
+    lss(cfg.lsKey, 'collapsed');
+  }
+  function hide() {
+    panel.classList.remove('collapsed');
+    panel.classList.add('off');
+    badge.classList.remove('active');
+    lss(cfg.lsKey, 'off');
+  }
+
+  // Tab strip toggles open ↔ collapsed (never hides completely)
+  tab.addEventListener('click', function() {
+    if (panel.classList.contains('collapsed')) { open(); } else { collapse(); }
+  });
+
+  // Badge: off→on opens; on→off hides completely
+  badge.addEventListener('click', function(e) {
+    e.stopPropagation();
+    if (badge.classList.contains('active')) { hide(); } else { open(); }
+  });
+
+  // Restore
+  var state = ls(cfg.lsKey);
+  if (state === 'off')       { hide(); }
+  else if (state === 'collapsed') { open(); collapse(); }
+  // else: open by default
+}
+
+makeSidePanel({
+  panelId: 'outline-panel', tabId: 'outline-tab', arrowId: 'btn-outline-collapse',
+  badgeId: 'badge-outline',
+  arrowOpen: '&#8249;', arrowCollapsed: '&#8250;',
+  lsKey: 'tvs:outline-state'
+});
+
+makeSidePanel({
+  panelId: 'props-panel', tabId: 'props-tab', arrowId: 'btn-props-collapse',
+  badgeId: 'badge-props',
+  arrowOpen: '&#8250;', arrowCollapsed: '&#8249;',
+  lsKey: 'tvs:props-state'
+});
 
 // ── Options dialog ──────────────────────────────────────────────────────────
 (function() {
