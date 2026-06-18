@@ -2869,7 +2869,12 @@ function makeCtrlPane(cfg) {
   tabEl.addEventListener('click', toggle);
   badge.addEventListener('click', function(e) {
     e.stopPropagation();
-    if (badge.classList.contains('active')) { hide(); } else { open(); }
+    if (pane.classList.contains('dock-float')) {
+      if (pane.classList.contains('off')) { pane.classList.remove('off'); badge.classList.add('active'); }
+      else { pane.classList.add('off'); badge.classList.remove('active'); }
+    } else {
+      if (badge.classList.contains('active')) { hide(); } else { open(); }
+    }
   });
 
   var state = ls(cfg.lsKey);
@@ -3314,10 +3319,15 @@ function makeSidePanel(cfg) {
     if (panel.classList.contains('collapsed')) { open(); } else { collapse(); }
   });
 
-  // Badge: off→on opens; on→off hides completely
+  // Badge: off→on opens; on→off hides completely (float mode: simple show/hide)
   badge.addEventListener('click', function(e) {
     e.stopPropagation();
-    if (badge.classList.contains('active')) { hide(); } else { open(); }
+    if (panel.classList.contains('dock-float')) {
+      if (panel.classList.contains('off')) { panel.classList.remove('off'); badge.classList.add('active'); }
+      else { panel.classList.add('off'); badge.classList.remove('active'); }
+    } else {
+      if (badge.classList.contains('active')) { hide(); } else { open(); }
+    }
   });
 
   // Restore
@@ -3415,6 +3425,9 @@ function dockPanel(panelId, zone) {
     });
     var fb = document.querySelector('[data-pane-float-btn="'+panelId+'"]');
     if (fb) { fb.innerHTML='&#8601;'; fb.title='Dock panel'; }
+    panel.classList.remove('off');
+    var bdg = document.querySelector('[data-badge-pane="'+panelId+'"]') || document.getElementById('badge-'+panelId.replace(/-pane$/,'').replace(/-panel$/,''));
+    if (bdg) bdg.classList.add('active');
     try { localStorage.setItem('tvs:dock:'+panelId,'float'); } catch(e) {}
   };
 
@@ -3425,6 +3438,7 @@ function dockPanel(panelId, zone) {
       parseFloat(panel.style.left)||0, parseFloat(panel.style.top)||0,
       parseFloat(panel.style.width)||FLOAT_W, parseFloat(panel.style.height)||FLOAT_H);
     panel.style.left=panel.style.top=panel.style.width=panel.style.height=panel.style.zIndex='';
+    panel.classList.remove('off');
     dockPanel(panelId, lastZone[panelId]||PANE_DEF[panelId]||'left');
   }
 
