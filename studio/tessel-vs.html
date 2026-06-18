@@ -54,7 +54,7 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 .dropdown-menu {
   display: none; position: absolute; top: calc(100% + 4px); left: 0;
   background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
-  min-width: 200px; z-index: 500; box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  min-width: 200px; z-index: 1000; box-shadow: 0 8px 24px rgba(0,0,0,0.3);
   padding: 4px 0;
 }
 .dropdown-menu.right { left: auto; right: 0; }
@@ -515,7 +515,7 @@ select.prop-input { cursor: pointer; }
 #props-panel.dock-float {
   pointer-events: all; position: absolute !important;
   overflow: visible !important; display: flex !important; flex-direction: column !important;
-  width: auto; height: auto; transition: none;
+  width: auto; height: auto; transition: none; background: transparent !important;
 }
 .dock-float .ctrl-pane-content,
 .dock-float #outline-content,
@@ -1283,7 +1283,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
         <div class="opts-divider"></div>
         <div class="opts-section-label">Floating Panels</div>
         <div class="opts-toggle-row">
-          <span>Dimmed opacity</span>
+          <span>Transparency</span>
           <div style="display:flex;align-items:center;gap:8px">
             <input type="range" id="opts-float-opacity" min="10" max="100" value="70" style="width:100px">
             <span id="opts-float-opacity-val" style="font-size:11px;color:var(--muted);min-width:28px">70%</span>
