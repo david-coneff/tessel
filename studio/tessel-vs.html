@@ -1535,6 +1535,14 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
  * - Filename / document-title state variable bound to .md front-matter `title:`
  *   field; md header variable constructor for templating dynamic values into
  *   block content at export time (e.g. {{title}}, {{author}}, {{date}})
+ * - Multi-document ZIP package support: index.json manifest listing interrelated
+ *   .md files with title, order, and relationship metadata; ZIP open/save handles
+ *   the full set as a project; batch HTML export wires relative <a href> links
+ *   between pages using the manifest order and slugified filenames
+ * - Contents badge button (upper-left toolbar): for single docs shows heading
+ *   outline; for multi-doc packages shows a project-level table of contents
+ *   drawn from the index manifest; in exported HTML the badge becomes a
+ *   collapsible sidebar nav with relative-path links to sibling pages
  */
 (function() {
 'use strict';
