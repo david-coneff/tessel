@@ -1368,9 +1368,26 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
             </select>
           </div>
         </div>
-        <div class="opts-toggle-row">
+        <div class="opts-toggle-row" style="margin-top:8px;">
           <span>Save undo history with document</span>
           <button class="opts-toggle" id="opts-persist-undo" title="Persist undo history"></button>
+        </div>
+        <div class="opts-toggle-row" style="margin-top:8px;">
+          <span>Granularity</span>
+          <select class="opts-select" id="opts-undo-granularity">
+            <option value="action">Per action</option>
+            <option value="time">By time window</option>
+          </select>
+        </div>
+        <div class="opts-toggle-row" id="opts-undo-window-row" style="margin-top:8px;">
+          <span>Time window</span>
+          <select class="opts-select" id="opts-undo-time-window">
+            <option value="500">0.5 s</option>
+            <option value="1000" selected>1 s</option>
+            <option value="2000">2 s</option>
+            <option value="5000">5 s</option>
+            <option value="30000">30 s</option>
+          </select>
         </div>
         <div class="opts-divider"></div>
         <div class="opts-section-label">Formatting Scope</div>
@@ -1531,6 +1548,24 @@ var undoStack = [], redoStack = [];
 function getUndoDepth() {
   try { var v = parseInt(localStorage.getItem('tvs:opts:undo-depth'), 10); if (v > 0) return v; } catch(e) {}
   return 100;
+}
+function getUndoGranularity() {
+  try { return localStorage.getItem('tvs:opts:undo-granularity') || 'action'; } catch(e) { return 'action'; }
+}
+function getUndoTimeWindow() {
+  try { var v = parseInt(localStorage.getItem('tvs:opts:undo-time-window'), 10); if (v > 0) return v; } catch(e) {}
+  return 1000;
+}
+
+var _undoDebounceTimer = null;
+// Called by text-input events. In 'action' mode pushes immediately; in 'time' mode debounces.
+function inputPushUndo() {
+  if (getUndoGranularity() === 'action') {
+    pushUndo();
+  } else {
+    clearTimeout(_undoDebounceTimer);
+    _undoDebounceTimer = setTimeout(pushUndo, getUndoTimeWindow());
+  }
 }
 
 function pushUndo() {
@@ -1835,7 +1870,7 @@ function createHeadingEl(b) {
   el.textContent = b.text || '';
   el.dataset.placeholder = 'Heading ' + b.level;
 
-  el.addEventListener('input', function() { b.text = el.textContent; markUnsaved(); updateOutline(); });
+  el.addEventListener('input', function() { b.text = el.textContent; markUnsaved(); updateOutline(); inputPushUndo(); });
   el.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -1874,7 +1909,7 @@ function createParaEl(b) {
   el.dataset.placeholder = 'Type something…';
   el.innerHTML = b.text || '';
 
-  el.addEventListener('input', function() { b.text = el.innerHTML; markUnsaved(); });
+  el.addEventListener('input', function() { b.text = el.innerHTML; markUnsaved(); inputPushUndo(); });
   el.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -1926,7 +1961,7 @@ function createListEl(b) {
     li.className = 'block-list-item';
     li.contentEditable = 'true';
     li.innerHTML = html || '';
-    li.addEventListener('input', function() { syncItems(); markUnsaved(); });
+    li.addEventListener('input', function() { syncItems(); markUnsaved(); inputPushUndo(); });
     li.addEventListener('focus', function() { lastFocusedTextBlockId = b.id; updateToolbarState(b); });
     li.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') {
@@ -2151,7 +2186,7 @@ function createSectionEl(b) {
   titleEl.className = 'section-title-edit';
   titleEl.contentEditable = 'true';
   titleEl.textContent = b.title || 'Section';
-  titleEl.addEventListener('input', function() { b.title = titleEl.textContent; markUnsaved(); });
+  titleEl.addEventListener('input', function() { b.title = titleEl.textContent; markUnsaved(); inputPushUndo(); });
   titleEl.addEventListener('focus', function() { lastFocusedTextBlockId = b.id; updateToolbarState(b); });
   titleEl.addEventListener('click', function(e) { e.stopPropagation(); });
   titleEl.addEventListener('keydown', function(e) {
@@ -2232,7 +2267,7 @@ function createCodeEl(b) {
   langEl.contentEditable = 'true';
   langEl.textContent = b.lang || 'text';
   langEl.title = 'Click to edit language';
-  langEl.addEventListener('input', function() { b.lang = langEl.textContent.trim(); markUnsaved(); });
+  langEl.addEventListener('input', function() { b.lang = langEl.textContent.trim(); markUnsaved(); inputPushUndo(); });
 
   var delBtn = document.createElement('button');
   delBtn.className = 'code-del-btn';
@@ -2248,7 +2283,7 @@ function createCodeEl(b) {
   codeEl.value = b.code || '';
   codeEl.placeholder = 'Enter code here…';
   codeEl.spellcheck = false;
-  codeEl.addEventListener('input', function() { b.code = codeEl.value; markUnsaved(); });
+  codeEl.addEventListener('input', function() { b.code = codeEl.value; markUnsaved(); inputPushUndo(); });
   codeEl.addEventListener('focus', function() { lastFocusedTextBlockId = b.id; updateToolbarState(b); });
   codeEl.addEventListener('keydown', function(e) {
     if (e.key === 'Tab') {
@@ -4876,6 +4911,30 @@ function dockPanel(panelId, zone) {
     var nowOn = !persistBtn.classList.contains('on');
     persistBtn.classList.toggle('on', nowOn);
     try { localStorage.setItem('tvs:opts:persist-undo', nowOn ? '1' : '0'); } catch(e) {}
+  });
+
+  var granularitySel = document.getElementById('opts-undo-granularity');
+  var windowSel      = document.getElementById('opts-undo-time-window');
+  var windowRow      = document.getElementById('opts-undo-window-row');
+
+  function syncUndoWindowRow() {
+    windowRow.style.display = granularitySel.value === 'time' ? '' : 'none';
+  }
+  (function() {
+    granularitySel.value = getUndoGranularity();
+    var tw = getUndoTimeWindow();
+    for (var i = 0; i < windowSel.options.length; i++) {
+      if (parseInt(windowSel.options[i].value, 10) === tw) { windowSel.selectedIndex = i; break; }
+    }
+    syncUndoWindowRow();
+  })();
+  granularitySel.addEventListener('change', function() {
+    try { localStorage.setItem('tvs:opts:undo-granularity', granularitySel.value); } catch(e) {}
+    clearTimeout(_undoDebounceTimer);
+    syncUndoWindowRow();
+  });
+  windowSel.addEventListener('change', function() {
+    try { localStorage.setItem('tvs:opts:undo-time-window', windowSel.value); } catch(e) {}
   });
 
   blockFmtBtn.addEventListener('click', function() {
