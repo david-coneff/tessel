@@ -2706,14 +2706,12 @@ function setStatus(msg) {
 }
 
 function openMd(file) {
-  if (typeof Tessel === 'undefined') { setStatus('Tessel bundle not loaded — cannot open .md files'); return; }
   _filename = file.name.replace(/\.md$/i, '');
   try { localStorage.setItem('tvs:filename', _filename); } catch(e) {}
   var rd = new FileReader();
   rd.onload = function(e) {
     try {
-      var ast = Tessel.parse(e.target.result);
-      blocks = astToBlocks(ast);
+      blocks = TesselCompiler.parseMd(e.target.result);
       selectedBlockId = null;
       renderCanvas(); renderProps();
       _unsaved = false;
@@ -2728,22 +2726,26 @@ function openHtml(file) {
   _filename = file.name.replace(/\.html?$/i, '');
   try { localStorage.setItem('tvs:filename', _filename); } catch(e) {}
   var rd = new FileReader();
-  rd.onload = function(e) {
-    var html = e.target.result;
+  rd.onload = function(ev) {
+    var html = ev.target.result;
     var m = html.match(/<script[^>]+type="text\/tessel-source"[^>]*data-encoding="base64"[^>]*>([\s\S]*?)<\/script>/i)
            || html.match(/<script[^>]+data-encoding="base64"[^>]+type="text\/tessel-source"[^>]*>([\s\S]*?)<\/script>/i);
     if (!m) { setStatus('No tessel source found in this HTML file.'); return; }
-    if (typeof Tessel === 'undefined') { setStatus('Tessel bundle not loaded — cannot open .html files'); return; }
     try {
-      var bytes = Uint8Array.from(atob(m[1].trim()), function(c){ return c.charCodeAt(0); });
-      var src = new TextDecoder('utf-8').decode(bytes);
-      var ast = Tessel.parse(src);
-      blocks = astToBlocks(ast);
+      var raw = decodeURIComponent(escape(atob(m[1].trim())));
+      var parsed = JSON.parse(raw);
+      // New format: JSON array of blocks
+      if (Array.isArray(parsed)) {
+        blocks = parsed.map(function(b) { b.id = b.id || uid(); return b; });
+      } else {
+        // Legacy format: markdown string — parse with TesselCompiler
+        blocks = TesselCompiler.parseMd(raw);
+      }
       selectedBlockId = null;
       renderCanvas(); renderProps();
       _unsaved = false;
       saveDraft();
-      setStatus('Opened ' + file.name + ' (round-trip)');
+      setStatus('Opened ' + file.name);
     } catch(ex) { setStatus('Error: ' + ex.message); }
   };
   rd.readAsText(file);
@@ -2764,20 +2766,434 @@ function getCustomFontFaceCSS() {
   return css;
 }
 
-function getCompiledHtml() {
-  if (typeof Tessel === 'undefined') throw new Error('Tessel bundle not loaded — run: node tools/rollup.js');
-  var md = serializeBlocks(blocks);
-  var html = Tessel.compile(md);
-  try {
-    if (localStorage.getItem('tvs:opts:embed-fonts') === '1') {
-      var fontCss = getCustomFontFaceCSS();
-      if (fontCss) {
-        html = html.replace(/<\/head>/i, '<style>\n' + fontCss + '</style>\n</head>');
+// ---------------------------------------------------------------------------
+// TesselCompiler — self-contained block→HTML pipeline (no external deps)
+// ---------------------------------------------------------------------------
+var TesselCompiler = (function() {
+  'use strict';
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function e(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function slug(s) { return (s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); }
+
+  // Inline markdown: **bold**, `code`, [text](url)
+  function inlineMd(s) {
+    s = String(s||'');
+    // escape HTML first (content should be treated as text with markdown on top)
+    s = s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    s = s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+    s = s.replace(/`([^`]+)`/g,'<code>$1</code>');
+    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+    return s;
+  }
+
+  // ── Block renderers ─────────────────────────────────────────────────────────
+  function renderHeading(b, ctx) {
+    var lvl = Math.min(6, Math.max(1, b.level||1));
+    var txt = b.text || '';
+    var id  = 'h-' + slug(txt);
+    ctx.headings.push({ lvl: lvl, text: txt, id: id });
+    return '<h' + lvl + ' id="' + e(id) + '">' + inlineMd(txt) + '</h' + lvl + '>';
+  }
+
+  function renderParagraph(b) {
+    // b.text may already contain inline HTML from the editor
+    var t = (b.text||'').replace(/<br\s*\/?>/gi,'\n').trim();
+    if (!t) return '';
+    // Split on newlines to preserve line breaks; treat as paragraph
+    return '<p>' + t.replace(/\n/g,'<br>') + '</p>';
+  }
+
+  function renderList(b) {
+    var tag = b.ordered ? 'ol' : 'ul';
+    var items = (b.items||['']).map(function(item) {
+      var txt = (item||'').replace(/<br\s*\/?>/gi,'\n').replace(/<[^>]+>/g,'');
+      return '<li>' + inlineMd(txt) + '</li>';
+    }).join('\n');
+    return '<' + tag + '>\n' + items + '\n</' + tag + '>';
+  }
+
+  function renderCodeblock(b) {
+    var lang = e(b.lang||'');
+    var code = e(b.code||'');
+    var copyable = /^(bash|sh|shell|console|cmd|powershell|ps1|zsh|fish)$/i.test(b.lang||'');
+    return '<div class="tc-codewrap">' +
+      (copyable ? '<button class="tc-copy-btn" onclick="tcCopy(this)">Copy</button>' : '') +
+      (lang ? '<span class="tc-code-lang">' + lang + '</span>' : '') +
+      '<pre><code' + (lang ? ' class="lang-' + lang + '"' : '') + '>' + code + '</code></pre>' +
+      '</div>';
+  }
+
+  function renderHr() { return '<hr>'; }
+
+  function renderSection(b, ctx, depth) {
+    var title = b.title || 'Section';
+    var id = 'sec-' + slug(title) + '-' + Math.random().toString(36).slice(2,5);
+    var inner = renderBlocks(b.children||[], ctx, depth+1);
+    return '<details class="tc-section" open>\n' +
+      '<summary class="tc-section-summary"><span class="tc-section-title">' + e(title) + '</span></summary>\n' +
+      '<div class="tc-section-body">' + inner + '</div>\n' +
+      '</details>';
+  }
+
+  function renderField(b) {
+    var ft = b.fieldType || 'text';
+    var label = b.label || 'Field';
+    var nid = b.meta && b.meta.id ? b.meta.id : slug(label);
+    var req = b.meta && b.meta.required;
+    var labelHtml = '<label class="tc-field-label" for="tcf-' + e(nid) + '">' + e(label) + (req ? ' <span class="tc-req">*</span>' : '') + '</label>';
+
+    var input = '';
+    if (ft === 'area' || ft === 'richtext') {
+      input = '<textarea id="tcf-' + e(nid) + '" class="tc-field-input tc-area" data-note="' + e(nid) + '" rows="4" placeholder="' + e(label) + '"></textarea>';
+    } else if (ft === 'select') {
+      var opts = (b.options||[]).map(function(o){ return '<option value="' + e(o) + '">' + e(o) + '</option>'; }).join('');
+      input = '<select id="tcf-' + e(nid) + '" class="tc-field-input tc-select" data-note="' + e(nid) + '">' + opts + '</select>';
+    } else if (ft === 'radio') {
+      input = '<div class="tc-radio-group">' + (b.options||[]).map(function(o, i) {
+        return '<label class="tc-radio-label"><input type="radio" name="' + e(nid) + '" value="' + e(o) + '" data-note="' + e(nid) + '"> ' + e(o) + '</label>';
+      }).join('') + '</div>';
+    } else if (ft === 'check') {
+      input = '<div class="tc-check-group">' + (b.options||[]).map(function(o) {
+        return '<label class="tc-check-label"><input type="checkbox" data-note="' + e(nid) + '-' + e(slug(o)) + '"> ' + e(o) + '</label>';
+      }).join('') + '</div>';
+    } else if (ft === 'credential' || ft === 'totp') {
+      input = '<input type="password" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '" placeholder="' + e(label) + '" autocomplete="off">';
+    } else if (ft === 'date') {
+      input = '<input type="date" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '">';
+    } else if (ft === 'datetime') {
+      input = '<input type="datetime-local" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '">';
+    } else if (ft === 'number') {
+      input = '<input type="number" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '" placeholder="' + e(label) + '">';
+    } else if (ft === 'email') {
+      input = '<input type="email" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '" placeholder="' + e(label) + '">';
+    } else if (ft === 'url') {
+      input = '<input type="url" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '" placeholder="https://">';
+    } else if (ft === 'image') {
+      var src = b.meta && b.meta.src ? b.meta.src : '';
+      input = src ? '<img src="' + e(src) + '" class="tc-image" alt="' + e(label) + '">' : '<div class="tc-image-placeholder">' + e(label) + '</div>';
+    } else {
+      // text, dir, filename, phone, parse, computed, signature, attachment, etc.
+      input = '<input type="text" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '" placeholder="' + e(label) + '">';
+    }
+
+    return '<div class="tc-field" data-field-type="' + e(ft) + '">' + labelHtml + input + '</div>';
+  }
+
+  function renderBlocks(blks, ctx, depth) {
+    depth = depth || 0;
+    return (blks||[]).map(function(b) {
+      if (!b) return '';
+      switch (b.type) {
+        case 'heading':    return renderHeading(b, ctx);
+        case 'paragraph':  return renderParagraph(b);
+        case 'hr':         return renderHr();
+        case 'list':       return renderList(b);
+        case 'codeblock':  return renderCodeblock(b);
+        case 'section':    return renderSection(b, ctx, depth);
+        case 'field':      return renderField(b);
+        default:           return '';
+      }
+    }).filter(Boolean).join('\n');
+  }
+
+  // ── TOC ────────────────────────────────────────────────────────────────────
+  function buildToc(headings) {
+    if (headings.length < 3) return '';
+    var items = headings.map(function(h) {
+      var indent = h.lvl > 1 ? ' style="margin-left:' + ((h.lvl-1)*14) + 'px"' : '';
+      return '<li' + indent + '><a href="#' + e(h.id) + '">' + e(h.text) + '</a></li>';
+    }).join('\n');
+    return '<details class="tc-toc" open>\n<summary><strong>Contents</strong></summary>\n<ul class="tc-toc-list">\n' + items + '\n</ul>\n</details>\n';
+  }
+
+  // ── Embedded output CSS ────────────────────────────────────────────────────
+  var OUTPUT_CSS = [
+    ':root{--bg:#1a1d23;--surface:#21252e;--text:#cdd6f4;--muted:#7f8498;--accent:#89b4fa;--border:#313244;--code-bg:#181b21;--green:#a6e3a1;--red:#f38ba8;--yellow:#f9e2af;--radius:6px}',
+    'body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.65;background:var(--bg);color:var(--text);padding:0}',
+    'body.light{--bg:#eff1f5;--surface:#e6e9ef;--text:#4c4f69;--muted:#9399b2;--accent:#1e66f5;--border:#ccd0da;--code-bg:#dce0e8;--green:#40a02b;--red:#d20f39;--yellow:#df8e1d}',
+    '#tc-wrap{max-width:860px;margin:0 auto;padding:24px 28px 80px}',
+    '#tc-toolbar{position:sticky;top:0;z-index:100;background:var(--surface);border-bottom:1px solid var(--border);padding:6px 14px;display:flex;align-items:center;gap:10px;font-size:13px}',
+    '#tc-toolbar button{background:transparent;border:1px solid var(--border);color:var(--text);padding:3px 10px;border-radius:var(--radius);cursor:pointer;font-size:12px}',
+    '#tc-toolbar button:hover{background:var(--border)}',
+    '#tc-doc-title{font-size:13px;font-weight:600;color:var(--muted);margin-left:4px;flex:1}',
+    'h1,h2,h3,h4,h5,h6{color:var(--accent);margin:1.4em 0 .4em;line-height:1.25;font-weight:700}',
+    'h1{font-size:2em;border-bottom:1px solid var(--border);padding-bottom:.3em}',
+    'h2{font-size:1.45em}h3{font-size:1.2em}h4{font-size:1.05em}',
+    'p{margin:.6em 0 1em}',
+    'a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}',
+    'strong{color:var(--text);font-weight:700}',
+    'code{background:var(--code-bg);color:var(--green);padding:2px 5px;border-radius:3px;font-size:.88em;font-family:"Fira Mono","Cascadia Code","Consolas",monospace}',
+    'pre{background:var(--code-bg);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;overflow-x:auto;margin:1em 0}',
+    'pre code{background:none;padding:0;font-size:.85em;line-height:1.55}',
+    'ul,ol{margin:.4em 0 1em;padding-left:1.8em}li{margin:.2em 0}',
+    'hr{border:none;border-top:1px solid var(--border);margin:1.8em 0}',
+    'table{width:100%;border-collapse:collapse;font-size:.9em;margin:1em 0}',
+    'th{background:var(--surface);color:var(--accent);text-align:left;padding:8px 12px;border:1px solid var(--border)}',
+    'td{padding:7px 12px;border:1px solid var(--border)}',
+    'blockquote{border-left:3px solid var(--accent);margin:1em 0;padding:.4em 1em;color:var(--muted);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0}',
+    // Code wrap / copy button
+    '.tc-codewrap{position:relative;margin:1em 0}',
+    '.tc-codewrap:hover .tc-copy-btn{opacity:1}',
+    '.tc-copy-btn{position:absolute;top:8px;right:8px;opacity:0;transition:opacity .15s;background:var(--surface);border:1px solid var(--border);color:var(--muted);padding:2px 9px;border-radius:4px;font-size:11px;cursor:pointer}',
+    '.tc-copy-btn:hover{color:var(--text)}',
+    '.tc-copy-btn.copied{color:var(--green);border-color:var(--green)}',
+    '.tc-code-lang{position:absolute;top:8px;right:8px;font-size:10px;color:var(--muted);font-family:monospace;pointer-events:none}',
+    '.tc-codewrap:hover .tc-code-lang{opacity:0}',
+    // Sections
+    '.tc-section{border:1px solid var(--border);border-radius:var(--radius);margin:1.2em 0;overflow:hidden}',
+    '.tc-section-summary{list-style:none;cursor:pointer;background:var(--surface);padding:10px 14px;display:flex;align-items:center;gap:8px;user-select:none}',
+    '.tc-section-summary::-webkit-details-marker{display:none}',
+    '.tc-section-summary::before{content:"▶";font-size:10px;color:var(--muted);transition:transform .15s;display:inline-block}',
+    '.tc-section[open] .tc-section-summary::before{transform:rotate(90deg)}',
+    '.tc-section-title{font-weight:600;color:var(--text)}',
+    '.tc-section-body{padding:14px 18px}',
+    // TOC
+    '.tc-toc{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin:0 0 1.6em;padding:10px 16px}',
+    '.tc-toc summary{cursor:pointer;font-size:.9em;color:var(--muted);user-select:none;list-style:none}',
+    '.tc-toc summary::-webkit-details-marker{display:none}',
+    '.tc-toc-list{list-style:none;padding:0;margin:.6em 0 0}',
+    '.tc-toc-list li{margin:.3em 0}',
+    '.tc-toc-list a{font-size:.88em;color:var(--accent)}',
+    // Fields
+    '.tc-field{margin:1em 0;display:flex;flex-direction:column;gap:5px}',
+    '.tc-field-label{font-size:.85em;font-weight:600;color:var(--muted)}',
+    '.tc-req{color:var(--red)}',
+    '.tc-field-input{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:7px 10px;font-size:.9em;font-family:inherit;width:100%;box-sizing:border-box;transition:border-color .15s}',
+    '.tc-field-input:focus{outline:none;border-color:var(--accent)}',
+    '.tc-area{resize:vertical;min-height:80px}',
+    '.tc-select{cursor:pointer}',
+    '.tc-radio-group,.tc-check-group{display:flex;flex-direction:column;gap:6px;padding:4px 0}',
+    '.tc-radio-label,.tc-check-label{display:flex;align-items:center;gap:8px;font-size:.9em;cursor:pointer}',
+    '.tc-image{max-width:100%;border-radius:var(--radius)}',
+    '.tc-image-placeholder{background:var(--surface);border:1px dashed var(--border);padding:24px;text-align:center;color:var(--muted);border-radius:var(--radius);font-size:.85em}',
+    // Print
+    '@media print{#tc-toolbar{display:none}.tc-copy-btn{display:none}.tc-section{border:none}.tc-section-summary{background:none}}',
+  ].join('\n');
+
+  // ── Embedded output JS ─────────────────────────────────────────────────────
+  var OUTPUT_JS = [
+    '(function(){',
+    // Theme
+    'var root=document.documentElement;',
+    'var saved=localStorage.getItem("tc:theme");',
+    'if(saved==="light")document.body.classList.add("light");',
+    'document.getElementById("tc-theme-btn").addEventListener("click",function(){',
+    '  var l=document.body.classList.toggle("light");',
+    '  localStorage.setItem("tc:theme",l?"light":"dark");',
+    '  this.textContent=l?"☾":"☀";',
+    '});',
+    // Expand/collapse all sections
+    'document.getElementById("tc-expand-all").addEventListener("click",function(){',
+    '  document.querySelectorAll(".tc-section").forEach(function(d){d.open=true});',
+    '});',
+    'document.getElementById("tc-collapse-all").addEventListener("click",function(){',
+    '  document.querySelectorAll(".tc-section").forEach(function(d){d.open=false});',
+    '});',
+    // Copy button
+    'function tcCopy(btn){',
+    '  var code=btn.closest(".tc-codewrap").querySelector("code").innerText;',
+    '  navigator.clipboard.writeText(code).then(function(){',
+    '    btn.textContent="Copied!";btn.classList.add("copied");',
+    '    setTimeout(function(){btn.textContent="Copy";btn.classList.remove("copied");},1800);',
+    '  }).catch(function(){btn.textContent="Error";setTimeout(function(){btn.textContent="Copy";},1500);});',
+    '}',
+    'window.tcCopy=tcCopy;',
+    // Field persistence
+    'var docSlug=document.body.dataset.doc||"default";',
+    'var prefix="tc:f:"+docSlug+":";',
+    'function saveField(k,v){try{localStorage.setItem(prefix+k,v);}catch(e){}}',
+    'function loadFields(){',
+    '  document.querySelectorAll("[data-note]").forEach(function(el){',
+    '    var v=localStorage.getItem(prefix+el.dataset.note);',
+    '    if(v===null)return;',
+    '    if(el.type==="checkbox")el.checked=(v==="1");',
+    '    else if(el.type==="radio"){if(el.value===v)el.checked=true;}',
+    '    else el.value=v;',
+    '  });',
+    '}',
+    'document.addEventListener("input",function(e){',
+    '  var el=e.target;if(!el.dataset.note)return;',
+    '  if(el.type==="checkbox")saveField(el.dataset.note,el.checked?"1":"0");',
+    '  else if(el.type==="radio"){if(el.checked)saveField(el.dataset.note,el.value);}',
+    '  else saveField(el.dataset.note,el.value);',
+    '});',
+    'loadFields();',
+    '})();',
+  ].join('\n');
+
+  // ── parseMd — lightweight markdown → blocks ────────────────────────────────
+  function parseMd(text) {
+    var lines = (text||'').split('\n');
+    var blks = [];
+    var i = 0;
+
+    function uid2() { return Math.random().toString(36).slice(2,8); }
+
+    while (i < lines.length) {
+      var line = lines[i];
+
+      // Blank line — skip
+      if (!line.trim()) { i++; continue; }
+
+      // Heading
+      var hm = line.match(/^(#{1,6})\s+(.*)/);
+      if (hm) {
+        blks.push({ type:'heading', level:hm[1].length, text:hm[2].trim(), id:uid2() });
+        i++; continue;
+      }
+
+      // HR
+      if (/^(\-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
+        blks.push({ type:'hr', id:uid2() });
+        i++; continue;
+      }
+
+      // Fenced code block
+      if (/^```/.test(line)) {
+        var lang = line.replace(/^```/, '').trim();
+        var codeLines = [];
+        i++;
+        while (i < lines.length && !/^```/.test(lines[i])) { codeLines.push(lines[i]); i++; }
+        i++; // closing ```
+        blks.push({ type:'codeblock', lang:lang, code:codeLines.join('\n'), id:uid2() });
+        continue;
+      }
+
+      // @section ... @endsection
+      var secm = line.match(/^@section\s+(.*)/i);
+      if (secm) {
+        var secTitle = secm[1].trim();
+        var secLines = [];
+        i++;
+        while (i < lines.length && !/^@endsection/i.test(lines[i])) { secLines.push(lines[i]); i++; }
+        i++; // @endsection
+        var children = parseMd(secLines.join('\n'));
+        blks.push({ type:'section', title:secTitle, children:children, id:uid2() });
+        continue;
+      }
+
+      // Field directives: @fieldtype label or @fieldtype label: opt1, opt2
+      var fm = line.match(/^@(\w+)\s+(.*)/);
+      if (fm) {
+        var ft = fm[1].toLowerCase();
+        var validFt = /^(text|area|date|radio|check|select|credential|totp|filename|dir|parse|number|email|phone|url|datetime|image|richtext|computed|signature)$/;
+        if (validFt.test(ft)) {
+          var rest = fm[2];
+          var opts = [];
+          var lbl = rest;
+          var colonIdx = rest.indexOf(':');
+          if (colonIdx !== -1) {
+            lbl = rest.slice(0, colonIdx).trim();
+            opts = rest.slice(colonIdx+1).split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+          }
+          // Consume optional meta block { ... }
+          var meta = {};
+          i++;
+          if (i < lines.length && lines[i].trim() === '{') {
+            i++;
+            while (i < lines.length && lines[i].trim() !== '}') {
+              var mp = lines[i].match(/^\s*(\w+)\s*=\s*(.*)/);
+              if (mp) meta[mp[1].trim()] = mp[2].trim() === 'true' ? true : mp[2].trim();
+              i++;
+            }
+            i++; // closing }
+          }
+          blks.push({ type:'field', fieldType:ft, label:lbl, options:opts, meta:meta, id:uid2() });
+          continue;
+        }
+      }
+
+      // Unordered list
+      if (/^[\-\*\+] /.test(line)) {
+        var items = [];
+        while (i < lines.length && /^[\-\*\+] /.test(lines[i])) {
+          items.push(lines[i].replace(/^[\-\*\+] /,'').trim());
+          i++;
+        }
+        blks.push({ type:'list', ordered:false, items:items, id:uid2() });
+        continue;
+      }
+
+      // Ordered list
+      if (/^\d+\. /.test(line)) {
+        var oit = [];
+        while (i < lines.length && /^\d+\. /.test(lines[i])) {
+          oit.push(lines[i].replace(/^\d+\. /,'').trim());
+          i++;
+        }
+        blks.push({ type:'list', ordered:true, items:oit, id:uid2() });
+        continue;
+      }
+
+      // Paragraph — accumulate until blank line
+      var paraLines = [];
+      while (i < lines.length && lines[i].trim() !== '') {
+        // stop if next line looks like a block-level element
+        if (/^#{1,6} /.test(lines[i]) || /^```/.test(lines[i]) || /^@\w+\s/.test(lines[i]) || /^(\-{3,}|\*{3,}|_{3,})\s*$/.test(lines[i])) break;
+        paraLines.push(lines[i]);
+        i++;
+      }
+      if (paraLines.length) {
+        blks.push({ type:'paragraph', text:paraLines.join('<br>'), id:uid2() });
       }
     }
+    return blks;
+  }
+
+  // ── buildPage — wrap body HTML in full document ────────────────────────────
+  function buildPage(bodyHtml, opts) {
+    opts = opts || {};
+    var title = opts.title || 'Document';
+    var docSlug = slug(title) || 'document';
+    var extraCss = opts.extraCss || '';
+    var sourceB64 = opts.sourceB64 || '';
+
+    return '<!DOCTYPE html>\n<html lang="en">\n<head>\n' +
+      '<meta charset="UTF-8">\n' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1">\n' +
+      '<title>' + e(title) + '</title>\n' +
+      '<style>\n' + OUTPUT_CSS + (extraCss ? '\n' + extraCss : '') + '\n</style>\n' +
+      '</head>\n' +
+      '<body data-doc="' + e(docSlug) + '">\n' +
+      '<div id="tc-toolbar">\n' +
+      '  <span id="tc-doc-title">' + e(title) + '</span>\n' +
+      '  <button id="tc-theme-btn" title="Toggle theme">☀</button>\n' +
+      '  <button id="tc-expand-all" title="Expand all sections">Expand all</button>\n' +
+      '  <button id="tc-collapse-all" title="Collapse all sections">Collapse all</button>\n' +
+      '</div>\n' +
+      '<div id="tc-wrap">\n' + bodyHtml + '\n</div>\n' +
+      (sourceB64 ? '<script type="text/tessel-source" data-encoding="base64">' + sourceB64 + '<\/script>\n' : '') +
+      '<script>\n' + OUTPUT_JS + '\n<\/script>\n' +
+      '</body>\n</html>';
+  }
+
+  // ── blocksToHtml — top-level entry point ────────────────────────────────────
+  function blocksToHtml(blks) {
+    var ctx = { headings: [] };
+    var body = renderBlocks(blks, ctx, 0);
+    var toc = buildToc(ctx.headings);
+    return toc + body;
+  }
+
+  return { blocksToHtml: blocksToHtml, buildPage: buildPage, parseMd: parseMd };
+})();
+// ---------------------------------------------------------------------------
+
+function getCompiledHtml() {
+  var bodyHtml = TesselCompiler.blocksToHtml(blocks);
+  var srcB64 = '';
+  try { srcB64 = btoa(unescape(encodeURIComponent(JSON.stringify(blocks)))); } catch(e) {}
+  var extraCss = '';
+  try {
+    if (localStorage.getItem('tvs:opts:embed-fonts') === '1') {
+      var fc = getCustomFontFaceCSS();
+      if (fc) extraCss = fc;
+    }
   } catch(e) {}
-  return html;
+  return TesselCompiler.buildPage(bodyHtml, { title: _filename, extraCss: extraCss, sourceB64: srcB64 });
 }
+
 
 function exportHtml() {
   try {
