@@ -102,11 +102,22 @@ body.layout-h #ctrl-panel-text > .dropdown { display: flex; align-items: center;
 
 /* CONTROLS PANE */
 #controls-pane {
-  width: 192px; background: var(--surface); border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; flex-shrink: 0;
-  transition: width .2s ease;
+  display: flex; flex-direction: row;
+  background: var(--surface); flex-shrink: 0;
+  transition: width .2s ease; width: 192px;
 }
-#controls-pane.collapsed { width: 0; overflow: hidden; border-right-color: transparent; }
+#controls-pane.collapsed { width: 28px; }
+#ctrl-pane-content {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0;
+  border-right: 1px solid var(--border);
+}
+#controls-pane.collapsed #ctrl-pane-content { display: none; }
+#ctrl-pane-tab {
+  width: 28px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center;
+  border-right: 1px solid var(--border); cursor: pointer; padding: 6px 0;
+  user-select: none;
+}
+#ctrl-pane-tab:hover { background: var(--surface2); }
 #ctrl-pane-header {
   display: flex; align-items: center; padding: 6px 8px 6px 10px;
   border-bottom: 1px solid var(--border); flex-shrink: 0; gap: 6px; min-height: 32px;
@@ -569,11 +580,12 @@ select.prop-input { cursor: pointer; }
 
   <!-- CONTROLS PANE (left side, collapsible) -->
   <div id="controls-pane">
-    <div id="ctrl-pane-header">
-      <span id="ctrl-pane-title">Text</span>
-      <button id="ctrl-pane-collapse" title="Collapse panel">&#8249;</button>
-    </div>
-    <div id="ctrl-pane-body">
+    <div id="ctrl-pane-content">
+      <div id="ctrl-pane-header">
+        <span id="ctrl-pane-title">Text</span>
+        <button id="ctrl-pane-collapse" title="Collapse panel">&#8249;</button>
+      </div>
+      <div id="ctrl-pane-body">
 
       <!-- Text controls -->
       <div class="ctrl-panel active" id="ctrl-panel-text">
@@ -630,8 +642,13 @@ select.prop-input { cursor: pointer; }
         <button class="ctrl-btn" data-insert-field="totp"><span class="ctrl-btn-icon">&#128272;</span>TOTP</button>
       </div>
 
+      </div><!-- #ctrl-pane-body -->
+    </div><!-- #ctrl-pane-content -->
+    <div id="ctrl-pane-tab" title="Toggle controls panel">
+      <span class="panel-tab-title" id="ctrl-pane-tab-title">Text</span>
+      <button class="panel-tab-arrow" id="ctrl-pane-tab-arrow">&#8249;</button>
     </div>
-  </div>
+  </div><!-- #controls-pane -->
 
   <!-- CONTENT ROW: outline + canvas + props (flex row, enables layout switching) -->
   <div id="content-row">
@@ -1755,29 +1772,36 @@ buildInsertMenuHTML();
 (function() {
   var pane       = document.getElementById('controls-pane');
   var paneTitle  = document.getElementById('ctrl-pane-title');
-  var collapseBtn= document.getElementById('ctrl-pane-collapse');
-  var LABELS     = { 'ctrl-panel-text': 'Text', 'ctrl-panel-form': 'Form' };
+  var collapseBtn  = document.getElementById('ctrl-pane-collapse');
+  var tabEl        = document.getElementById('ctrl-pane-tab');
+  var tabTitle     = document.getElementById('ctrl-pane-tab-title');
+  var tabArrow     = document.getElementById('ctrl-pane-tab-arrow');
+  var LABELS       = { 'ctrl-panel-text': 'Text', 'ctrl-panel-form': 'Form' };
 
   function activatePanel(panelId) {
     document.querySelectorAll('.ctrl-panel').forEach(function(p){ p.classList.remove('active'); });
     document.querySelectorAll('.badge-btn').forEach(function(b){ b.classList.remove('active'); });
     var panel = document.getElementById(panelId);
     if (panel) panel.classList.add('active');
-    paneTitle.textContent = LABELS[panelId] || '';
+    var label = LABELS[panelId] || '';
+    paneTitle.textContent = label;
+    tabTitle.textContent  = label;
     var matchingBadge = document.querySelector('.badge-btn[data-panel="' + panelId + '"]');
     if (matchingBadge) matchingBadge.classList.add('active');
   }
 
   function openPane(panelId) {
     pane.classList.remove('collapsed');
-    collapseBtn.textContent = '‹'; // ‹
+    collapseBtn.textContent = '‹';
+    tabArrow.innerHTML = '&#8249;'; // ‹ pointing left = collapse
     activatePanel(panelId);
     try { localStorage.setItem('tvs:pane-open', '1'); localStorage.setItem('tvs:pane-panel', panelId); } catch(e){}
   }
 
   function closePane() {
     pane.classList.add('collapsed');
-    collapseBtn.textContent = '›'; // ›
+    collapseBtn.textContent = '›';
+    tabArrow.innerHTML = '&#8250;'; // › pointing right = expand toward canvas
     document.querySelectorAll('.badge-btn').forEach(function(b){ b.classList.remove('active'); });
     try { localStorage.setItem('tvs:pane-open', '0'); } catch(e){}
   }
@@ -1791,10 +1815,20 @@ buildInsertMenuHTML();
     }
   });
 
+  tabEl.addEventListener('click', function() {
+    if (pane.classList.contains('collapsed')) {
+      var last = (function(){ try{ return localStorage.getItem('tvs:pane-panel'); }catch(e){ return null; } })();
+      openPane(last || 'ctrl-panel-text');
+    } else {
+      closePane();
+    }
+  });
+
   document.querySelectorAll('.badge-btn').forEach(function(btn) {
     btn.addEventListener('click', function(e) {
       e.stopPropagation();
       var panelId = btn.dataset.panel;
+      // If pane is open and this panel is already active → close; otherwise open/switch
       if (!pane.classList.contains('collapsed') && btn.classList.contains('active')) {
         closePane();
       } else {
