@@ -663,7 +663,7 @@ body.no-transitions #props-panel { transition: none !important; }
 .mib-col:last-child { border-right: none; }
 #mib-col-panes  { width: 110px; }
 #mib-col-groups { width: 130px; }
-.mib-col-items  { flex: 1; flex-shrink: 1; position: relative; }
+.mib-col-items  { flex: 1; flex-shrink: 1; position: relative; padding-bottom: 300px; }
 .mib-btn {
   display: block; width: 100%; text-align: left; background: none;
   border: none; border-bottom: 1px solid var(--border);
@@ -3429,26 +3429,21 @@ function dockPanel(panelId, zone) {
       });
 
       // Read offsetTop synchronously (itemsCol has position:relative so it's offsetParent).
+      // padding-bottom:300px on itemsCol guarantees every divider's offsetTop is
+      // reachable as scrollTop without any JS spacer measurement.
       var dividerEls = itemsCol.querySelectorAll('.mib-group-divider');
       dividerEls.forEach(function(el, i) {
         scrollTargets[groups[i].label] = el.offsetTop;
       });
 
-      // Spacer element — sized on each subcategory click (when the element is
-      // definitely visible and clientHeight is reliably non-zero).
-      var spacer = document.createElement('div');
-      itemsCol.appendChild(spacer);
-
-      return { targets: scrollTargets, spacer: spacer };
+      return scrollTargets;
     }
 
     function renderGroups(paneIdx) {
       var pane    = MIB_PANES[paneIdx];
       var groups  = mibGetGroups(pane.items);
       groupsCol.innerHTML = '';
-      var rendered = renderAllItems(pane);
-      var scrollTargets = rendered.targets;
-      var spacer = rendered.spacer;
+      var scrollTargets = renderAllItems(pane);
 
       groups.forEach(function(group, gi) {
         var btn = document.createElement('button');
@@ -3459,14 +3454,7 @@ function dockPanel(panelId, zone) {
           groupsCol.querySelectorAll('.mib-btn').forEach(function(b) { b.classList.remove('active'); });
           btn.classList.add('active');
           var target = scrollTargets[group.label];
-          if (target === undefined) return;
-          // Grow spacer if needed so target is reachable as scrollTop.
-          // Done at click time so clientHeight is guaranteed accurate.
-          var maxScroll = itemsCol.scrollHeight - itemsCol.clientHeight;
-          if (target > maxScroll) {
-            spacer.style.height = (target - maxScroll + (parseInt(spacer.style.height) || 0)) + 'px';
-          }
-          itemsCol.scrollTop = target;
+          if (target !== undefined) itemsCol.scrollTop = target;
         });
         groupsCol.appendChild(btn);
       });
