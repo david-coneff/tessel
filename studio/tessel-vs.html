@@ -3428,7 +3428,23 @@ function dockPanel(panelId, zone) {
 
       if (!groups.length) {
         itemsCol.innerHTML = '<div class="mib-empty">No items in this pane.</div>';
+        return anchors;
       }
+
+      // Add a bottom spacer so the last divider can always scroll flush to the top.
+      // Measured after layout via rAF: spacer = clientHeight − height of last section.
+      var spacer = document.createElement('div');
+      itemsCol.appendChild(spacer);
+      requestAnimationFrame(function() {
+        var dividers = itemsCol.querySelectorAll('.mib-group-divider');
+        if (!dividers.length) return;
+        var lastDivider = dividers[dividers.length - 1];
+        // scrollHeight already includes the 0-height spacer, so this is accurate
+        var lastSectionH = itemsCol.scrollHeight - lastDivider.offsetTop;
+        var needed = itemsCol.clientHeight - lastSectionH;
+        if (needed > 0) spacer.style.height = needed + 'px';
+      });
+
       return anchors;
     }
 
