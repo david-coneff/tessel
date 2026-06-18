@@ -72,9 +72,49 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 /* BODY LAYOUT */
 .body { flex: 1; display: flex; overflow: hidden; }
 
+/* CONTROLS PANE */
+#controls-pane {
+  width: 192px; background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden;
+  transition: width .2s ease;
+}
+#controls-pane.collapsed { width: 0; border-right-color: transparent; }
+#ctrl-pane-header {
+  display: flex; align-items: center; padding: 6px 8px 6px 10px;
+  border-bottom: 1px solid var(--border); flex-shrink: 0; gap: 6px; min-height: 32px;
+}
+#ctrl-pane-title {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  color: var(--muted); letter-spacing: .5px; flex: 1; white-space: nowrap;
+}
+#ctrl-pane-collapse {
+  background: none; border: none; cursor: pointer; color: var(--muted);
+  font-size: 14px; padding: 2px 4px; line-height: 1; border-radius: 3px; flex-shrink: 0;
+}
+#ctrl-pane-collapse:hover { background: var(--surface2); color: var(--text); }
+#ctrl-pane-body { flex: 1; overflow-y: auto; }
+
+/* ctrl-panel inside the pane */
+.ctrl-panel { display: none; flex-direction: column; }
+.ctrl-panel.active { display: flex; }
+.ctrl-group-label {
+  font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--muted);
+  letter-spacing: .5px; padding: 8px 10px 2px; flex-shrink: 0;
+}
+.ctrl-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; font-size: 12px; cursor: pointer;
+  background: none; border: none; color: var(--text);
+  border-left: 2px solid transparent; text-align: left; width: 100%;
+}
+.ctrl-btn:hover { background: var(--surface2); border-left-color: var(--accent); }
+.ctrl-btn.active { background: rgba(91,138,240,.12); border-left-color: var(--accent); color: var(--accent); }
+.ctrl-btn-icon { width: 18px; text-align: center; font-size: 13px; flex-shrink: 0; }
+.ctrl-divider { height: 1px; background: var(--border); margin: 4px 0; }
+
 /* OUTLINE PANEL */
 #outline-panel {
-  width: 160px; background: var(--surface); border-right: 1px solid var(--border);
+  width: 148px; background: var(--surface); border-right: 1px solid var(--border);
   display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden;
 }
 #outline-panel h3 {
@@ -338,7 +378,7 @@ select.prop-input { cursor: pointer; }
 .block-wrap.drag-over-top { border-top: 3px solid var(--accent); }
 .block-wrap.drag-over-bottom { border-bottom: 3px solid var(--accent); }
 
-/* BADGE BUTTONS (sub-toolbar toggles) */
+/* BADGE BUTTONS (controls pane toggles) */
 .badge-btn {
   display: flex; align-items: center; gap: 5px;
   padding: 4px 10px; font-size: 11px; font-weight: 600;
@@ -349,28 +389,6 @@ select.prop-input { cursor: pointer; }
 .badge-btn svg { flex-shrink: 0; }
 .badge-btn:hover { border-color: var(--accent); }
 .badge-btn.active { background: var(--accent); border-color: #3d6dd4; color: #fff; }
-
-/* SUB-TOOLBAR */
-#sub-toolbar {
-  background: var(--surface); border-bottom: 1px solid var(--border);
-  flex-shrink: 0; overflow: hidden;
-  max-height: 0; transition: max-height .18s ease;
-}
-#sub-toolbar.open { max-height: 44px; }
-.sub-panel {
-  display: none; align-items: center; gap: 3px;
-  padding: 4px 10px; height: 44px;
-}
-.sub-panel.active { display: flex; }
-.sub-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
-.sub-field-btn {
-  display: flex; align-items: center; gap: 4px; padding: 3px 8px;
-  font-size: 11px; background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 4px; cursor: pointer; color: var(--text); white-space: nowrap;
-  line-height: 1.4;
-}
-.sub-field-btn:hover { border-color: var(--accent); }
-.sub-field-icon { font-size: 12px; line-height: 1; }
 </style>
 </head>
 <body>
@@ -433,59 +451,6 @@ select.prop-input { cursor: pointer; }
   <button id="btn-theme" class="tb-icon" title="Toggle theme">&#9728;</button>
 </div>
 
-<!-- SECONDARY TOOLBAR (badge panels) -->
-<div id="sub-toolbar">
-
-  <!-- Text controls panel -->
-  <div class="sub-panel" id="panel-text">
-    <button id="btn-h1" class="tb-icon" title="Heading 1">H1</button>
-    <button id="btn-h2" class="tb-icon" title="Heading 2">H2</button>
-    <button id="btn-h3" class="tb-icon" title="Heading 3">H3</button>
-    <button id="btn-para" class="tb-icon" title="Paragraph">&#182;</button>
-    <button id="btn-hr" class="tb-icon" title="Insert divider">&#8212;</button>
-    <div class="sub-sep"></div>
-    <div class="dropdown" id="dd-insert">
-      <button id="btn-insert-dd">Insert Block &#9662;</button>
-      <div class="dropdown-menu" id="dm-insert"></div>
-    </div>
-  </div>
-
-  <!-- Form fields panel -->
-  <div class="sub-panel" id="panel-form">
-    <!-- Basic text inputs -->
-    <button class="sub-field-btn" data-insert-field="text"><span class="sub-field-icon">T</span>Text</button>
-    <button class="sub-field-btn" data-insert-field="area"><span class="sub-field-icon">&#128196;</span>Area</button>
-    <button class="sub-field-btn" data-insert-field="number"><span class="sub-field-icon">#</span>Number</button>
-    <button class="sub-field-btn" data-insert-field="email"><span class="sub-field-icon">@</span>Email</button>
-    <button class="sub-field-btn" data-insert-field="phone"><span class="sub-field-icon">&#9990;</span>Phone</button>
-    <button class="sub-field-btn" data-insert-field="url"><span class="sub-field-icon">&#128279;</span>URL</button>
-    <div class="sub-sep"></div>
-    <!-- Date/time -->
-    <button class="sub-field-btn" data-insert-field="date"><span class="sub-field-icon">&#128197;</span>Date</button>
-    <button class="sub-field-btn" data-insert-field="datetime"><span class="sub-field-icon">&#128336;</span>DateTime</button>
-    <div class="sub-sep"></div>
-    <!-- Choice -->
-    <button class="sub-field-btn" data-insert-field="select"><span class="sub-field-icon">&#9660;</span>Select</button>
-    <button class="sub-field-btn" data-insert-field="radio"><span class="sub-field-icon">&#8857;</span>Radio</button>
-    <button class="sub-field-btn" data-insert-field="check"><span class="sub-field-icon">&#9745;</span>Check</button>
-    <div class="sub-sep"></div>
-    <!-- Rich content -->
-    <button class="sub-field-btn" data-insert-field="image"><span class="sub-field-icon">&#128444;</span>Image</button>
-    <button class="sub-field-btn" data-insert-field="richtext"><span class="sub-field-icon">&#10000;</span>Rich Text</button>
-    <button class="sub-field-btn" data-insert-field="computed"><span class="sub-field-icon">&#9889;</span>Computed</button>
-    <button class="sub-field-btn" data-insert-field="signature"><span class="sub-field-icon">&#10002;</span>Sig</button>
-    <div class="sub-sep"></div>
-    <!-- File/parse -->
-    <button class="sub-field-btn" data-insert-field="filename"><span class="sub-field-icon">&#128194;</span>Filename</button>
-    <button class="sub-field-btn" data-insert-field="dir"><span class="sub-field-icon">&#128193;</span>Dir</button>
-    <button class="sub-field-btn" data-insert-field="parse"><span class="sub-field-icon">&#128269;</span>Parse</button>
-    <div class="sub-sep"></div>
-    <!-- Secure -->
-    <button class="sub-field-btn" data-insert-field="credential"><span class="sub-field-icon">&#128273;</span>Credential</button>
-    <button class="sub-field-btn" data-insert-field="totp"><span class="sub-field-icon">&#128272;</span>TOTP</button>
-  </div>
-
-</div>
 
 <!-- HIDDEN FILE INPUTS -->
 <input type="file" id="pick-md" accept=".md" style="display:none">
@@ -493,6 +458,73 @@ select.prop-input { cursor: pointer; }
 
 <!-- BODY -->
 <div class="body">
+
+  <!-- CONTROLS PANE (left side, collapsible) -->
+  <div id="controls-pane">
+    <div id="ctrl-pane-header">
+      <span id="ctrl-pane-title">Text</span>
+      <button id="ctrl-pane-collapse" title="Collapse panel">&#8249;</button>
+    </div>
+    <div id="ctrl-pane-body">
+
+      <!-- Text controls -->
+      <div class="ctrl-panel active" id="ctrl-panel-text">
+        <div class="ctrl-group-label">Block Type</div>
+        <button class="ctrl-btn" id="btn-h1"><span class="ctrl-btn-icon">H1</span>Heading 1</button>
+        <button class="ctrl-btn" id="btn-h2"><span class="ctrl-btn-icon">H2</span>Heading 2</button>
+        <button class="ctrl-btn" id="btn-h3"><span class="ctrl-btn-icon">H3</span>Heading 3</button>
+        <button class="ctrl-btn" id="btn-para"><span class="ctrl-btn-icon">&#182;</span>Paragraph</button>
+        <div class="ctrl-divider"></div>
+        <div class="ctrl-group-label">Insert</div>
+        <button class="ctrl-btn" id="btn-hr"><span class="ctrl-btn-icon">&#8212;</span>Divider</button>
+        <button class="ctrl-btn" id="btn-insert-section"><span class="ctrl-btn-icon">&#9654;</span>Section</button>
+        <button class="ctrl-btn" id="btn-insert-code"><span class="ctrl-btn-icon">&lt;/&gt;</span>Code Block</button>
+        <div class="ctrl-divider"></div>
+        <div class="ctrl-group-label">All Blocks</div>
+        <div class="dropdown" id="dd-insert" style="padding:4px 6px">
+          <button id="btn-insert-dd" style="width:100%">Insert &#9662;</button>
+          <div class="dropdown-menu" id="dm-insert"></div>
+        </div>
+      </div>
+
+      <!-- Form controls -->
+      <div class="ctrl-panel" id="ctrl-panel-form">
+        <div class="ctrl-group-label">Text Input</div>
+        <button class="ctrl-btn" data-insert-field="text"><span class="ctrl-btn-icon">T</span>Text Field</button>
+        <button class="ctrl-btn" data-insert-field="area"><span class="ctrl-btn-icon">&#128196;</span>Text Area</button>
+        <button class="ctrl-btn" data-insert-field="number"><span class="ctrl-btn-icon">#</span>Number</button>
+        <button class="ctrl-btn" data-insert-field="email"><span class="ctrl-btn-icon">@</span>Email</button>
+        <button class="ctrl-btn" data-insert-field="phone"><span class="ctrl-btn-icon">&#9990;</span>Phone</button>
+        <button class="ctrl-btn" data-insert-field="url"><span class="ctrl-btn-icon">&#128279;</span>URL</button>
+        <div class="ctrl-divider"></div>
+        <div class="ctrl-group-label">Date &amp; Time</div>
+        <button class="ctrl-btn" data-insert-field="date"><span class="ctrl-btn-icon">&#128197;</span>Date</button>
+        <button class="ctrl-btn" data-insert-field="datetime"><span class="ctrl-btn-icon">&#128336;</span>DateTime</button>
+        <div class="ctrl-divider"></div>
+        <div class="ctrl-group-label">Choice</div>
+        <button class="ctrl-btn" data-insert-field="select"><span class="ctrl-btn-icon">&#9660;</span>Dropdown</button>
+        <button class="ctrl-btn" data-insert-field="radio"><span class="ctrl-btn-icon">&#8857;</span>Radio</button>
+        <button class="ctrl-btn" data-insert-field="check"><span class="ctrl-btn-icon">&#9745;</span>Checkboxes</button>
+        <div class="ctrl-divider"></div>
+        <div class="ctrl-group-label">Rich Content</div>
+        <button class="ctrl-btn" data-insert-field="image"><span class="ctrl-btn-icon">&#128444;</span>Image</button>
+        <button class="ctrl-btn" data-insert-field="richtext"><span class="ctrl-btn-icon">&#10000;</span>Rich Text</button>
+        <button class="ctrl-btn" data-insert-field="computed"><span class="ctrl-btn-icon">&#9889;</span>Computed</button>
+        <button class="ctrl-btn" data-insert-field="signature"><span class="ctrl-btn-icon">&#10002;</span>Signature</button>
+        <button class="ctrl-btn" data-insert-field="parse"><span class="ctrl-btn-icon">&#128269;</span>Parse</button>
+        <div class="ctrl-divider"></div>
+        <div class="ctrl-group-label">File</div>
+        <button class="ctrl-btn" data-insert-field="filename"><span class="ctrl-btn-icon">&#128194;</span>Filename</button>
+        <button class="ctrl-btn" data-insert-field="dir"><span class="ctrl-btn-icon">&#128193;</span>Directory</button>
+        <div class="ctrl-divider"></div>
+        <div class="ctrl-group-label">Secure</div>
+        <button class="ctrl-btn" data-insert-field="credential"><span class="ctrl-btn-icon">&#128273;</span>Credential</button>
+        <button class="ctrl-btn" data-insert-field="totp"><span class="ctrl-btn-icon">&#128272;</span>TOTP</button>
+      </div>
+
+    </div>
+  </div>
+
   <!-- OUTLINE -->
   <div id="outline-panel">
     <h3>Outline</h3>
@@ -1423,17 +1455,13 @@ function showInsertFloat(afterId, anchorEl) {
 }
 
 function updateToolbarState(b) {
-  // H1–H3 / ¶ buttons in sub-toolbar always enabled — they apply to lastFocusedTextBlockId
-  // Highlight the active block type if Text panel is open
-  var activeType = b ? b.type : null;
-  var activeLevel = b && b.level;
-  ['btn-h1','btn-h2','btn-h3','btn-para'].forEach(function(id) {
-    var el = document.getElementById(id);
-    var matches = (id === 'btn-para' && activeType === 'paragraph') ||
-                  (id === 'btn-h1'  && activeType === 'heading' && activeLevel === 1) ||
-                  (id === 'btn-h2'  && activeType === 'heading' && activeLevel === 2) ||
-                  (id === 'btn-h3'  && activeType === 'heading' && activeLevel === 3);
-    el.classList.toggle('active', matches);
+  var activeType  = b ? b.type  : null;
+  var activeLevel = b ? b.level : null;
+  var map = { 'btn-h1': ['heading',1], 'btn-h2': ['heading',2], 'btn-h3': ['heading',3], 'btn-para': ['paragraph',null] };
+  Object.keys(map).forEach(function(id) {
+    var t = map[id][0], l = map[id][1];
+    var matches = activeType === t && (l === null || activeLevel === l);
+    document.getElementById(id).classList.toggle('active', matches);
   });
 }
 
@@ -1555,12 +1583,6 @@ document.addEventListener('click', function(e) {
   if (!e.target.closest('.dropdown') && !e.target.closest('#insert-float') && !e.target.closest('.block-add-btn')) {
     closeAllDropdowns();
   }
-  // Close sub-toolbar on canvas click (outside badge buttons and sub-toolbar itself)
-  if (!e.target.closest('.badge-btn') && !e.target.closest('#sub-toolbar')) {
-    document.querySelectorAll('.badge-btn').forEach(function(b){ b.classList.remove('active'); });
-    document.querySelectorAll('.sub-panel').forEach(function(p){ p.classList.remove('active'); });
-    document.getElementById('sub-toolbar').classList.remove('open');
-  }
 });
 
 function setupDropdown(btnId, menuId) {
@@ -1577,34 +1599,83 @@ setupDropdown('btn-file-dd', 'dm-file');
 setupDropdown('btn-insert-dd', 'dm-insert');
 buildInsertMenuHTML();
 
-// Badge button sub-toolbar toggle
+// Controls pane: badge toggle + collapse
 (function() {
-  var subBar = document.getElementById('sub-toolbar');
+  var pane       = document.getElementById('controls-pane');
+  var paneTitle  = document.getElementById('ctrl-pane-title');
+  var collapseBtn= document.getElementById('ctrl-pane-collapse');
+  var LABELS     = { 'ctrl-panel-text': 'Text', 'ctrl-panel-form': 'Form' };
+
+  function activatePanel(panelId) {
+    document.querySelectorAll('.ctrl-panel').forEach(function(p){ p.classList.remove('active'); });
+    document.querySelectorAll('.badge-btn').forEach(function(b){ b.classList.remove('active'); });
+    var panel = document.getElementById(panelId);
+    if (panel) panel.classList.add('active');
+    paneTitle.textContent = LABELS[panelId] || '';
+    var matchingBadge = document.querySelector('.badge-btn[data-panel="' + panelId + '"]');
+    if (matchingBadge) matchingBadge.classList.add('active');
+  }
+
+  function openPane(panelId) {
+    pane.classList.remove('collapsed');
+    collapseBtn.textContent = '‹'; // ‹
+    activatePanel(panelId);
+    try { localStorage.setItem('tvs:pane-open', '1'); localStorage.setItem('tvs:pane-panel', panelId); } catch(e){}
+  }
+
+  function closePane() {
+    pane.classList.add('collapsed');
+    collapseBtn.textContent = '›'; // ›
+    document.querySelectorAll('.badge-btn').forEach(function(b){ b.classList.remove('active'); });
+    try { localStorage.setItem('tvs:pane-open', '0'); } catch(e){}
+  }
+
+  collapseBtn.addEventListener('click', function() {
+    if (pane.classList.contains('collapsed')) {
+      var last = (function(){ try{ return localStorage.getItem('tvs:pane-panel'); }catch(e){ return null; } })();
+      openPane(last || 'ctrl-panel-text');
+    } else {
+      closePane();
+    }
+  });
+
   document.querySelectorAll('.badge-btn').forEach(function(btn) {
     btn.addEventListener('click', function(e) {
       e.stopPropagation();
       var panelId = btn.dataset.panel;
-      var panel = document.getElementById(panelId);
-      var isActive = btn.classList.contains('active');
-      // deactivate all
-      document.querySelectorAll('.badge-btn').forEach(function(b){ b.classList.remove('active'); });
-      document.querySelectorAll('.sub-panel').forEach(function(p){ p.classList.remove('active'); });
-      if (!isActive) {
-        btn.classList.add('active');
-        panel.classList.add('active');
-        subBar.classList.add('open');
+      if (!pane.classList.contains('collapsed') && btn.classList.contains('active')) {
+        closePane();
       } else {
-        subBar.classList.remove('open');
+        openPane(panelId);
       }
     });
   });
+
+  // Restore state from localStorage (default: open, Text panel)
+  (function() {
+    var savedOpen  = (function(){ try{ return localStorage.getItem('tvs:pane-open'); }catch(e){ return null; } })();
+    var savedPanel = (function(){ try{ return localStorage.getItem('tvs:pane-panel'); }catch(e){ return null; } })();
+    if (savedOpen === '0') {
+      closePane();
+    } else {
+      openPane(savedPanel || 'ctrl-panel-text');
+    }
+  })();
 })();
 
-// Form field insert buttons in sub-toolbar
-document.querySelectorAll('.sub-field-btn[data-insert-field]').forEach(function(btn) {
+// Controls pane field-insert buttons
+document.querySelectorAll('#ctrl-panel-form .ctrl-btn[data-insert-field]').forEach(function(btn) {
   btn.addEventListener('click', function() {
     insertField(btn.dataset.insertField, lastFocusedTextBlockId || null);
   });
+});
+
+// Controls pane structural-insert buttons
+document.getElementById('btn-insert-section').addEventListener('click', function() {
+  insertBlock({ type:'section', title:'Section Title', children:[], id:uid() }, lastFocusedTextBlockId || null);
+});
+document.getElementById('btn-insert-code').addEventListener('click', function() {
+  insertBlock({ type:'codeblock', lang:'bash', code:'', id:uid() }, lastFocusedTextBlockId || null);
 });
 
 document.getElementById('btn-undo').addEventListener('click', undo);
