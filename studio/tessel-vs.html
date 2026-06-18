@@ -789,7 +789,7 @@ body.pane-dragging-active * { cursor: grabbing !important; }
   transition: background .12s, border-color .12s;
   pointer-events: none;
 }
-body.pane-dragging-active .dock-edge-target { display: flex; pointer-events: auto; }
+body.pane-dragging-active .dock-edge-target { display: flex; }
 .dock-edge-target.active {
   background: rgba(91,138,240,.18); border-color: var(--accent);
 }
@@ -3672,9 +3672,14 @@ function dockPanel(panelId, zone) {
   document.querySelector('[data-opts-section="fonts"]').addEventListener('click', renderFontList);
 })();
 
-// ── Pane drag-to-reorder ──────────────────────────────────────────────────────
+// ── Pane drag-to-reorder (mouse-event implementation) ─────────────────────────
+// HTML5 drag API is unreliable for text-containing headers in Chrome.
+// We use mousedown/mousemove/mouseup instead.
 (function() {
-  var paneDragId = null;
+  var paneDragId  = null;   // id of pane currently being dragged
+  var dragStarted = false;  // true once mouse moved past threshold
+  var startX = 0, startY = 0;
+  var DRAG_THRESHOLD = 5;   // px before drag activates
   var ZONES    = ['left', 'right', 'top', 'bottom'];
   var PANE_IDS = ['format-pane', 'text-pane', 'form-pane', 'outline-panel', 'props-panel'];
 
@@ -3715,7 +3720,7 @@ function dockPanel(panelId, zone) {
     });
   }
 
-  // Build 4 edge drop-zone overlays
+  // Build 4 edge drop-zone overlays (purely visual, hit-tested manually)
   var edgeTargets = {};
   ZONES.forEach(function(zone) {
     var el = document.createElement('div');
@@ -3723,191 +3728,173 @@ function dockPanel(panelId, zone) {
     el.innerHTML = '<span>' + zone + '</span>';
     document.body.appendChild(el);
     edgeTargets[zone] = el;
-
-    el.addEventListener('dragover', function(e) {
-      if (!paneDragId) return;
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      el.classList.add('active');
-    });
-    el.addEventListener('dragleave', function() { el.classList.remove('active'); });
-    el.addEventListener('drop', function(e) {
-      if (!paneDragId) return;
-      e.preventDefault();
-      el.classList.remove('active');
-      var fromZone = getZoneOf(paneDragId);
-      dockPanel(paneDragId, zone);
-      if (fromZone && fromZone !== zone) savePaneOrder(fromZone);
-      savePaneOrder(zone);
-    });
   });
 
-  // Set up each pane
+  // ── Mouse-based drag state ────────────────────────────────────────────────
+  var _hoveredZone  = null;  // edge zone being hovered
+  var _hoveredPane  = null;  // pane id being hovered (same-zone reorder)
+  var _hoverBefore  = false; // insert before (true) or after (false)
+
+  function activateDrag(id) {
+    paneDragId  = id;
+    dragStarted = true;
+    document.body.classList.add('pane-dragging-active');
+    var panel = document.getElementById(id);
+    if (panel) { panel.classList.add('pane-dragging'); panel.style.pointerEvents = 'none'; }
+    var myZone = getZoneOf(id);
+    ZONES.forEach(function(z) {
+      edgeTargets[z].style.opacity = (z === myZone) ? '0.3' : '1';
+    });
+  }
+
+  function clearDrag() {
+    if (paneDragId) {
+      var panel = document.getElementById(paneDragId);
+      if (panel) { panel.classList.remove('pane-dragging'); panel.style.pointerEvents = ''; }
+    }
+    paneDragId = null; dragStarted = false;
+    document.body.classList.remove('pane-dragging-active');
+    clearInsertIndicators();
+    ZONES.forEach(function(z) {
+      edgeTargets[z].classList.remove('active');
+      edgeTargets[z].style.opacity = '';
+    });
+    _hoveredZone = null; _hoveredPane = null;
+  }
+
+  function updateHover(clientX, clientY) {
+    clearInsertIndicators();
+    ZONES.forEach(function(z) { edgeTargets[z].classList.remove('active'); });
+    _hoveredZone = null; _hoveredPane = null;
+
+    var dragZone = getZoneOf(paneDragId);
+
+    // Check edge targets first
+    for (var zi = 0; zi < ZONES.length; zi++) {
+      var z = ZONES[zi];
+      if (z === dragZone) continue; // skip own zone edge target
+      var er = edgeTargets[z].getBoundingClientRect();
+      if (clientX >= er.left && clientX <= er.right && clientY >= er.top && clientY <= er.bottom) {
+        edgeTargets[z].classList.add('active');
+        _hoveredZone = z;
+        return;
+      }
+    }
+
+    // Check sibling panes (same or different zone)
+    for (var pi = 0; pi < PANE_IDS.length; pi++) {
+      var pid = PANE_IDS[pi];
+      if (pid === paneDragId) continue;
+      var pel = document.getElementById(pid);
+      if (!pel) continue;
+      var pr = pel.getBoundingClientRect();
+      if (clientX >= pr.left && clientX <= pr.right && clientY >= pr.top && clientY <= pr.bottom) {
+        var myZone = getZoneOf(pid);
+        if (myZone !== dragZone) {
+          // Cross-zone: highlight that zone's edge target
+          if (edgeTargets[myZone]) edgeTargets[myZone].classList.add('active');
+          _hoveredZone = myZone;
+          _hoveredPane = pid;
+        } else {
+          // Same zone: show insertion line
+          var before;
+          if (isHzone(myZone)) {
+            before = myZone === 'bottom'
+              ? (clientY > pr.top + pr.height / 2)
+              : (clientY < pr.top + pr.height / 2);
+          } else {
+            before = myZone === 'right'
+              ? (clientX > pr.left + pr.width / 2)
+              : (clientX < pr.left + pr.width / 2);
+          }
+          pel.classList.add(before ? 'pane-drop-before' : 'pane-drop-after');
+          _hoveredPane  = pid;
+          _hoverBefore  = before;
+        }
+        return;
+      }
+    }
+  }
+
+  function commitDrop() {
+    if (!paneDragId) return;
+    var draggedEl = document.getElementById(paneDragId);
+    if (!draggedEl) return;
+    var dragZone  = getZoneOf(paneDragId);
+
+    if (_hoveredZone && !_hoveredPane) {
+      // Dropped onto empty edge zone target
+      var fromZone = dragZone;
+      dockPanel(paneDragId, _hoveredZone);
+      if (fromZone && fromZone !== _hoveredZone) savePaneOrder(fromZone);
+      savePaneOrder(_hoveredZone);
+    } else if (_hoveredPane) {
+      var targetEl = document.getElementById(_hoveredPane);
+      if (!targetEl) return;
+      var targetZone = getZoneOf(_hoveredPane);
+      if (targetZone !== dragZone) {
+        // Cross-zone: move to target's zone and insert before the target
+        var fromZone2 = dragZone;
+        dockPanel(paneDragId, targetZone);
+        var zoneEl = document.getElementById('dock-' + targetZone);
+        if (zoneEl && draggedEl.parentElement === zoneEl) {
+          zoneEl.insertBefore(draggedEl, targetEl);
+        }
+        if (fromZone2) savePaneOrder(fromZone2);
+        savePaneOrder(targetZone);
+      } else {
+        // Same zone reorder
+        if (_hoverBefore) {
+          targetEl.parentElement.insertBefore(draggedEl, targetEl);
+        } else {
+          targetEl.insertAdjacentElement('afterend', draggedEl);
+        }
+        savePaneOrder(targetZone);
+      }
+    }
+  }
+
+  // ── Per-pane handle setup ─────────────────────────────────────────────────
   PANE_IDS.forEach(function(panelId) {
     var panel = document.getElementById(panelId);
     if (!panel) return;
 
-    var _styleTimer = null;
-
-    // Drag handles = the header/title row(s) for this panel.
-    // We set draggable directly on these elements so the browser reliably
-    // initiates the HTML drag from anywhere in the title bar (not just the grip icon).
     var handles = [];
     panel.querySelectorAll('.ctrl-pane-header, .ctrl-pane-tab').forEach(function(h) { handles.push(h); });
     panel.querySelectorAll('h3').forEach(function(h) { handles.push(h); });
-    // Tab strips for outline/props panels (have an id ending in "-tab" but aren't ctrl-pane-tab)
     var tabEl = panel.querySelector('[id$="-tab"]:not(.ctrl-pane-tab)');
-    if (tabEl) handles.push(tabEl);
-    if (!handles.length) handles.push(panel); // fallback
-
-    function startDrag(e) {
-      paneDragId = panelId;
-      document.body.classList.add('pane-dragging-active');
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', panelId);
-      var myZone = getZoneOf(panelId);
-      // Defer visual changes so the drag ghost captures the original appearance
-      _styleTimer = setTimeout(function() {
-        _styleTimer = null;
-        panel.classList.add('pane-dragging');
-        panel.style.pointerEvents = 'none';
-      }, 0);
-      ZONES.forEach(function(z) {
-        edgeTargets[z].style.pointerEvents = (z === myZone) ? 'none' : 'auto';
-        edgeTargets[z].style.opacity = (z === myZone) ? '0.3' : '1';
-      });
-      e.stopPropagation();
-    }
-
-    function endDrag(e) {
-      if (_styleTimer !== null) { clearTimeout(_styleTimer); _styleTimer = null; }
-      panel.style.pointerEvents = '';
-      paneDragId = null;
-      panel.classList.remove('pane-dragging');
-      document.body.classList.remove('pane-dragging-active');
-      clearInsertIndicators();
-      ZONES.forEach(function(z) {
-        edgeTargets[z].classList.remove('active');
-        edgeTargets[z].style.pointerEvents = '';
-        edgeTargets[z].style.opacity = '';
-      });
-      if (e) e.stopPropagation();
-    }
+    if (tabEl && handles.indexOf(tabEl) === -1) handles.push(tabEl);
+    if (!handles.length) handles.push(panel);
 
     handles.forEach(function(handle) {
-      // Set draggable dynamically on mousedown rather than statically.
-      // Chrome treats statically-draggable text-containing elements as
-      // text-selection candidates and may not fire dragstart reliably.
-      // Setting it synchronously inside mousedown tells Chrome "this
-      // specific gesture should be treated as a drag."
       handle.addEventListener('mousedown', function(e) {
         if (e.button !== 0) return;
-        handle.draggable = true;
+        // Don't hijack clicks on buttons inside the handle (collapse btn etc.)
+        if (e.target.tagName === 'BUTTON') return;
+        e.preventDefault(); // prevent text selection
+        paneDragId  = panelId;
+        dragStarted = false;
+        startX = e.clientX;
+        startY = e.clientY;
       });
-      handle.addEventListener('dragstart', startDrag);
-      handle.addEventListener('dragend', function(e) {
-        handle.draggable = false;
-        endDrag(e);
-      });
-    });
-
-    // Within-zone insertion indicators — also handle cross-zone hover here
-    // so the edge target only needs to cover empty dock-zone space
-    panel.addEventListener('dragover', function(e) {
-      if (!paneDragId || paneDragId === panelId) return;
-      var dragZone = getZoneOf(paneDragId);
-      var myZone   = getZoneOf(panelId);
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      clearInsertIndicators();
-
-      if (dragZone !== myZone) {
-        // Hovering a pane in a different zone: highlight that zone's edge target
-        ZONES.forEach(function(z) { edgeTargets[z].classList.remove('active'); });
-        if (edgeTargets[myZone]) edgeTargets[myZone].classList.add('active');
-        return;
-      }
-
-      // Same zone: show before/after insertion line
-      var rect = panel.getBoundingClientRect();
-      var before;
-      if (isHzone(myZone)) {
-        before = myZone === 'bottom'
-          ? (e.clientY > rect.top + rect.height / 2)
-          : (e.clientY < rect.top + rect.height / 2);
-      } else {
-        before = myZone === 'right'
-          ? (e.clientX > rect.left + rect.width / 2)
-          : (e.clientX < rect.left + rect.width / 2);
-      }
-      panel.classList.add(before ? 'pane-drop-before' : 'pane-drop-after');
-    });
-
-    panel.addEventListener('dragleave', function(e) {
-      if (!e.relatedTarget || !panel.contains(e.relatedTarget)) {
-        panel.classList.remove('pane-drop-before', 'pane-drop-after');
-        // Clear cross-zone highlight when leaving a pane in another zone
-        ZONES.forEach(function(z) { edgeTargets[z].classList.remove('active'); });
-      }
-    });
-
-    panel.addEventListener('drop', function(e) {
-      if (!paneDragId || paneDragId === panelId) return;
-      var dragZone = getZoneOf(paneDragId);
-      var myZone   = getZoneOf(panelId);
-      e.preventDefault();
-      clearInsertIndicators();
-      ZONES.forEach(function(z) { edgeTargets[z].classList.remove('active'); });
-
-      var draggedEl = document.getElementById(paneDragId);
-      if (!draggedEl) return;
-
-      if (dragZone !== myZone) {
-        // Cross-zone drop onto a sibling: move to that zone, insert before the target
-        var fromZone = dragZone;
-        dockPanel(paneDragId, myZone);
-        var zoneEl = document.getElementById('dock-' + myZone);
-        var targetEl = document.getElementById(panelId);
-        if (zoneEl && targetEl && draggedEl.parentElement === zoneEl) {
-          zoneEl.insertBefore(draggedEl, targetEl);
-        }
-        if (fromZone) savePaneOrder(fromZone);
-        savePaneOrder(myZone);
-        return;
-      }
-
-      // Same zone: reorder
-      var rect = panel.getBoundingClientRect();
-      var before;
-      if (isHzone(myZone)) {
-        before = myZone === 'bottom'
-          ? (e.clientY > rect.top + rect.height / 2)
-          : (e.clientY < rect.top + rect.height / 2);
-      } else {
-        before = myZone === 'right'
-          ? (e.clientX > rect.left + rect.width / 2)
-          : (e.clientX < rect.left + rect.width / 2);
-      }
-      if (before) {
-        panel.parentElement.insertBefore(draggedEl, panel);
-      } else {
-        panel.insertAdjacentElement('afterend', draggedEl);
-      }
-      savePaneOrder(myZone);
     });
   });
 
-  // On mouseup (click without drag), clear draggable so handles don't stay
-  // in a draggable state after a plain click that never became a drag.
-  document.addEventListener('mouseup', function() {
-    PANE_IDS.forEach(function(id) {
-      var el = document.getElementById(id);
-      if (!el) return;
-      el.style.pointerEvents = '';
-      el.querySelectorAll('.ctrl-pane-header, .ctrl-pane-tab, h3, [id$="-tab"]:not(.ctrl-pane-tab)').forEach(function(h) {
-        h.draggable = false;
-      });
-    });
+  // ── Global mouse move / up ────────────────────────────────────────────────
+  document.addEventListener('mousemove', function(e) {
+    if (!paneDragId) return;
+    if (!dragStarted) {
+      var dx = e.clientX - startX, dy = e.clientY - startY;
+      if (Math.sqrt(dx*dx + dy*dy) < DRAG_THRESHOLD) return;
+      activateDrag(paneDragId);
+    }
+    updateHover(e.clientX, e.clientY);
+  });
+
+  document.addEventListener('mouseup', function(e) {
+    if (!paneDragId) return;
+    if (dragStarted) commitDrop();
+    clearDrag();
   });
 
   restorePaneOrder();
