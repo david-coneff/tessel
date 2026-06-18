@@ -993,6 +993,9 @@ body.pane-dragging-active .dock-edge-target { display: flex; pointer-events: aut
         <div class="ctrl-group-label">Secure</div>
         <button class="ctrl-btn" data-insert-field="credential"><span class="ctrl-btn-icon">&#128273;</span>Credential</button>
         <button class="ctrl-btn" data-insert-field="totp"><span class="ctrl-btn-icon">&#128272;</span>TOTP</button>
+        <div class="ctrl-divider"></div>
+        <div class="ctrl-group-label">File</div>
+        <button class="ctrl-btn" data-insert-field="attachment"><span class="ctrl-btn-icon">&#128206;</span>Attachment</button>
       </div>
     </div>
     <div class="ctrl-pane-tab" title="Toggle Form panel">
@@ -1333,6 +1336,7 @@ var FIELD_TYPES = {
   richtext:   { icon: '✍',  badge: 'Rich Text',      hasOptions: false },
   computed:   { icon: '⚡', badge: 'Computed',       hasOptions: false, hasExpr: true },
   signature:  { icon: '✒',  badge: 'Signature',      hasOptions: false },
+  attachment: { icon: '📎', badge: 'Attachment',     hasOptions: false },
 };
 
 var INSERT_MENU_ITEMS = [
@@ -1347,7 +1351,7 @@ var INSERT_MENU_ITEMS = [
   { group: 'STRUCTURE' },
   { label: 'Collapsible Section', icon: '▶',  action: function(aid) { insertBlock({ type:'section', title:'Section Title', children:[], id:uid() }, aid); } },
   { label: 'Code Block',          icon: '</>',action: function(aid) { insertBlock({ type:'codeblock', lang:'bash', code:'', id:uid() }, aid); } },
-  { label: 'Attachment',          icon: '📎', action: function(aid) { insertBlock({ type:'attachment', files:[], id:uid() }, aid); } },
+  { label: 'Attachment (author)', icon: '📎', action: function(aid) { insertBlock({ type:'attachment', files:[], id:uid() }, aid); } },
 ];
 
 function insertField(ft, afterId) {
@@ -1795,6 +1799,84 @@ function createFieldEl(b) {
     hint = document.createElement('div');
     hint.className = 'field-preview-hint';
     hint.textContent = 'Rich text area';
+  } else if (b.fieldType === 'attachment') {
+    // Live consumer-facing attachment input — embedded directly in the card
+    if (!b.meta.files) b.meta.files = [];
+    var attWrap = document.createElement('div');
+    attWrap.className = 'attachment-block';
+
+    var attList = document.createElement('div');
+    attList.className = 'attachment-file-list';
+
+    function renderAttFiles() {
+      attList.innerHTML = '';
+      (b.meta.files || []).forEach(function(f, idx) {
+        var item = document.createElement('div');
+        item.className = 'attachment-item';
+        item.title = 'Double-click to open ' + f.name;
+
+        var ico = document.createElement('div');
+        ico.className = 'attachment-item-icon';
+        ico.textContent = fileIcon(f.name);
+
+        var nm = document.createElement('div');
+        nm.className = 'attachment-item-name';
+        nm.textContent = f.name;
+
+        var del = document.createElement('button');
+        del.className = 'attachment-item-del';
+        del.textContent = '×';
+        del.title = 'Remove';
+        del.addEventListener('click', function(e) {
+          e.stopPropagation();
+          b.meta.files.splice(idx, 1);
+          renderAttFiles();
+          markUnsaved();
+        });
+
+        item.addEventListener('dblclick', function() {
+          var a = document.createElement('a');
+          a.href = f.data; a.target = '_blank'; a.rel = 'noopener';
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        });
+
+        item.appendChild(ico); item.appendChild(nm); item.appendChild(del);
+        attList.appendChild(item);
+      });
+    }
+    renderAttFiles();
+
+    var attDrop = document.createElement('div');
+    attDrop.className = 'attachment-dropzone';
+    attDrop.innerHTML = '<div>&#128206; Drop files here</div><div style="margin-top:4px;font-size:10px;">or <u style="cursor:pointer">click to choose</u></div>';
+    var attInput = document.createElement('input');
+    attInput.type = 'file'; attInput.multiple = true;
+    attDrop.appendChild(attInput);
+
+    function processAttFiles(fileList) {
+      Array.from(fileList).forEach(function(file) {
+        var reader = new FileReader();
+        reader.onload = function(ev) {
+          b.meta.files.push({ name: file.name, type: file.type, data: ev.target.result });
+          renderAttFiles(); markUnsaved();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    attDrop.addEventListener('click', function(e) { if (e.target !== attInput) attInput.click(); });
+    attInput.addEventListener('change', function() { if (attInput.files.length) processAttFiles(attInput.files); attInput.value = ''; });
+    attDrop.addEventListener('dragover', function(e) { e.preventDefault(); e.stopPropagation(); attDrop.classList.add('drag-over'); });
+    attDrop.addEventListener('dragleave', function() { attDrop.classList.remove('drag-over'); });
+    attDrop.addEventListener('drop', function(e) {
+      e.preventDefault(); e.stopPropagation();
+      attDrop.classList.remove('drag-over');
+      if (e.dataTransfer.files.length) processAttFiles(e.dataTransfer.files);
+    });
+
+    attWrap.appendChild(attList);
+    attWrap.appendChild(attDrop);
+    card.appendChild(attWrap);
   }
   if (hint) card.appendChild(hint);
 
@@ -1952,85 +2034,39 @@ function createAttachmentEl(b) {
       var item = document.createElement('div');
       item.className = 'attachment-item';
       item.title = 'Double-click to open ' + f.name;
-
-      var icon = document.createElement('div');
-      icon.className = 'attachment-item-icon';
-      icon.textContent = fileIcon(f.name);
-
-      var name = document.createElement('div');
-      name.className = 'attachment-item-name';
-      name.textContent = f.name;
-
+      var ico = document.createElement('div'); ico.className = 'attachment-item-icon'; ico.textContent = fileIcon(f.name);
+      var nm  = document.createElement('div'); nm.className = 'attachment-item-name';  nm.textContent  = f.name;
       var del = document.createElement('button');
-      del.className = 'attachment-item-del';
-      del.textContent = '×';
-      del.title = 'Remove';
-      del.addEventListener('click', function(e) {
-        e.stopPropagation();
-        b.files.splice(idx, 1);
-        renderFiles();
-        markUnsaved();
-      });
-
-      // Double-click opens the file in a new tab using the data URL
+      del.className = 'attachment-item-del'; del.textContent = '×'; del.title = 'Remove';
+      del.addEventListener('click', function(e) { e.stopPropagation(); b.files.splice(idx, 1); renderFiles(); markUnsaved(); });
       item.addEventListener('dblclick', function() {
-        var a = document.createElement('a');
-        a.href = f.data;
-        a.target = '_blank';
-        a.rel = 'noopener';
-        // Force browser to open (not download) by using an object URL for known types
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        var a = document.createElement('a'); a.href = f.data; a.target = '_blank'; a.rel = 'noopener';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
       });
-
-      item.appendChild(icon); item.appendChild(name); item.appendChild(del);
+      item.appendChild(ico); item.appendChild(nm); item.appendChild(del);
       list.appendChild(item);
     });
   }
   renderFiles();
 
-  // Drop zone + file picker
   var dropzone = document.createElement('div');
   dropzone.className = 'attachment-dropzone';
   dropzone.innerHTML = '<div>&#128206; Drop files here</div><div style="margin-top:4px;font-size:10px;">or <u style="cursor:pointer">click to choose</u></div>';
-
-  var fileInput = document.createElement('input');
-  fileInput.type = 'file';
-  fileInput.multiple = true;
+  var fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.multiple = true;
   dropzone.appendChild(fileInput);
 
   function processFiles(fileList) {
-    var pending = fileList.length;
     Array.from(fileList).forEach(function(file) {
       var reader = new FileReader();
-      reader.onload = function(e) {
-        b.files.push({ name: file.name, type: file.type, data: e.target.result });
-        renderFiles();
-        markUnsaved();
-      };
+      reader.onload = function(e) { b.files.push({ name: file.name, type: file.type, data: e.target.result }); renderFiles(); markUnsaved(); };
       reader.readAsDataURL(file);
     });
   }
-
-  dropzone.addEventListener('click', function(e) {
-    if (e.target !== fileInput) fileInput.click();
-  });
-  fileInput.addEventListener('change', function() {
-    if (fileInput.files.length) processFiles(fileInput.files);
-    fileInput.value = '';
-  });
-
-  dropzone.addEventListener('dragover', function(e) {
-    e.preventDefault(); e.stopPropagation();
-    dropzone.classList.add('drag-over');
-  });
+  dropzone.addEventListener('click', function(e) { if (e.target !== fileInput) fileInput.click(); });
+  fileInput.addEventListener('change', function() { if (fileInput.files.length) processFiles(fileInput.files); fileInput.value = ''; });
+  dropzone.addEventListener('dragover', function(e) { e.preventDefault(); e.stopPropagation(); dropzone.classList.add('drag-over'); });
   dropzone.addEventListener('dragleave', function() { dropzone.classList.remove('drag-over'); });
-  dropzone.addEventListener('drop', function(e) {
-    e.preventDefault(); e.stopPropagation();
-    dropzone.classList.remove('drag-over');
-    if (e.dataTransfer.files.length) processFiles(e.dataTransfer.files);
-  });
+  dropzone.addEventListener('drop', function(e) { e.preventDefault(); e.stopPropagation(); dropzone.classList.remove('drag-over'); if (e.dataTransfer.files.length) processFiles(e.dataTransfer.files); });
 
   wrap.appendChild(list);
   wrap.appendChild(dropzone);
@@ -3449,7 +3485,6 @@ function dockPanel(panelId, zone) {
         var saved = JSON.parse(localStorage.getItem('tvs:dock-order:' + zone) || 'null');
         if (!Array.isArray(saved)) return;
         var zoneEl = document.getElementById('dock-' + zone);
-        // Re-append in saved order (only panels that are currently in this zone)
         saved.forEach(function(id) {
           var el = document.getElementById(id);
           if (el && el.parentElement === zoneEl) zoneEl.appendChild(el);
@@ -3479,7 +3514,7 @@ function dockPanel(panelId, zone) {
       e.preventDefault();
       el.classList.remove('active');
       var fromZone = getZoneOf(paneDragId);
-      dockPanel(paneDragId, zone); // existing function moves + saves zone
+      dockPanel(paneDragId, zone);
       if (fromZone && fromZone !== zone) savePaneOrder(fromZone);
       savePaneOrder(zone);
     });
@@ -3493,7 +3528,6 @@ function dockPanel(panelId, zone) {
     // Activate draggable only when mousedown on a grip
     panel.querySelectorAll('[data-pane-grip="' + panelId + '"]').forEach(function(grip) {
       grip.addEventListener('mousedown', function(e) {
-        // Don't trigger on button clicks inside the grip area
         if (e.button !== 0) return;
         panel.draggable = true;
       });
@@ -3502,12 +3536,16 @@ function dockPanel(panelId, zone) {
     panel.addEventListener('dragstart', function(e) {
       if (!panel.draggable) { e.preventDefault(); return; }
       paneDragId = panelId;
-      panel.classList.add('pane-dragging');
       document.body.classList.add('pane-dragging-active');
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', panelId);
-      // Hide edge target for own zone to reduce noise
       var myZone = getZoneOf(panelId);
+      // Use rAF so the drag image is captured before we apply opacity
+      requestAnimationFrame(function() {
+        panel.classList.add('pane-dragging');
+        // pointer-events:none lets dragover fire on siblings even when ghost overlaps
+        panel.style.pointerEvents = 'none';
+      });
       ZONES.forEach(function(z) {
         edgeTargets[z].style.pointerEvents = (z === myZone) ? 'none' : 'auto';
         edgeTargets[z].style.opacity = (z === myZone) ? '0.3' : '1';
@@ -3516,6 +3554,7 @@ function dockPanel(panelId, zone) {
 
     panel.addEventListener('dragend', function() {
       panel.draggable = false;
+      panel.style.pointerEvents = '';
       paneDragId = null;
       panel.classList.remove('pane-dragging');
       document.body.classList.remove('pane-dragging-active');
@@ -3527,25 +3566,31 @@ function dockPanel(panelId, zone) {
       });
     });
 
-    // Within-zone insertion indicators
+    // Within-zone insertion indicators — also handle cross-zone hover here
+    // so the edge target only needs to cover empty dock-zone space
     panel.addEventListener('dragover', function(e) {
       if (!paneDragId || paneDragId === panelId) return;
       var dragZone = getZoneOf(paneDragId);
       var myZone   = getZoneOf(panelId);
-      if (dragZone !== myZone) return; // edge target handles cross-zone
       e.preventDefault();
-      e.stopPropagation();
       e.dataTransfer.dropEffect = 'move';
       clearInsertIndicators();
+
+      if (dragZone !== myZone) {
+        // Hovering a pane in a different zone: highlight that zone's edge target
+        ZONES.forEach(function(z) { edgeTargets[z].classList.remove('active'); });
+        if (edgeTargets[myZone]) edgeTargets[myZone].classList.add('active');
+        return;
+      }
+
+      // Same zone: show before/after insertion line
       var rect = panel.getBoundingClientRect();
       var before;
       if (isHzone(myZone)) {
-        // column / column-reverse: use Y axis; column-reverse flips "before"
         before = myZone === 'bottom'
           ? (e.clientY > rect.top + rect.height / 2)
           : (e.clientY < rect.top + rect.height / 2);
       } else {
-        // row / row-reverse: use X axis; row-reverse (dock-right) flips "before"
         before = myZone === 'right'
           ? (e.clientX > rect.left + rect.width / 2)
           : (e.clientX < rect.left + rect.width / 2);
@@ -3556,6 +3601,8 @@ function dockPanel(panelId, zone) {
     panel.addEventListener('dragleave', function(e) {
       if (!e.relatedTarget || !panel.contains(e.relatedTarget)) {
         panel.classList.remove('pane-drop-before', 'pane-drop-after');
+        // Clear cross-zone highlight when leaving a pane in another zone
+        ZONES.forEach(function(z) { edgeTargets[z].classList.remove('active'); });
       }
     });
 
@@ -3563,11 +3610,28 @@ function dockPanel(panelId, zone) {
       if (!paneDragId || paneDragId === panelId) return;
       var dragZone = getZoneOf(paneDragId);
       var myZone   = getZoneOf(panelId);
-      if (dragZone !== myZone) return;
       e.preventDefault();
+      clearInsertIndicators();
+      ZONES.forEach(function(z) { edgeTargets[z].classList.remove('active'); });
+
       var draggedEl = document.getElementById(paneDragId);
       if (!draggedEl) return;
-      clearInsertIndicators();
+
+      if (dragZone !== myZone) {
+        // Cross-zone drop onto a sibling: move to that zone, insert before the target
+        var fromZone = dragZone;
+        dockPanel(paneDragId, myZone);
+        var zoneEl = document.getElementById('dock-' + myZone);
+        var targetEl = document.getElementById(panelId);
+        if (zoneEl && targetEl && draggedEl.parentElement === zoneEl) {
+          zoneEl.insertBefore(draggedEl, targetEl);
+        }
+        if (fromZone) savePaneOrder(fromZone);
+        savePaneOrder(myZone);
+        return;
+      }
+
+      // Same zone: reorder
       var rect = panel.getBoundingClientRect();
       var before;
       if (isHzone(myZone)) {
@@ -3592,7 +3656,7 @@ function dockPanel(panelId, zone) {
   document.addEventListener('mouseup', function() {
     PANE_IDS.forEach(function(id) {
       var el = document.getElementById(id);
-      if (el) el.draggable = false;
+      if (el) { el.draggable = false; el.style.pointerEvents = ''; }
     });
   });
 
