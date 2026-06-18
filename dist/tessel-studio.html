@@ -895,7 +895,7 @@ body.light #ws-canvas{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.08)}
       <button id="btn-history" title="Edit history — undo/redo (Ctrl+Z / Ctrl+Y)">⏳ History</button>
       <button id="btn-a11y-audit" title="Accessibility compliance audit — check compiled document for WCAG issues">♿ Audit</button>
       <div class="sep"></div>
-      <button id="btn-studio-theme" title="Studio theme customization">🎨</button>
+      <button id="btn-studio-theme" title="Studio theme customization"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 10 C1 7 2 4 5 3 C8 2 11 3 12 5 C13 7 12 9 10 10 C9 11 9 13 8 14 C7 15 6 15 5.5 14 C5 13 6 11 5 10.5 C4 10 3 11 2 10 Z"/><circle cx="5.5" cy="6.5" r="1" fill="currentColor" stroke="none"/><circle cx="9" cy="4.5" r="1" fill="currentColor" stroke="none"/><circle cx="11.5" cy="7.5" r="1" fill="currentColor" stroke="none"/></svg></button>
       <button id="btn-toolbar-customize" title="Customize toolbar — show or hide ribbon buttons">⊞</button>
       <button id="btn-theme" title="Toggle light/dark mode">☀</button>
     </div>
@@ -10381,11 +10381,8 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       }
     }
 
-    document.getElementById('mode-pill-md').addEventListener('click', function() {
-      if (wsCurrentMode !== 'markdown') wsSwitchMode('markdown');
-    });
-    document.getElementById('mode-pill-vs').addEventListener('click', function() {
-      if (wsCurrentMode !== 'visual') wsSwitchMode('visual');
+    document.getElementById('mode-toggle-pill').addEventListener('click', function() {
+      wsSwitchMode(wsCurrentMode === 'visual' ? 'markdown' : 'visual');
     });
 
     // Ribbon insert buttons
