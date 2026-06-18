@@ -1840,7 +1840,7 @@ buildInsertMenuHTML();
   // Switch which panel's content is visible (does not affect pane open/closed state)
   function activatePanel(panelId) {
     document.querySelectorAll('.ctrl-panel').forEach(function(p){ p.classList.remove('active'); });
-    document.querySelectorAll('.badge-btn').forEach(function(b){ b.classList.remove('active'); });
+    document.querySelectorAll('.badge-btn[data-panel]').forEach(function(b){ b.classList.remove('active'); });
     var panel = document.getElementById(panelId);
     if (panel) panel.classList.add('active');
     var label = LABELS[panelId] || '';
@@ -1884,7 +1884,7 @@ buildInsertMenuHTML();
   }
 
   function activePanelId() {
-    var b = document.querySelector('.badge-btn.active');
+    var b = document.querySelector('.badge-btn[data-panel].active');
     return b ? b.dataset.panel : null;
   }
 
@@ -1903,7 +1903,7 @@ buildInsertMenuHTML();
   //   OFF → click → ON : select panel, open pane
   //   ON  → click → OFF: deselect panel, fully hide pane (off)
   //   Other ON → click : switch panels, keep pane open
-  document.querySelectorAll('.badge-btn').forEach(function(btn) {
+  document.querySelectorAll('.badge-btn[data-panel]').forEach(function(btn) {
     btn.addEventListener('click', function(e) {
       e.stopPropagation();
       var panelId = btn.dataset.panel;
