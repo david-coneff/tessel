@@ -3795,9 +3795,20 @@ function dockPanel(panelId, zone) {
     }
 
     handles.forEach(function(handle) {
-      handle.draggable = true;
+      // Set draggable dynamically on mousedown rather than statically.
+      // Chrome treats statically-draggable text-containing elements as
+      // text-selection candidates and may not fire dragstart reliably.
+      // Setting it synchronously inside mousedown tells Chrome "this
+      // specific gesture should be treated as a drag."
+      handle.addEventListener('mousedown', function(e) {
+        if (e.button !== 0) return;
+        handle.draggable = true;
+      });
       handle.addEventListener('dragstart', startDrag);
-      handle.addEventListener('dragend', endDrag);
+      handle.addEventListener('dragend', function(e) {
+        handle.draggable = false;
+        endDrag(e);
+      });
     });
 
     // Within-zone insertion indicators — also handle cross-zone hover here
@@ -3886,11 +3897,16 @@ function dockPanel(panelId, zone) {
     });
   });
 
-  // Ensure pointer-events aren't left on panels after any aborted interaction
+  // On mouseup (click without drag), clear draggable so handles don't stay
+  // in a draggable state after a plain click that never became a drag.
   document.addEventListener('mouseup', function() {
     PANE_IDS.forEach(function(id) {
       var el = document.getElementById(id);
-      if (el) el.style.pointerEvents = '';
+      if (!el) return;
+      el.style.pointerEvents = '';
+      el.querySelectorAll('.ctrl-pane-header, .ctrl-pane-tab, h3, [id$="-tab"]:not(.ctrl-pane-tab)').forEach(function(h) {
+        h.draggable = false;
+      });
     });
   });
 
