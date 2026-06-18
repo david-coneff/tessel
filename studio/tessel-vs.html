@@ -1528,17 +1528,24 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
  * - Mobile/touch layout optimizations
  * - Mode pill toggle to merge with Tessel Studio Markdown (split-pane IDE view)
  * - Inline richtext formatting toolbar (bold/italic/link in paragraph blocks)
- * - File metadata dialog (File menu): standard fields (title, author, created,
- *   modified, description, tags) + author-defined custom header fields with typed
- *   values (text, number, integer, date, datetime, boolean); persisted as YAML
- *   front-matter at the top of exported .md files and round-tripped on open
+ * - YAML front-matter header in .md files (--- fences at top): standard fields
+ *   (title, author, created, modified, description, tags) + author-defined custom
+ *   typed fields (text, number, integer, date, datetime, boolean); front-matter
+ *   is stripped before HTML rendering so it never appears in compiled output;
+ *   round-tripped on open so the editor restores all header values; compatible
+ *   with Jekyll/Hugo/GitHub tooling by convention
+ * - File metadata dialog (File menu): UI for viewing and editing the front-matter
+ *   block — standard fields pre-populated, plus an "Add field" row for custom
+ *   author-defined header fields with a type selector
+ * - Filename / document-title state variable driven by front-matter `title:`
+ *   (editor title bar and _filename both reflect it); md header variable
+ *   constructor for templating metadata into block content at export time
+ *   (e.g. {{title}}, {{author}}, {{date}})
  * - Undo history sidecar: persist undo/redo stacks to a <name>.md.tvs file
- *   alongside the .md (never embedded in the .md itself, to keep the content
- *   hash clean); inside ZIP packages stored as _tessel/undo.json; schema:
- *   { schemaVersion, undoStack, redoStack, savedAt }; loaded automatically
- *   when the matching .md or .zip is opened, silently ignored if absent
- *   field; md header variable constructor for templating dynamic values into
- *   block content at export time (e.g. {{title}}, {{author}}, {{date}})
+ *   alongside the .md (editor state, not document content — kept separate to
+ *   preserve content hash); inside ZIP packages stored as _tessel/undo.json;
+ *   schema: { schemaVersion, undoStack, redoStack, savedAt }; loaded
+ *   automatically when the matching .md or .zip is opened, silently ignored if absent
  * - Multi-document ZIP package support: index.json manifest auto-generated from
  *   each .md's YAML front-matter `title:` field (not the filename); manifest
  *   records title, source filename, and order; ZIP open/save treats the full set
