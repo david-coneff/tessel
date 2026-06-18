@@ -525,6 +525,7 @@ select.prop-input { cursor: pointer; }
   border: 1px solid var(--border) !important; border-radius: 8px;
   box-shadow: 0 8px 32px rgba(0,0,0,.45);
   background: color-mix(in srgb, var(--surface) var(--float-panel-opacity, 100%), transparent) !important;
+  backdrop-filter: blur(var(--float-panel-blur, 0px));
 }
 .dock-float .ctrl-pane-body { flex: 1; overflow-y: auto; overflow-x: hidden; min-height: 0; }
 .dock-float #outline-list   { flex: 1; overflow-y: auto; min-height: 0; }
@@ -1287,6 +1288,13 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
           <div style="display:flex;align-items:center;gap:8px">
             <input type="range" id="opts-float-opacity" min="10" max="100" value="70" style="width:100px">
             <span id="opts-float-opacity-val" style="font-size:11px;color:var(--muted);min-width:28px">70%</span>
+          </div>
+        </div>
+        <div class="opts-toggle-row" style="margin-top:8px">
+          <span>Blur</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="range" id="opts-float-blur" min="0" max="20" value="0" style="width:100px">
+            <span id="opts-float-blur-val" style="font-size:11px;color:var(--muted);min-width:28px">0px</span>
           </div>
         </div>
       </div>
@@ -3592,6 +3600,25 @@ function dockPanel(panelId, zone) {
   (function() {
     var saved; try { saved = parseInt(localStorage.getItem('tvs:opts:float-opacity'), 10); } catch(e) {}
     applyFloatOpacity(isNaN(saved) ? 70 : saved);
+  })();
+
+  var floatBlurSlider = document.getElementById('opts-float-blur');
+  var floatBlurVal    = document.getElementById('opts-float-blur-val');
+  function applyFloatBlur(val) {
+    val = Math.max(0, Math.min(20, val || 0));
+    document.documentElement.style.setProperty('--float-panel-blur', val + 'px');
+    if (floatBlurVal)    floatBlurVal.textContent    = val + 'px';
+    if (floatBlurSlider) floatBlurSlider.value       = val;
+    try { localStorage.setItem('tvs:opts:float-blur', val); } catch(e) {}
+  }
+  if (floatBlurSlider) {
+    floatBlurSlider.addEventListener('input', function() {
+      applyFloatBlur(parseInt(floatBlurSlider.value, 10));
+    });
+  }
+  (function() {
+    var saved; try { saved = parseInt(localStorage.getItem('tvs:opts:float-blur'), 10); } catch(e) {}
+    applyFloatBlur(isNaN(saved) ? 0 : saved);
   })();
 
   // Left nav section switching
