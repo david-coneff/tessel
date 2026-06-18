@@ -2684,9 +2684,9 @@ function loadDraft() {
     }
     renderCanvas();
     updateUndoButtons();
-    try { var fn = localStorage.getItem('tvs:filename'); if (fn) _filename = fn; } catch(e) {}
     setStatus('Draft restored');
   } catch(e) {}
+  try { var fn = localStorage.getItem('tvs:filename'); if (fn) _filename = fn; } catch(e) {}
 }
 
 function flatBlockList(arr) {
@@ -2716,8 +2716,9 @@ function openMd(file) {
       blocks = astToBlocks(ast);
       selectedBlockId = null;
       renderCanvas(); renderProps();
-      setStatus('Opened ' + file.name);
       _unsaved = false;
+      saveDraft();
+      setStatus('Opened ' + file.name);
     } catch(ex) { setStatus('Error parsing file: ' + ex.message); }
   };
   rd.readAsText(file);
@@ -2740,8 +2741,9 @@ function openHtml(file) {
       blocks = astToBlocks(ast);
       selectedBlockId = null;
       renderCanvas(); renderProps();
-      setStatus('Opened ' + file.name + ' (round-trip)');
       _unsaved = false;
+      saveDraft();
+      setStatus('Opened ' + file.name + ' (round-trip)');
     } catch(ex) { setStatus('Error: ' + ex.message); }
   };
   rd.readAsText(file);
