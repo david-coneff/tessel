@@ -1084,6 +1084,13 @@ body.no-transitions #props-panel { transition: none !important; }
           <span>Save undo history with document</span>
           <button class="opts-toggle" id="opts-persist-undo" title="Persist undo history"></button>
         </div>
+        <div class="opts-divider"></div>
+        <div class="opts-section-label">Formatting Scope</div>
+        <div class="opts-toggle-row" style="margin-bottom:6px;">
+          <span>Apply formatting to whole block</span>
+          <button class="opts-toggle" id="opts-block-fmt" title="Block-level formatting"></button>
+        </div>
+        <p class="opts-helper-text" style="margin:0;">When on, clicking a format option applies it to the entire block regardless of what text is selected. When off, formatting applies only to the selected text.</p>
       </div>
 
       <!-- PREFERENCES IMPORT / EXPORT -->
@@ -2558,11 +2565,42 @@ document.getElementById('btn-indent-less').addEventListener('click', function() 
   if (wrap) wrap.style.paddingLeft = b.indent ? (b.indent * 24) + 'px' : '';
   markUnsaved();
 });
-document.getElementById('btn-bold').addEventListener('click', function() { document.execCommand('bold'); updateInlineFormatState(); });
-document.getElementById('btn-italic').addEventListener('click', function() { document.execCommand('italic'); updateInlineFormatState(); });
-document.getElementById('btn-underline').addEventListener('click', function() { document.execCommand('underline'); updateInlineFormatState(); });
+function isBlockLevelFormatting() {
+  try { return localStorage.getItem('tvs:opts:block-fmt') === '1'; } catch(e) { return false; }
+}
+
+// If block-level formatting is on, expand the selection to cover the whole
+// contenteditable of the focused block before the caller applies a format.
+function maybeExpandSelToBlock() {
+  if (!isBlockLevelFormatting()) return;
+  var ce = null;
+  if (lastFocusedTextBlockId) {
+    var wrap = document.querySelector('[data-block-id="' + lastFocusedTextBlockId + '"]');
+    if (wrap) ce = wrap.querySelector('[contenteditable]');
+  }
+  if (!ce) {
+    // Fall back: find the contenteditable that contains the current selection
+    var sel = window.getSelection();
+    if (sel && sel.rangeCount) {
+      var node = sel.anchorNode;
+      if (node && node.nodeType === 3) node = node.parentNode;
+      if (node) ce = node.closest('[contenteditable]');
+    }
+  }
+  if (!ce) return;
+  var range = document.createRange();
+  range.selectNodeContents(ce);
+  var sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+document.getElementById('btn-bold').addEventListener('click', function() { maybeExpandSelToBlock(); document.execCommand('bold'); updateInlineFormatState(); });
+document.getElementById('btn-italic').addEventListener('click', function() { maybeExpandSelToBlock(); document.execCommand('italic'); updateInlineFormatState(); });
+document.getElementById('btn-underline').addEventListener('click', function() { maybeExpandSelToBlock(); document.execCommand('underline'); updateInlineFormatState(); });
 
 function applyFontFamily(family) {
+  maybeExpandSelToBlock();
   var sel = window.getSelection();
   if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
   var range = sel.getRangeAt(0);
@@ -2980,6 +3018,7 @@ function dockPanel(panelId, zone) {
   var depthNum     = document.getElementById('opts-undo-depth-num');
   var depthPreset  = document.getElementById('opts-undo-depth-preset');
   var persistBtn   = document.getElementById('opts-persist-undo');
+  var blockFmtBtn  = document.getElementById('opts-block-fmt');
 
   function applyUndoDepth(depth) {
     depth = Math.max(1, Math.min(10000, depth));
@@ -2997,6 +3036,7 @@ function dockPanel(panelId, zone) {
     depthNum.value = getUndoDepth();
     var persist = isPersistUndo();
     persistBtn.classList.toggle('on', persist);
+    blockFmtBtn.classList.toggle('on', isBlockLevelFormatting());
   })();
 
   freqSel.addEventListener('change', function() {
@@ -3030,6 +3070,12 @@ function dockPanel(panelId, zone) {
     var nowOn = !persistBtn.classList.contains('on');
     persistBtn.classList.toggle('on', nowOn);
     try { localStorage.setItem('tvs:opts:persist-undo', nowOn ? '1' : '0'); } catch(e) {}
+  });
+
+  blockFmtBtn.addEventListener('click', function() {
+    var nowOn = !blockFmtBtn.classList.contains('on');
+    blockFmtBtn.classList.toggle('on', nowOn);
+    try { localStorage.setItem('tvs:opts:block-fmt', nowOn ? '1' : '0'); } catch(e) {}
   });
 
   restartAutoSave();
