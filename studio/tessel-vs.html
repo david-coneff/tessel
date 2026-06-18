@@ -1601,7 +1601,8 @@ function buildInsertMenuContent(container, getAfterId) {
       var d = document.createElement('div'); d.className = 'dm-item';
       d.innerHTML = '<span class="dm-icon">' + esc(item.icon) + '</span>' + esc(item.label);
       d.addEventListener('click', function() {
-        closeAllDropdowns();
+        // Keep the pane Insert menu open after selection; close float/toolbar dropdowns
+        if (!container.closest('#ctrl-pane-body')) closeAllDropdowns();
         item.action(getAfterId ? getAfterId() : null);
       });
       container.appendChild(d);
