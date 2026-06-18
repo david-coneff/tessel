@@ -1532,7 +1532,11 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
  *   modified, description, tags) + author-defined custom header fields with typed
  *   values (text, number, integer, date, datetime, boolean); persisted as YAML
  *   front-matter at the top of exported .md files and round-tripped on open
- * - Filename / document-title state variable bound to .md front-matter `title:`
+ * - Undo history sidecar: persist undo/redo stacks to a <name>.md.tvs file
+ *   alongside the .md (never embedded in the .md itself, to keep the content
+ *   hash clean); inside ZIP packages stored as _tessel/undo.json; schema:
+ *   { schemaVersion, undoStack, redoStack, savedAt }; loaded automatically
+ *   when the matching .md or .zip is opened, silently ignored if absent
  *   field; md header variable constructor for templating dynamic values into
  *   block content at export time (e.g. {{title}}, {{author}}, {{date}})
  * - Multi-document ZIP package support: index.json manifest auto-generated from
