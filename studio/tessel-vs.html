@@ -663,7 +663,7 @@ body.no-transitions #props-panel { transition: none !important; }
 .mib-col:last-child { border-right: none; }
 #mib-col-panes  { width: 110px; }
 #mib-col-groups { width: 130px; }
-.mib-col-items  { flex: 1; flex-shrink: 1; }
+.mib-col-items  { flex: 1; flex-shrink: 1; position: relative; }
 .mib-btn {
   display: block; width: 100%; text-align: left; background: none;
   border: none; border-bottom: 1px solid var(--border);
@@ -3439,8 +3439,12 @@ function dockPanel(panelId, zone) {
         var dividers = itemsCol.querySelectorAll('.mib-group-divider');
         if (!dividers.length) return;
         var lastDivider = dividers[dividers.length - 1];
-        // scrollHeight already includes the 0-height spacer, so this is accurate
-        var lastSectionH = itemsCol.scrollHeight - lastDivider.offsetTop;
+        // getBoundingClientRect gives accurate position regardless of offsetParent.
+        // Add current scrollTop to convert from viewport-relative to scroll-relative.
+        var colRect = itemsCol.getBoundingClientRect();
+        var divRect = lastDivider.getBoundingClientRect();
+        var dividerScrollTop = divRect.top - colRect.top + itemsCol.scrollTop;
+        var lastSectionH = itemsCol.scrollHeight - dividerScrollTop;
         var needed = itemsCol.clientHeight - lastSectionH;
         if (needed > 0) spacer.style.height = needed + 'px';
       });
@@ -3464,7 +3468,11 @@ function dockPanel(panelId, zone) {
           btn.classList.add('active');
           // Scroll the right column so this group's divider is at the top
           var anchor = anchors[group.label];
-          if (anchor) itemsCol.scrollTop = anchor.offsetTop;
+          if (anchor) {
+            var colRect2 = itemsCol.getBoundingClientRect();
+            var ancRect  = anchor.getBoundingClientRect();
+            itemsCol.scrollTop += ancRect.top - colRect2.top;
+          }
         });
         groupsCol.appendChild(btn);
       });
