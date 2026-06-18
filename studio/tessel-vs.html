@@ -938,7 +938,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
       <div class="dm-item" id="open-html-item"><span class="dm-icon">&#127760;</span>Open .html file</div>
       <div class="dm-divider"></div>
       <div class="dm-item" id="btn-save"><span class="dm-icon">&#128190;</span>Save Draft <span style="margin-left:auto;opacity:.5;font-size:10px">Ctrl+S</span></div>
-      <div class="dm-item" id="btn-export-md"><span class="dm-icon">&#128196;</span>Export .md</div>
+      <div class="dm-item" id="btn-export-md"><span class="dm-icon">&#128196;</span>Save as .md <span style="margin-left:auto;opacity:.5;font-size:10px">Ctrl+Shift+S</span></div>
       <div class="dm-item" id="btn-export"><span class="dm-icon">&#8595;</span>Export HTML <span style="margin-left:auto;opacity:.5;font-size:10px">Ctrl+E</span></div>
       <div class="dm-divider"></div>
       <div class="dm-item" id="btn-options"><span class="dm-icon">&#9881;</span>Options&#8230;</div>
@@ -1394,7 +1394,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
         <div class="opts-section-label">Export</div>
         <p class="opts-helper-text" style="margin-bottom:10px;">Choose how each file type is saved. <em>File picker</em> opens a native Save As dialog; <em>silent download</em> saves immediately to your browser's default download folder.</p>
         <div class="opts-toggle-row" style="margin-bottom:8px;">
-          <span>Markdown (.md)</span>
+          <span>Save as .md</span>
           <select class="opts-select" id="opts-export-mode-md">
             <option value="picker">File picker</option>
             <option value="download">Silent download</option>
@@ -1438,6 +1438,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
           <tr><td class="shortcut-keys"><kbd>Ctrl</kbd><kbd>Z</kbd></td><td>Undo</td></tr>
           <tr><td class="shortcut-keys"><kbd>Ctrl</kbd><kbd>Y</kbd></td><td>Redo</td></tr>
           <tr><td class="shortcut-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Z</kbd></td><td>Redo (alternate)</td></tr>
+          <tr><td class="shortcut-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>S</kbd></td><td>Save as .md</td></tr>
           <tr><td class="shortcut-keys"><kbd>Ctrl</kbd><kbd>E</kbd></td><td>Export HTML</td></tr>
           <tr><td class="shortcut-keys"><kbd>Esc</kbd></td><td>Close dialogs / dismiss menus</td></tr>
         </table>
@@ -3744,7 +3745,8 @@ document.getElementById('preview-close').addEventListener('click', function() {
 });
 
 document.addEventListener('keydown', function(e) {
-  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveDraft(); }
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') { e.preventDefault(); exportMd(); }
+  else if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveDraft(); }
   if ((e.ctrlKey || e.metaKey) && e.key === 'e') { e.preventDefault(); exportHtml(); }
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); exportHtml(); }
   if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') { e.preventDefault(); undo(); }
