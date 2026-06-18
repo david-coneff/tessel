@@ -528,6 +528,15 @@ select.prop-input { cursor: pointer; }
 .dock-float .ctrl-pane-body { flex: 1; overflow-y: auto; overflow-x: hidden; min-height: 0; }
 .dock-float #outline-list   { flex: 1; overflow-y: auto; min-height: 0; }
 .dock-float #props-body     { flex: 1; overflow-y: auto; min-height: 0; }
+.dock-float .ctrl-pane-body > *,
+.dock-float #outline-list > *,
+.dock-float #props-body > * {
+  opacity: var(--float-panel-opacity, 1);
+  transition: opacity 0.1s ease;
+}
+.dock-float .ctrl-pane-body > *:hover,
+.dock-float #outline-list > *:hover,
+.dock-float #props-body > *:hover { opacity: 1; }
 .dock-float .ctrl-pane-tab,
 .dock-float #outline-tab,
 .dock-float #props-tab { display: none !important; }
@@ -1269,6 +1278,15 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
               <button class="opts-dock-btn active" data-zone="right">&#8594; Right</button>
               <button class="opts-dock-btn" data-zone="float">&#8599; Float</button>
             </div>
+          </div>
+        </div>
+        <div class="opts-divider"></div>
+        <div class="opts-section-label">Floating Panels</div>
+        <div class="opts-toggle-row">
+          <span>Dimmed opacity</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="range" id="opts-float-opacity" min="10" max="100" value="70" style="width:100px">
+            <span id="opts-float-opacity-val" style="font-size:11px;color:var(--muted);min-width:28px">70%</span>
           </div>
         </div>
       </div>
@@ -3554,6 +3572,26 @@ function dockPanel(panelId, zone) {
   (function() {
     var saved = (function(){ try { return localStorage.getItem('tvs:transitions'); } catch(e) { return null; } })();
     if (saved === '0') applyTransitions(false);
+  })();
+
+  // ── Float panel opacity ────────────────────────────────────────────────────
+  var floatOpacitySlider = document.getElementById('opts-float-opacity');
+  var floatOpacityVal    = document.getElementById('opts-float-opacity-val');
+  function applyFloatOpacity(val) {
+    val = Math.max(10, Math.min(100, val || 70));
+    document.documentElement.style.setProperty('--float-panel-opacity', (val / 100).toFixed(2));
+    if (floatOpacityVal)    floatOpacityVal.textContent    = val + '%';
+    if (floatOpacitySlider) floatOpacitySlider.value       = val;
+    try { localStorage.setItem('tvs:opts:float-opacity', val); } catch(e) {}
+  }
+  if (floatOpacitySlider) {
+    floatOpacitySlider.addEventListener('input', function() {
+      applyFloatOpacity(parseInt(floatOpacitySlider.value, 10));
+    });
+  }
+  (function() {
+    var saved; try { saved = parseInt(localStorage.getItem('tvs:opts:float-opacity'), 10); } catch(e) {}
+    applyFloatOpacity(isNaN(saved) ? 70 : saved);
   })();
 
   // Left nav section switching
