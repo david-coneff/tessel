@@ -936,9 +936,11 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
       <div class="dm-divider"></div>
       <div class="dm-item" id="open-md-item"><span class="dm-icon">&#128194;</span>Open .md file</div>
       <div class="dm-item" id="open-html-item"><span class="dm-icon">&#127760;</span>Open .html file</div>
+      <div class="dm-item" id="open-zip-item"><span class="dm-icon">&#128230;</span>Open .zip package</div>
       <div class="dm-divider"></div>
       <div class="dm-item" id="btn-save"><span class="dm-icon">&#128190;</span>Save Draft <span style="margin-left:auto;opacity:.5;font-size:10px">Ctrl+S</span></div>
       <div class="dm-item" id="btn-export-md"><span class="dm-icon">&#128196;</span>Save as .md <span style="margin-left:auto;opacity:.5;font-size:10px">Ctrl+Shift+S</span></div>
+      <div class="dm-item" id="btn-export-zip"><span class="dm-icon">&#128230;</span>Save as .zip package</div>
       <div class="dm-item" id="btn-export"><span class="dm-icon">&#8595;</span>Export HTML <span style="margin-left:auto;opacity:.5;font-size:10px">Ctrl+E</span></div>
       <div class="dm-divider"></div>
       <div class="dm-item" id="btn-options"><span class="dm-icon">&#9881;</span>Options&#8230;</div>
@@ -1021,6 +1023,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
 <!-- HIDDEN FILE INPUTS -->
 <input type="file" id="pick-md" accept=".md" style="display:none">
 <input type="file" id="pick-html" accept=".html" style="display:none">
+<input type="file" id="pick-zip" accept=".zip" style="display:none">
 
 <!-- TOP DOCK ZONE -->
 <div id="dock-top"></div>
@@ -3101,13 +3104,13 @@ var TesselCompiler = (function() {
         continue;
       }
 
-      // Field directives: @fieldtype label or @fieldtype label: opt1, opt2
-      var fm = line.match(/^@(\w+)\s+(.*)/);
+      // Field directives: @fieldtype [label] [: opt1, opt2]  (label optional for e.g. @attachment)
+      var fm = line.match(/^@(\w+)(?:\s+(.*))?$/);
       if (fm) {
         var ft = fm[1].toLowerCase();
         var validFt = /^(text|area|date|radio|check|select|credential|totp|filename|dir|parse|number|email|phone|url|datetime|image|richtext|computed|signature|attachment)$/;
         if (validFt.test(ft)) {
-          var rest = fm[2];
+          var rest = fm[2] ? fm[2] : '';
           var opts = [];
           var lbl = rest;
           var colonIdx = rest.indexOf(':');
@@ -3115,19 +3118,31 @@ var TesselCompiler = (function() {
             lbl = rest.slice(0, colonIdx).trim();
             opts = rest.slice(colonIdx+1).split(',').map(function(s){ return s.trim(); }).filter(Boolean);
           }
-          // Consume optional meta block { ... }
+          // Consume optional meta block { ... }; repeated keys become arrays
           var meta = {};
           i++;
           if (i < lines.length && lines[i].trim() === '{') {
             i++;
             while (i < lines.length && lines[i].trim() !== '}') {
               var mp = lines[i].match(/^\s*(\w+)\s*=\s*(.*)/);
-              if (mp) meta[mp[1].trim()] = mp[2].trim() === 'true' ? true : mp[2].trim();
+              if (mp) {
+                var mk = mp[1].trim(), mv = mp[2].trim() === 'true' ? true : mp[2].trim();
+                if (meta[mk] !== undefined) {
+                  if (!Array.isArray(meta[mk])) meta[mk] = [meta[mk]];
+                  meta[mk].push(mv);
+                } else { meta[mk] = mv; }
+              }
               i++;
             }
             i++; // closing }
           }
-          blks.push({ type:'field', fieldType:ft, label:lbl, options:opts, meta:meta, id:uid2() });
+          // Attachment blocks are not field cards — restore as proper attachment block
+          if (ft === 'attachment') {
+            var paths = meta.file ? (Array.isArray(meta.file) ? meta.file : [meta.file]) : [];
+            blks.push({ type:'attachment', files: paths.map(function(p){ return { name: p.split('/').pop(), data: null, _path: p }; }), id:uid2() });
+          } else {
+            blks.push({ type:'field', fieldType:ft, label:lbl, options:opts, meta:meta, id:uid2() });
+          }
           continue;
         }
       }
@@ -3333,6 +3348,186 @@ var MiniZip = (function() {
 
   return { create: create, dataUrlToBytes: dataUrlToBytes, toBytes: toBytes };
 })();
+
+// ── MiniZipReader — read ZIP files, STORE + DEFLATE (DecompressionStream) ────
+var MiniZipReader = (function() {
+  function r16(b, o) { return (b[o] | (b[o+1] << 8)) >>> 0; }
+  function r32(b, o) { return (b[o] | (b[o+1] << 8) | (b[o+2] << 16) | (b[o+3] << 24)) >>> 0; }
+  var dec = new TextDecoder('utf-8');
+
+  function findEOCD(buf) {
+    for (var i = buf.length - 22; i >= Math.max(0, buf.length - 65557); i--) {
+      if (buf[i]===0x50 && buf[i+1]===0x4B && buf[i+2]===0x05 && buf[i+3]===0x06) return i;
+    }
+    return -1;
+  }
+
+  function entries(buf) {
+    var eocd = findEOCD(buf);
+    if (eocd < 0) throw new Error('Not a valid ZIP file');
+    var count    = r16(buf, eocd + 10);
+    var cdOffset = r32(buf, eocd + 16);
+    var list = [];
+    var off = cdOffset;
+    for (var i = 0; i < count; i++) {
+      if (buf[off]!==0x50||buf[off+1]!==0x4B||buf[off+2]!==0x01||buf[off+3]!==0x02) break;
+      var compression = r16(buf, off + 10);
+      var compSz      = r32(buf, off + 20);
+      var uncompSz    = r32(buf, off + 24);
+      var nameLen     = r16(buf, off + 28);
+      var extraLen    = r16(buf, off + 30);
+      var commentLen  = r16(buf, off + 32);
+      var localOff    = r32(buf, off + 42);
+      var name        = dec.decode(buf.subarray(off + 46, off + 46 + nameLen));
+      off += 46 + nameLen + extraLen + commentLen;
+
+      // Locate actual data via local file header
+      var lNameLen  = r16(buf, localOff + 26);
+      var lExtraLen = r16(buf, localOff + 28);
+      var dataOff   = localOff + 30 + lNameLen + lExtraLen;
+      list.push({ name: name, compression: compression, compData: buf.subarray(dataOff, dataOff + compSz), uncompSz: uncompSz });
+    }
+    return list;
+  }
+
+  function decompress(entry) {
+    if (entry.compression === 0) return Promise.resolve(entry.compData);
+    if (entry.compression === 8 && typeof DecompressionStream !== 'undefined') {
+      var ds = new DecompressionStream('deflate-raw');
+      var w  = ds.writable.getWriter();
+      var r  = ds.readable.getReader();
+      w.write(entry.compData); w.close();
+      var chunks = [];
+      function pump() {
+        return r.read().then(function(res) {
+          if (res.done) {
+            var total = 0;
+            for (var j = 0; j < chunks.length; j++) total += chunks[j].length;
+            var out = new Uint8Array(total), off = 0;
+            for (var k = 0; k < chunks.length; k++) { out.set(chunks[k], off); off += chunks[k].length; }
+            return out;
+          }
+          chunks.push(res.value); return pump();
+        });
+      }
+      return pump();
+    }
+    return Promise.reject(new Error('Unsupported compression method ' + entry.compression + ' (need STORE or DEFLATE)'));
+  }
+
+  // Returns Promise<Object> — map of { 'path/in/zip': Uint8Array }
+  function readAll(zipBytes) {
+    var buf   = zipBytes instanceof Uint8Array ? zipBytes : new Uint8Array(zipBytes);
+    var list  = entries(buf);
+    var map   = {};
+    return list.reduce(function(p, e) {
+      return p.then(function() {
+        if (e.name.slice(-1) === '/') return; // skip directory entries
+        return decompress(e).then(function(data) { map[e.name] = data; });
+      });
+    }, Promise.resolve()).then(function() { return map; });
+  }
+
+  return { readAll: readAll };
+})();
+
+// ── openZip — restore editor state from a .zip md package ─────────────────────
+function openZip(file) {
+  _filename = file.name.replace(/\.zip$/i, '');
+  try { localStorage.setItem('tvs:filename', _filename); } catch(e) {}
+  var rd = new FileReader();
+  rd.onload = function(ev) {
+    MiniZipReader.readAll(ev.target.result).then(function(fileMap) {
+      // Find root-level .md (any .md not inside a subdirectory — or the first .md found)
+      var mdEntry = null;
+      Object.keys(fileMap).forEach(function(name) {
+        if (/\.md$/i.test(name) && (!mdEntry || name.split('/').length < mdEntry.split('/').length))
+          mdEntry = name;
+      });
+      if (!mdEntry) { setStatus('No .md file found in ZIP'); return; }
+
+      var mdText = new TextDecoder('utf-8').decode(fileMap[mdEntry]);
+      var parsed = TesselCompiler.parseMd(mdText);
+
+      // Convert Uint8Array to data URL
+      function toDataUrl(bytes, mimeType) {
+        var binary = '';
+        var chunkSize = 8192;
+        for (var i = 0; i < bytes.length; i += chunkSize) {
+          binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunkSize, bytes.length)));
+        }
+        return 'data:' + mimeType + ';base64,' + btoa(binary);
+      }
+
+      function mimeFor(name) {
+        var ext = (name.split('.').pop() || '').toLowerCase();
+        return { png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg', gif:'image/gif',
+                 webp:'image/webp', svg:'image/svg+xml', pdf:'application/pdf',
+                 txt:'text/plain', json:'application/json' }[ext] || 'application/octet-stream';
+      }
+
+      function resolveAssets(blks) {
+        blks.forEach(function(b) {
+          if (b.type === 'attachment') {
+            b.files = (b.files || []).map(function(f) {
+              var path = f._path || f.name;
+              // Try exact path, then just the filename within any directory
+              var data = fileMap[path];
+              if (!data) {
+                var base = path.split('/').pop();
+                var key = Object.keys(fileMap).find(function(k) { return k.split('/').pop() === base; });
+                if (key) data = fileMap[key];
+              }
+              if (!data) return f; // leave as placeholder if not found
+              var mime = mimeFor(f.name);
+              return { name: f.name, type: mime, data: toDataUrl(data, mime) };
+            });
+          }
+          if (b.type === 'field' && b.fieldType === 'image' && b.meta && b.meta.src && !/^data:/.test(b.meta.src)) {
+            var data = fileMap[b.meta.src];
+            if (!data) {
+              var base = b.meta.src.split('/').pop();
+              var key = Object.keys(fileMap).find(function(k) { return k.split('/').pop() === base; });
+              if (key) data = fileMap[key];
+            }
+            if (data) {
+              var mime = mimeFor(b.meta.src);
+              b.meta.src = toDataUrl(data, mime);
+            }
+          }
+          if (b.type === 'section') resolveAssets(b.children || []);
+        });
+      }
+
+      resolveAssets(parsed);
+      blocks = parsed;
+      selectedBlockId = null;
+      renderCanvas(); renderProps();
+      _unsaved = false;
+      saveDraft();
+      setStatus('Opened ' + file.name);
+    }).catch(function(ex) { setStatus('ZIP error: ' + ex.message); });
+  };
+  rd.readAsArrayBuffer(file);
+}
+
+// ── exportZip — always writes a zip regardless of export-mode setting ─────────
+function exportZip() {
+  var attachments = collectAttachments(blocks);
+  var assetDir = _filename;
+  var md = serializeBlocksForExport(blocks, assetDir);
+  var zipFiles = [{ name: _filename + '.md', data: md }];
+  attachments.forEach(function(a) { zipFiles.push({ name: assetDir + '/' + a.name, data: a.data }); });
+  var zipBytes = MiniZip.create(zipFiles);
+  var blob = new Blob([zipBytes], { type: 'application/zip' });
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href = url; a.download = _filename + '.zip';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 1200);
+  setStatus('Saved ' + _filename + '.zip');
+}
+
 
 // ── Attachment helpers ────────────────────────────────────────────────────────
 
@@ -3725,8 +3920,11 @@ document.getElementById('btn-new').addEventListener('click', function() {
 
 document.getElementById('open-md-item').addEventListener('click', function() { closeAllDropdowns(); document.getElementById('pick-md').click(); });
 document.getElementById('open-html-item').addEventListener('click', function() { closeAllDropdowns(); document.getElementById('pick-html').click(); });
+document.getElementById('open-zip-item').addEventListener('click', function() { closeAllDropdowns(); document.getElementById('pick-zip').click(); });
 document.getElementById('pick-md').addEventListener('change', function() { var f = this.files && this.files[0]; if (!f) return; this.value=''; openMd(f); });
 document.getElementById('pick-html').addEventListener('change', function() { var f = this.files && this.files[0]; if (!f) return; this.value=''; openHtml(f); });
+document.getElementById('pick-zip').addEventListener('change', function() { var f = this.files && this.files[0]; if (!f) return; this.value=''; openZip(f); });
+document.getElementById('btn-export-zip').addEventListener('click', function() { closeAllDropdowns(); exportZip(); });
 document.getElementById('btn-save').addEventListener('click', function() { closeAllDropdowns(); saveDraft(); });
 document.getElementById('btn-export-md').addEventListener('click', function() { closeAllDropdowns(); exportMd(); });
 document.getElementById('btn-export').addEventListener('click', function() { closeAllDropdowns(); exportHtml(); });
