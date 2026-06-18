@@ -3532,6 +3532,7 @@ function openZip(file) {
 
 // ── exportZip — save .zip package; respects tvs:opts:export-mode-zip ─────────
 function exportZip() {
+  try {
   var attachments = collectAttachments(blocks);
   var assetDir = _filename;
   var md = serializeBlocksForExport(blocks, assetDir);
@@ -3558,6 +3559,7 @@ function exportZip() {
   var zipBytes = MiniZip.create(zipFiles);
   saveFile(_filename + '.zip', zipBytes, 'application/zip', 'tvs:opts:export-mode-zip');
   setStatus('Saved ' + _filename + '.zip');
+  } catch(ex) { setStatus('ZIP export error: ' + ex.message); }
 }
 
 
@@ -3569,8 +3571,13 @@ function collectAttachments(blks, list) {
   (blks || []).forEach(function(b) {
     if (b.type === 'attachment') {
       (b.files || []).forEach(function(f) {
-        // Deduplicate by name within this block
-        if (!list.find(function(x) { return x.name === f.name; }))
+        if (f.data && !list.find(function(x) { return x.name === f.name; }))
+          list.push({ name: f.name, data: f.data, mimeType: f.type });
+      });
+    }
+    if (b.type === 'field' && b.fieldType === 'attachment' && b.meta) {
+      (b.meta.files || []).forEach(function(f) {
+        if (f.data && !list.find(function(x) { return x.name === f.name; }))
           list.push({ name: f.name, data: f.data, mimeType: f.type });
       });
     }
@@ -3591,6 +3598,16 @@ function serializeBlockForExport(b, assetDir) {
     if (!b.files || !b.files.length) return '';
     var lines = ['@attachment', '{'];
     b.files.forEach(function(f) { lines.push('  file = ' + assetDir + '/' + f.name); });
+    lines.push('}');
+    return lines.join('\n');
+  }
+  if (b.type === 'field' && b.fieldType === 'attachment' && b.meta) {
+    var attFiles = (b.meta.files || []).filter(function(f) { return f.data; });
+    if (!attFiles.length) return serializeBlock(b);
+    var lines = ['@attachment ' + (b.label || 'Attachment'), '{'];
+    if (b.meta.id) lines.push('  id = ' + b.meta.id);
+    if (b.meta.required) lines.push('  required = true');
+    attFiles.forEach(function(f) { lines.push('  file = ' + assetDir + '/' + f.name); });
     lines.push('}');
     return lines.join('\n');
   }
