@@ -115,11 +115,11 @@ body.layout-h #ctrl-panel-text > .dropdown { display: flex; align-items: center;
   font-size: 10px; font-weight: 700; text-transform: uppercase;
   color: var(--muted); letter-spacing: .5px; flex: 1; white-space: nowrap;
 }
-#ctrl-pane-collapse, .panel-collapse-btn {
+#ctrl-pane-collapse {
   background: none; border: none; cursor: pointer; color: var(--muted);
   font-size: 14px; padding: 2px 4px; line-height: 1; border-radius: 3px; flex-shrink: 0;
 }
-#ctrl-pane-collapse:hover, .panel-collapse-btn:hover { background: var(--surface2); color: var(--text); }
+#ctrl-pane-collapse:hover { background: var(--surface2); color: var(--text); }
 #ctrl-pane-body { flex: 1; overflow-y: auto; }
 
 /* ctrl-panel inside the pane */
@@ -142,17 +142,27 @@ body.layout-h #ctrl-panel-text > .dropdown { display: flex; align-items: center;
 
 /* OUTLINE PANEL */
 #outline-panel {
-  width: 148px; background: var(--surface); border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; flex-shrink: 0;
-  transition: width .2s ease;
+  display: flex; flex-direction: row;
+  background: var(--surface); flex-shrink: 0;
+  transition: width .2s ease; width: 148px;
 }
-#outline-panel.collapsed { width: 0; overflow: hidden; border-right-color: transparent; }
-#outline-panel h3 {
+#outline-panel.collapsed { width: 28px; }
+#outline-content {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0;
+  border-right: 1px solid var(--border);
+}
+#outline-panel.collapsed #outline-content { display: none; }
+#outline-content h3 {
   padding: 8px 10px 6px; font-size: 10px; font-weight: 700; text-transform: uppercase;
   color: var(--muted); letter-spacing: .5px; border-bottom: 1px solid var(--border);
-  flex-shrink: 0; display: flex; align-items: center; gap: 4px;
+  flex-shrink: 0;
 }
-#outline-panel h3 span { flex: 1; }
+#outline-tab {
+  width: 28px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center;
+  border-right: 1px solid var(--border); cursor: pointer; padding: 6px 0; gap: 0;
+  user-select: none;
+}
+#outline-tab:hover { background: var(--surface2); }
 #outline-list { flex: 1; overflow-y: auto; padding: 4px 0; }
 .outline-item {
   padding: 4px 10px; font-size: 11px; cursor: pointer;
@@ -162,6 +172,18 @@ body.layout-h #ctrl-panel-text > .dropdown { display: flex; align-items: center;
 .outline-item:hover { background: var(--surface2); border-left-color: var(--accent); }
 .outline-item.h2 { padding-left: 18px; color: var(--muted); }
 .outline-item.h3 { padding-left: 26px; color: var(--muted); font-size: 10px; }
+
+/* panel tab strips (outline + props collapsed tabs) */
+.panel-tab-title {
+  writing-mode: vertical-rl; transform: rotate(180deg);
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  color: var(--muted); letter-spacing: .06em;
+  flex: 1; display: flex; align-items: center; justify-content: center;
+}
+.panel-tab-arrow {
+  background: none; border: none; cursor: pointer; color: var(--muted);
+  font-size: 12px; padding: 2px; line-height: 1; flex-shrink: 0;
+}
 
 /* CANVAS AREA */
 #canvas-wrap {
@@ -323,17 +345,27 @@ body.layout-h #ctrl-panel-text > .dropdown { display: flex; align-items: center;
 
 /* PROPERTIES PANEL */
 #props-panel {
-  width: 260px; background: var(--surface); border-left: 1px solid var(--border);
-  display: flex; flex-direction: column; flex-shrink: 0;
-  transition: width .2s ease;
+  display: flex; flex-direction: row;
+  background: var(--surface); flex-shrink: 0;
+  transition: width .2s ease; width: 260px;
 }
-#props-panel.collapsed { width: 0; overflow: hidden; border-left-color: transparent; }
-#props-panel h3 {
+#props-panel.collapsed { width: 28px; }
+#props-tab {
+  width: 28px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center;
+  border-left: 1px solid var(--border); cursor: pointer; padding: 6px 0; gap: 0;
+  user-select: none;
+}
+#props-tab:hover { background: var(--surface2); }
+#props-content {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0;
+  border-left: 1px solid var(--border);
+}
+#props-panel.collapsed #props-content { display: none; }
+#props-content h3 {
   padding: 8px 12px 6px; font-size: 10px; font-weight: 700; text-transform: uppercase;
   color: var(--muted); letter-spacing: .5px; border-bottom: 1px solid var(--border);
-  flex-shrink: 0; display: flex; align-items: center; gap: 4px;
+  flex-shrink: 0;
 }
-#props-panel h3 span { flex: 1; }
 #props-body { flex: 1; overflow-y: auto; padding: 12px; }
 #props-empty { color: var(--muted); font-size: 11px; padding: 16px 12px; text-align: center; }
 
@@ -605,8 +637,14 @@ select.prop-input { cursor: pointer; }
   <div id="content-row">
 
     <div id="outline-panel">
-      <h3><span>Outline</span><button class="panel-collapse-btn" id="btn-outline-collapse" title="Collapse">&#8249;</button></h3>
-      <div id="outline-list"><div style="padding:10px;font-size:11px;color:var(--muted)">No headings yet</div></div>
+      <div id="outline-content">
+        <h3>Outline</h3>
+        <div id="outline-list"><div style="padding:10px;font-size:11px;color:var(--muted)">No headings yet</div></div>
+      </div>
+      <div id="outline-tab" title="Toggle Outline">
+        <span class="panel-tab-title">Outline</span>
+        <button class="panel-tab-arrow" id="btn-outline-collapse">&#8249;</button>
+      </div>
     </div>
 
     <div id="canvas-wrap">
@@ -621,9 +659,15 @@ select.prop-input { cursor: pointer; }
     </div>
 
     <div id="props-panel">
-      <h3><button class="panel-collapse-btn" id="btn-props-collapse" title="Collapse">&#8250;</button><span>Properties</span></h3>
-      <div id="props-body">
-        <div id="props-empty">Select a field block to edit its properties</div>
+      <div id="props-tab" title="Toggle Properties">
+        <button class="panel-tab-arrow" id="btn-props-collapse">&#8250;</button>
+        <span class="panel-tab-title">Properties</span>
+      </div>
+      <div id="props-content">
+        <h3>Properties</h3>
+        <div id="props-body">
+          <div id="props-empty">Select a field block to edit its properties</div>
+        </div>
       </div>
     </div>
 
@@ -1861,35 +1905,33 @@ updateUndoButtons();
 // ── Outline panel collapse ───────────────────────────────────────────────────
 (function() {
   var panel = document.getElementById('outline-panel');
-  var btn   = document.getElementById('btn-outline-collapse');
-  function restore() {
-    var v = (function(){ try{ return localStorage.getItem('tvs:outline-open'); }catch(e){ return null; } })();
-    if (v === '0') { panel.classList.add('collapsed'); btn.textContent = '›'; }
+  var tab   = document.getElementById('outline-tab');
+  var arrow = document.getElementById('btn-outline-collapse');
+  function setCollapsed(c) {
+    panel.classList.toggle('collapsed', c);
+    // arrow points → (toward canvas) when collapsed, ← when expanded
+    arrow.innerHTML = c ? '&#8250;' : '&#8249;';
+    try { localStorage.setItem('tvs:outline-open', c ? '0' : '1'); } catch(e) {}
   }
-  btn.addEventListener('click', function() {
-    var closing = !panel.classList.contains('collapsed');
-    panel.classList.toggle('collapsed');
-    btn.textContent = closing ? '›' : '‹';
-    try { localStorage.setItem('tvs:outline-open', closing ? '0' : '1'); } catch(e) {}
-  });
-  restore();
+  tab.addEventListener('click', function() { setCollapsed(!panel.classList.contains('collapsed')); });
+  var saved = (function(){ try{ return localStorage.getItem('tvs:outline-open'); }catch(e){ return null; } })();
+  if (saved === '0') setCollapsed(true);
 })();
 
 // ── Properties panel collapse ────────────────────────────────────────────────
 (function() {
   var panel = document.getElementById('props-panel');
-  var btn   = document.getElementById('btn-props-collapse');
-  function restore() {
-    var v = (function(){ try{ return localStorage.getItem('tvs:props-open'); }catch(e){ return null; } })();
-    if (v === '0') { panel.classList.add('collapsed'); btn.textContent = '›'; }
+  var tab   = document.getElementById('props-tab');
+  var arrow = document.getElementById('btn-props-collapse');
+  function setCollapsed(c) {
+    panel.classList.toggle('collapsed', c);
+    // arrow points ← (toward canvas) when collapsed, → when expanded
+    arrow.innerHTML = c ? '&#8249;' : '&#8250;';
+    try { localStorage.setItem('tvs:props-open', c ? '0' : '1'); } catch(e) {}
   }
-  btn.addEventListener('click', function() {
-    var closing = !panel.classList.contains('collapsed');
-    panel.classList.toggle('collapsed');
-    btn.textContent = closing ? '›' : '‹';
-    try { localStorage.setItem('tvs:props-open', closing ? '0' : '1'); } catch(e) {}
-  });
-  restore();
+  tab.addEventListener('click', function() { setCollapsed(!panel.classList.contains('collapsed')); });
+  var saved = (function(){ try{ return localStorage.getItem('tvs:props-open'); }catch(e){ return null; } })();
+  if (saved === '0') setCollapsed(true);
 })();
 
 // ── Options dialog ──────────────────────────────────────────────────────────
