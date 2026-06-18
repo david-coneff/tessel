@@ -502,6 +502,27 @@ select.prop-input { cursor: pointer; }
 .opts-layout-btn.active { border-color: var(--accent); background: rgba(91,138,240,.12); color: var(--accent); }
 .opts-layout-btn svg { opacity: .7; }
 .opts-layout-btn.active svg { opacity: 1; }
+.opts-divider { height: 1px; background: var(--border); margin: 14px 0; }
+.opts-section-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 10px; }
+.opts-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.opts-toggle-row span { font-size: 12px; color: var(--text); }
+.opts-toggle {
+  position: relative; width: 36px; height: 20px; flex-shrink: 0;
+  background: var(--border); border-radius: 10px; cursor: pointer;
+  border: none; transition: background .15s ease;
+}
+.opts-toggle.on { background: var(--accent); }
+.opts-toggle::after {
+  content: ''; position: absolute; top: 3px; left: 3px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #fff; transition: transform .15s ease;
+}
+.opts-toggle.on::after { transform: translateX(16px); }
+/* Suppress all pane open/close transitions when user prefers instant */
+body.no-transitions #controls-pane,
+body.no-transitions #outline-panel,
+body.no-transitions #props-panel { transition: none !important; }
+body.layout-h.no-transitions #controls-pane { transition: none !important; }
 
 /* BADGE BUTTONS (controls pane toggles) */
 .badge-btn {
@@ -739,6 +760,12 @@ select.prop-input { cursor: pointer; }
         </svg>
         Horizontal (top bar)
       </button>
+    </div>
+    <div class="opts-divider"></div>
+    <div class="opts-section-label">Transitions</div>
+    <div class="opts-toggle-row">
+      <span>Animate panel open / close</span>
+      <button class="opts-toggle on" id="opts-transitions-toggle" title="Toggle transitions"></button>
     </div>
   </div>
 </div>
@@ -2041,6 +2068,21 @@ updateUndoButtons();
   (function() {
     var saved = (function(){ try { return localStorage.getItem('tvs:layout'); } catch(e) { return null; } })();
     if (saved === 'h') applyLayout('h');
+  })();
+
+  // ── Transitions toggle ────────────────────────────────────────────────────
+  var transBtn = document.getElementById('opts-transitions-toggle');
+  function applyTransitions(on) {
+    document.body.classList.toggle('no-transitions', !on);
+    transBtn.classList.toggle('on', on);
+    try { localStorage.setItem('tvs:transitions', on ? '1' : '0'); } catch(e) {}
+  }
+  transBtn.addEventListener('click', function() {
+    applyTransitions(document.body.classList.contains('no-transitions'));
+  });
+  (function() {
+    var saved = (function(){ try { return localStorage.getItem('tvs:transitions'); } catch(e) { return null; } })();
+    if (saved === '0') applyTransitions(false);
   })();
 
   btnOpen.addEventListener('click', function(e) { e.stopPropagation(); openDialog(); });
