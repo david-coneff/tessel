@@ -2225,7 +2225,7 @@ function buildTextPaneButtons() {
       if (pendingGroupName !== null) {
         var key = 'tvs:grp:text:' + pendingGroupName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
         var saved; try { saved = localStorage.getItem(key); } catch(e) {}
-        var isOpen = saved === '1'; // default collapsed
+        var isOpen = saved !== '0'; // default open
         var lbl = document.createElement('div');
         lbl.className = 'ctrl-group-label ctrl-group-collapsible';
         var arw = document.createElement('span'); arw.className = 'ctrl-group-arrow';
@@ -2271,7 +2271,7 @@ function initCollapsibleGroups(bodyEl, lsPrefix) {
     var groupName = labelEl.textContent.trim();
     var key = lsPrefix + ':' + groupName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     var saved; try { saved = localStorage.getItem(key); } catch(e) {}
-    var isOpen = saved === '1'; // default collapsed
+    var isOpen = saved !== '0'; // default open
     var wrapper = document.createElement('div');
     wrapper.className = 'ctrl-group-body';
     wrapper.style.display = isOpen ? '' : 'none';
