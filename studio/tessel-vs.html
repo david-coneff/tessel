@@ -3428,31 +3428,27 @@ function dockPanel(panelId, zone) {
         });
       });
 
-      // Read offsetTop after DOM is appended (itemsCol has position:relative so it's offsetParent).
+      // Read offsetTop synchronously (itemsCol has position:relative so it's offsetParent).
       var dividerEls = itemsCol.querySelectorAll('.mib-group-divider');
       dividerEls.forEach(function(el, i) {
         scrollTargets[groups[i].label] = el.offsetTop;
       });
 
-      // Add bottom spacer so the last divider can always scroll flush to the top.
-      // spacer.offsetTop gives true unclamped content height (scrollHeight clamps to
-      // clientHeight when content is short, making scrollHeight - clientHeight = 0 and
-      // the spacer too small to allow scrolling to lastTarget).
+      // Spacer element — sized on each subcategory click (when the element is
+      // definitely visible and clientHeight is reliably non-zero).
       var spacer = document.createElement('div');
       itemsCol.appendChild(spacer);
 
-      var lastTarget = scrollTargets[groups[groups.length - 1].label] || 0;
-      var needed = lastTarget + itemsCol.clientHeight - spacer.offsetTop;
-      if (needed > 0) spacer.style.height = needed + 'px';
-
-      return scrollTargets;
+      return { targets: scrollTargets, spacer: spacer };
     }
 
     function renderGroups(paneIdx) {
       var pane    = MIB_PANES[paneIdx];
       var groups  = mibGetGroups(pane.items);
       groupsCol.innerHTML = '';
-      var scrollTargets = renderAllItems(pane);
+      var rendered = renderAllItems(pane);
+      var scrollTargets = rendered.targets;
+      var spacer = rendered.spacer;
 
       groups.forEach(function(group, gi) {
         var btn = document.createElement('button');
@@ -3463,7 +3459,14 @@ function dockPanel(panelId, zone) {
           groupsCol.querySelectorAll('.mib-btn').forEach(function(b) { b.classList.remove('active'); });
           btn.classList.add('active');
           var target = scrollTargets[group.label];
-          if (target !== undefined) itemsCol.scrollTop = target;
+          if (target === undefined) return;
+          // Grow spacer if needed so target is reachable as scrollTop.
+          // Done at click time so clientHeight is guaranteed accurate.
+          var maxScroll = itemsCol.scrollHeight - itemsCol.clientHeight;
+          if (target > maxScroll) {
+            spacer.style.height = (target - maxScroll + (parseInt(spacer.style.height) || 0)) + 'px';
+          }
+          itemsCol.scrollTop = target;
         });
         groupsCol.appendChild(btn);
       });
@@ -3492,15 +3495,17 @@ function dockPanel(panelId, zone) {
   var header = document.getElementById('options-dialog-header');
   header.addEventListener('mousedown', function(e) {
     if (e.target === btnClose) return;
-    var startX = e.clientX - dialog.offsetLeft;
-    var startY = e.clientY - dialog.offsetTop;
+    var rect = dialog.getBoundingClientRect();
+    var startX = e.clientX - rect.left;
+    var startY = e.clientY - rect.top;
     dialog.style.transform = '';
     dialog._dragged = true;
     function onMove(e) {
+      var dlgW = dialog.offsetWidth, dlgH = dialog.offsetHeight;
       var x = e.clientX - startX;
       var y = e.clientY - startY;
-      x = Math.max(0, Math.min(window.innerWidth  - dialog.offsetWidth,  x));
-      y = Math.max(0, Math.min(window.innerHeight - dialog.offsetHeight, y));
+      x = Math.max(0, Math.min(window.innerWidth  - dlgW,  x));
+      y = Math.max(0, Math.min(window.innerHeight - dlgH, y));
       dialog.style.left = x + 'px';
       dialog.style.top  = y + 'px';
     }
