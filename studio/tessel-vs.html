@@ -3428,21 +3428,21 @@ function dockPanel(panelId, zone) {
         });
       });
 
-      // Add bottom spacer so the last divider can always scroll to the top.
-      var spacer = document.createElement('div');
-      itemsCol.appendChild(spacer);
-
       // Read offsetTop after DOM is appended (itemsCol has position:relative so it's offsetParent).
-      // This is synchronous and accurate regardless of scroll position.
       var dividerEls = itemsCol.querySelectorAll('.mib-group-divider');
       dividerEls.forEach(function(el, i) {
         scrollTargets[groups[i].label] = el.offsetTop;
       });
 
-      // Spacer = enough height so the last divider's offsetTop is reachable as scrollTop.
-      // scrollTop max = scrollHeight - clientHeight; we need lastTarget <= that max.
+      // Add bottom spacer so the last divider can always scroll flush to the top.
+      // spacer.offsetTop gives true unclamped content height (scrollHeight clamps to
+      // clientHeight when content is short, making scrollHeight - clientHeight = 0 and
+      // the spacer too small to allow scrolling to lastTarget).
+      var spacer = document.createElement('div');
+      itemsCol.appendChild(spacer);
+
       var lastTarget = scrollTargets[groups[groups.length - 1].label] || 0;
-      var needed = lastTarget - (itemsCol.scrollHeight - itemsCol.clientHeight);
+      var needed = lastTarget + itemsCol.clientHeight - spacer.offsetTop;
       if (needed > 0) spacer.style.height = needed + 'px';
 
       return scrollTargets;
