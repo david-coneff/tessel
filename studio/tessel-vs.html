@@ -523,20 +523,20 @@ select.prop-input { cursor: pointer; }
   flex: 1 !important; display: flex !important; flex-direction: column !important;
   overflow: hidden !important; min-width: 0;
   border: 1px solid var(--border) !important; border-radius: 8px;
-  box-shadow: 0 8px 32px rgba(0,0,0,.45); background: var(--surface);
+  box-shadow: 0 8px 32px rgba(0,0,0,.45);
+  background: color-mix(in srgb, var(--surface) var(--float-panel-opacity, 100%), transparent) !important;
 }
 .dock-float .ctrl-pane-body { flex: 1; overflow-y: auto; overflow-x: hidden; min-height: 0; }
 .dock-float #outline-list   { flex: 1; overflow-y: auto; min-height: 0; }
 .dock-float #props-body     { flex: 1; overflow-y: auto; min-height: 0; }
-.dock-float .ctrl-pane-body > *,
-.dock-float #outline-list > *,
-.dock-float #props-body > * {
-  opacity: var(--float-panel-opacity, 1);
-  transition: opacity 0.1s ease;
-}
+/* Header stays opaque so title/controls are always readable */
+.dock-float .ctrl-pane-header,
+.dock-float #outline-content h3,
+.dock-float #props-content h3 { background: var(--surface); }
+/* Individual item hover: restore solid background so hovered item is fully readable */
 .dock-float .ctrl-pane-body > *:hover,
 .dock-float #outline-list > *:hover,
-.dock-float #props-body > *:hover { opacity: 1; }
+.dock-float #props-body > *:hover { background: var(--surface) !important; }
 .dock-float .ctrl-pane-tab,
 .dock-float #outline-tab,
 .dock-float #props-tab { display: none !important; }
@@ -3579,7 +3579,7 @@ function dockPanel(panelId, zone) {
   var floatOpacityVal    = document.getElementById('opts-float-opacity-val');
   function applyFloatOpacity(val) {
     val = Math.max(10, Math.min(100, val || 70));
-    document.documentElement.style.setProperty('--float-panel-opacity', (val / 100).toFixed(2));
+    document.documentElement.style.setProperty('--float-panel-opacity', val + '%');
     if (floatOpacityVal)    floatOpacityVal.textContent    = val + '%';
     if (floatOpacitySlider) floatOpacitySlider.value       = val;
     try { localStorage.setItem('tvs:opts:float-opacity', val); } catch(e) {}
