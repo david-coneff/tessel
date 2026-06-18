@@ -242,7 +242,7 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 #outline-content h3 {
   padding: 8px 10px 6px; font-size: 10px; font-weight: 700; text-transform: uppercase;
   color: var(--muted); letter-spacing: .5px; border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
+  flex-shrink: 0; display: flex; align-items: center; gap: 4px;
 }
 #outline-tab {
   width: 28px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center;
@@ -466,7 +466,7 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 #props-content h3 {
   padding: 8px 12px 6px; font-size: 10px; font-weight: 700; text-transform: uppercase;
   color: var(--muted); letter-spacing: .5px; border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
+  flex-shrink: 0; display: flex; align-items: center; gap: 4px;
 }
 #props-body { flex: 1; overflow-y: auto; padding: 12px; scrollbar-gutter: stable; }
 #props-empty { color: var(--muted); font-size: 11px; padding: 16px 12px; text-align: center; }
@@ -688,6 +688,73 @@ body.no-transitions #props-panel { transition: none !important; }
 .badge-btn svg { flex-shrink: 0; }
 .badge-btn:hover { border-color: var(--accent); }
 .badge-btn.active { background: var(--accent); border-color: #3d6dd4; color: #fff; }
+
+/* ── Pane drag-to-reorder ──────────────────────────────────────────────────── */
+.pane-grip {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; flex-shrink: 0; cursor: grab; color: var(--muted);
+  font-size: 12px; opacity: 0; transition: opacity .12s; user-select: none;
+}
+.ctrl-pane-header:hover .pane-grip,
+#outline-content h3:hover .pane-grip,
+#props-content h3:hover .pane-grip,
+.ctrl-pane-tab:hover .pane-grip,
+#outline-tab:hover .pane-grip,
+#props-tab:hover .pane-grip { opacity: 1; }
+.pane-grip:hover { color: var(--text); }
+.pane-dragging { opacity: .45; }
+body.pane-dragging-active { cursor: grabbing !important; }
+body.pane-dragging-active * { cursor: grabbing !important; }
+
+/* Within-zone drop insertion lines */
+.pane-drop-before,
+.pane-drop-after { position: relative; }
+/* Left/right zones (row/row-reverse) — line appears on left or right side */
+#dock-left .pane-drop-before::before,
+#dock-right .pane-drop-before::before,
+#dock-left .pane-drop-after::after,
+#dock-right .pane-drop-after::after {
+  content: ''; position: absolute; top: 0; bottom: 0; width: 3px;
+  background: var(--accent); z-index: 10; border-radius: 2px;
+}
+#dock-left .pane-drop-before::before  { left: 0; }
+#dock-left .pane-drop-after::after    { right: 0; }
+#dock-right .pane-drop-before::before { right: 0; }
+#dock-right .pane-drop-after::after   { left: 0; }
+/* Top/bottom zones (column/column-reverse) — line on top or bottom */
+#dock-top .pane-drop-before::before,
+#dock-bottom .pane-drop-before::before,
+#dock-top .pane-drop-after::after,
+#dock-bottom .pane-drop-after::after {
+  content: ''; position: absolute; left: 0; right: 0; height: 3px;
+  background: var(--accent); z-index: 10; border-radius: 2px;
+}
+#dock-top .pane-drop-before::before    { top: 0; }
+#dock-top .pane-drop-after::after      { bottom: 0; }
+#dock-bottom .pane-drop-before::before { bottom: 0; }
+#dock-bottom .pane-drop-after::after   { top: 0; }
+
+/* Edge drop-zone overlays (shown only during pane drag) */
+.dock-edge-target {
+  position: fixed; z-index: 9900; display: none;
+  align-items: center; justify-content: center;
+  background: rgba(91,138,240,.07); border: 2px dashed transparent;
+  transition: background .12s, border-color .12s;
+  pointer-events: none;
+}
+body.pane-dragging-active .dock-edge-target { display: flex; pointer-events: auto; }
+.dock-edge-target.active {
+  background: rgba(91,138,240,.18); border-color: var(--accent);
+}
+.dock-edge-target span {
+  font-size: 10px; font-weight: 600; color: transparent; letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.dock-edge-target.active span { color: var(--accent); }
+.dock-edge-left   { left: 0; top: 36px; bottom: 20px; width: 36px; }
+.dock-edge-right  { right: 0; top: 36px; bottom: 20px; width: 36px; }
+.dock-edge-top    { top: 36px; left: 36px; right: 36px; height: 36px; }
+.dock-edge-bottom { bottom: 20px; left: 36px; right: 36px; height: 36px; }
 </style>
 </head>
 <body>
@@ -800,6 +867,7 @@ body.no-transitions #props-panel { transition: none !important; }
   <div id="format-pane" class="ctrl-pane">
     <div class="ctrl-pane-content">
       <div class="ctrl-pane-header">
+        <span class="pane-grip" data-pane-grip="format-pane" title="Drag to reorder">&#8942;</span>
         <span class="ctrl-pane-title">Format</span>
         <button class="ctrl-pane-collapse-btn" title="Collapse panel">&#8249;</button>
       </div>
@@ -824,6 +892,7 @@ body.no-transitions #props-panel { transition: none !important; }
       </div>
     </div>
     <div class="ctrl-pane-tab" title="Toggle Format panel">
+      <span class="pane-grip" data-pane-grip="format-pane" title="Drag to reorder">&#8942;</span>
       <span class="panel-tab-title">Format</span>
       <button class="panel-tab-arrow">&#8249;</button>
     </div>
@@ -833,6 +902,7 @@ body.no-transitions #props-panel { transition: none !important; }
   <div id="text-pane" class="ctrl-pane">
     <div class="ctrl-pane-content">
       <div class="ctrl-pane-header">
+        <span class="pane-grip" data-pane-grip="text-pane" title="Drag to reorder">&#8942;</span>
         <span class="ctrl-pane-title">Text</span>
         <button class="ctrl-pane-collapse-btn" title="Collapse panel">&#8249;</button>
       </div>
@@ -841,6 +911,7 @@ body.no-transitions #props-panel { transition: none !important; }
       </div>
     </div>
     <div class="ctrl-pane-tab" title="Toggle Text panel">
+      <span class="pane-grip" data-pane-grip="text-pane" title="Drag to reorder">&#8942;</span>
       <span class="panel-tab-title">Text</span>
       <button class="panel-tab-arrow">&#8249;</button>
     </div>
@@ -850,6 +921,7 @@ body.no-transitions #props-panel { transition: none !important; }
   <div id="form-pane" class="ctrl-pane">
     <div class="ctrl-pane-content">
       <div class="ctrl-pane-header">
+        <span class="pane-grip" data-pane-grip="form-pane" title="Drag to reorder">&#8942;</span>
         <span class="ctrl-pane-title">Form</span>
         <button class="ctrl-pane-collapse-btn" title="Collapse panel">&#8249;</button>
       </div>
@@ -888,6 +960,7 @@ body.no-transitions #props-panel { transition: none !important; }
       </div>
     </div>
     <div class="ctrl-pane-tab" title="Toggle Form panel">
+      <span class="pane-grip" data-pane-grip="form-pane" title="Drag to reorder">&#8942;</span>
       <span class="panel-tab-title">Form</span>
       <button class="panel-tab-arrow">&#8249;</button>
     </div>
@@ -895,10 +968,11 @@ body.no-transitions #props-panel { transition: none !important; }
 
   <div id="outline-panel">
     <div id="outline-content">
-      <h3>Outline</h3>
+      <h3><span class="pane-grip" data-pane-grip="outline-panel" title="Drag to reorder">&#8942;</span>Outline</h3>
       <div id="outline-list"><div style="padding:10px;font-size:11px;color:var(--muted)">No headings yet</div></div>
     </div>
     <div id="outline-tab" title="Toggle Outline">
+      <span class="pane-grip" data-pane-grip="outline-panel" title="Drag to reorder">&#8942;</span>
       <span class="panel-tab-title">Outline</span>
       <button class="panel-tab-arrow" id="btn-outline-collapse">&#8249;</button>
     </div>
@@ -922,11 +996,12 @@ body.no-transitions #props-panel { transition: none !important; }
 
   <div id="props-panel">
     <div id="props-tab" title="Toggle Properties">
+      <span class="pane-grip" data-pane-grip="props-panel" title="Drag to reorder">&#8942;</span>
       <button class="panel-tab-arrow" id="btn-props-collapse">&#8250;</button>
       <span class="panel-tab-title">Properties</span>
     </div>
     <div id="props-content">
-      <h3>Properties</h3>
+      <h3><span class="pane-grip" data-pane-grip="props-panel" title="Drag to reorder">&#8942;</span>Properties</h3>
       <div id="props-body">
         <div id="props-empty">Select a field block to edit its properties</div>
       </div>
@@ -3141,6 +3216,191 @@ function dockPanel(panelId, zone) {
     };
     rd.readAsText(file);
   });
+})();
+
+// ── Pane drag-to-reorder ──────────────────────────────────────────────────────
+(function() {
+  var paneDragId = null;
+  var ZONES    = ['left', 'right', 'top', 'bottom'];
+  var PANE_IDS = ['format-pane', 'text-pane', 'form-pane', 'outline-panel', 'props-panel'];
+
+  function getZoneOf(panelId) {
+    for (var i = 0; i < ZONES.length; i++) {
+      var z = document.getElementById('dock-' + ZONES[i]);
+      if (z && z.contains(document.getElementById(panelId))) return ZONES[i];
+    }
+    return null;
+  }
+
+  function isHzone(zone) { return zone === 'top' || zone === 'bottom'; }
+
+  function clearInsertIndicators() {
+    document.querySelectorAll('.pane-drop-before,.pane-drop-after').forEach(function(el) {
+      el.classList.remove('pane-drop-before', 'pane-drop-after');
+    });
+  }
+
+  function savePaneOrder(zone) {
+    var z = document.getElementById('dock-' + zone);
+    if (!z) return;
+    var order = Array.from(z.children).map(function(c) { return c.id; }).filter(Boolean);
+    try { localStorage.setItem('tvs:dock-order:' + zone, JSON.stringify(order)); } catch(e) {}
+  }
+
+  function restorePaneOrder() {
+    ZONES.forEach(function(zone) {
+      try {
+        var saved = JSON.parse(localStorage.getItem('tvs:dock-order:' + zone) || 'null');
+        if (!Array.isArray(saved)) return;
+        var zoneEl = document.getElementById('dock-' + zone);
+        // Re-append in saved order (only panels that are currently in this zone)
+        saved.forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el && el.parentElement === zoneEl) zoneEl.appendChild(el);
+        });
+      } catch(e) {}
+    });
+  }
+
+  // Build 4 edge drop-zone overlays
+  var edgeTargets = {};
+  ZONES.forEach(function(zone) {
+    var el = document.createElement('div');
+    el.className = 'dock-edge-target dock-edge-' + zone;
+    el.innerHTML = '<span>' + zone + '</span>';
+    document.body.appendChild(el);
+    edgeTargets[zone] = el;
+
+    el.addEventListener('dragover', function(e) {
+      if (!paneDragId) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      el.classList.add('active');
+    });
+    el.addEventListener('dragleave', function() { el.classList.remove('active'); });
+    el.addEventListener('drop', function(e) {
+      if (!paneDragId) return;
+      e.preventDefault();
+      el.classList.remove('active');
+      var fromZone = getZoneOf(paneDragId);
+      dockPanel(paneDragId, zone); // existing function moves + saves zone
+      if (fromZone && fromZone !== zone) savePaneOrder(fromZone);
+      savePaneOrder(zone);
+    });
+  });
+
+  // Set up each pane
+  PANE_IDS.forEach(function(panelId) {
+    var panel = document.getElementById(panelId);
+    if (!panel) return;
+
+    // Activate draggable only when mousedown on a grip
+    panel.querySelectorAll('[data-pane-grip="' + panelId + '"]').forEach(function(grip) {
+      grip.addEventListener('mousedown', function(e) {
+        // Don't trigger on button clicks inside the grip area
+        if (e.button !== 0) return;
+        panel.draggable = true;
+      });
+    });
+
+    panel.addEventListener('dragstart', function(e) {
+      if (!panel.draggable) { e.preventDefault(); return; }
+      paneDragId = panelId;
+      panel.classList.add('pane-dragging');
+      document.body.classList.add('pane-dragging-active');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', panelId);
+      // Hide edge target for own zone to reduce noise
+      var myZone = getZoneOf(panelId);
+      ZONES.forEach(function(z) {
+        edgeTargets[z].style.pointerEvents = (z === myZone) ? 'none' : 'auto';
+        edgeTargets[z].style.opacity = (z === myZone) ? '0.3' : '1';
+      });
+    });
+
+    panel.addEventListener('dragend', function() {
+      panel.draggable = false;
+      paneDragId = null;
+      panel.classList.remove('pane-dragging');
+      document.body.classList.remove('pane-dragging-active');
+      clearInsertIndicators();
+      ZONES.forEach(function(z) {
+        edgeTargets[z].classList.remove('active');
+        edgeTargets[z].style.pointerEvents = '';
+        edgeTargets[z].style.opacity = '';
+      });
+    });
+
+    // Within-zone insertion indicators
+    panel.addEventListener('dragover', function(e) {
+      if (!paneDragId || paneDragId === panelId) return;
+      var dragZone = getZoneOf(paneDragId);
+      var myZone   = getZoneOf(panelId);
+      if (dragZone !== myZone) return; // edge target handles cross-zone
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'move';
+      clearInsertIndicators();
+      var rect = panel.getBoundingClientRect();
+      var before;
+      if (isHzone(myZone)) {
+        // column / column-reverse: use Y axis; column-reverse flips "before"
+        before = myZone === 'bottom'
+          ? (e.clientY > rect.top + rect.height / 2)
+          : (e.clientY < rect.top + rect.height / 2);
+      } else {
+        // row / row-reverse: use X axis; row-reverse (dock-right) flips "before"
+        before = myZone === 'right'
+          ? (e.clientX > rect.left + rect.width / 2)
+          : (e.clientX < rect.left + rect.width / 2);
+      }
+      panel.classList.add(before ? 'pane-drop-before' : 'pane-drop-after');
+    });
+
+    panel.addEventListener('dragleave', function(e) {
+      if (!e.relatedTarget || !panel.contains(e.relatedTarget)) {
+        panel.classList.remove('pane-drop-before', 'pane-drop-after');
+      }
+    });
+
+    panel.addEventListener('drop', function(e) {
+      if (!paneDragId || paneDragId === panelId) return;
+      var dragZone = getZoneOf(paneDragId);
+      var myZone   = getZoneOf(panelId);
+      if (dragZone !== myZone) return;
+      e.preventDefault();
+      var draggedEl = document.getElementById(paneDragId);
+      if (!draggedEl) return;
+      clearInsertIndicators();
+      var rect = panel.getBoundingClientRect();
+      var before;
+      if (isHzone(myZone)) {
+        before = myZone === 'bottom'
+          ? (e.clientY > rect.top + rect.height / 2)
+          : (e.clientY < rect.top + rect.height / 2);
+      } else {
+        before = myZone === 'right'
+          ? (e.clientX > rect.left + rect.width / 2)
+          : (e.clientX < rect.left + rect.width / 2);
+      }
+      if (before) {
+        panel.parentElement.insertBefore(draggedEl, panel);
+      } else {
+        panel.insertAdjacentElement('afterend', draggedEl);
+      }
+      savePaneOrder(myZone);
+    });
+  });
+
+  // Reset draggable on any mouseup (handles clicks that don't become drags)
+  document.addEventListener('mouseup', function() {
+    PANE_IDS.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.draggable = false;
+    });
+  });
+
+  restorePaneOrder();
 })();
 
 })();
