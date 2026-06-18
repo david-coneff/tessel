@@ -2391,6 +2391,24 @@ function convertFocusedBlock(newType, level) {
   if (!lastFocusedTextBlockId) return;
   var b = getBlock(lastFocusedTextBlockId);
   if (!b) return;
+
+  // Heading level change — update in-place, no re-render needed
+  if (newType === 'heading' && b.type === 'heading') {
+    b.level = level;
+    var blockWrap = document.querySelector('[data-block-id="' + b.id + '"]');
+    if (blockWrap) {
+      var hEl = blockWrap.querySelector('.block-heading');
+      if (hEl) hEl.className = 'block-heading h' + level;
+      blockWrap.querySelectorAll('.hl-btn').forEach(function(btn, i) {
+        btn.classList.toggle('active', i + 1 === level);
+      });
+    }
+    updateToolbarState(b);
+    markUnsaved();
+    return;
+  }
+
+  // Type conversion — re-render then refocus
   if (newType === 'heading') {
     b.type = 'heading'; b.level = level;
     if (!b.text) b.text = (b.text || '').replace(/<[^>]+>/g, '') || 'Heading';
