@@ -300,6 +300,7 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
   display: flex; align-items: center; justify-content: center;
 }
 .block-add-btn:hover { background: var(--accent); color: #fff; }
+.block-del-btn:hover { background: var(--red) !important; color: #fff; }
 
 .block-inner { flex: 1; min-width: 0; }
 
@@ -1222,6 +1223,14 @@ function createBlockEl(b, arr) {
   addBtn.title = 'Insert block below';
   addBtn.addEventListener('click', function(e) { e.stopPropagation(); showInsertFloat(b.id, addBtn); });
   actions.appendChild(addBtn);
+
+  var delBtn = document.createElement('button');
+  delBtn.className = 'block-add-btn block-del-btn';
+  delBtn.textContent = '×';
+  delBtn.title = 'Delete block';
+  delBtn.addEventListener('click', function(e) { e.stopPropagation(); deleteBlock(b.id); });
+  actions.appendChild(delBtn);
+
   wrap.appendChild(actions);
 
   var inner = document.createElement('div');
@@ -1314,8 +1323,7 @@ function createHrEl(b) {
   wrap.className = 'block-hr-wrap';
   var hr = document.createElement('hr');
   wrap.appendChild(hr);
-  wrap.title = 'Double-click to delete';
-  wrap.addEventListener('dblclick', function() { deleteBlock(b.id); });
+  wrap.title = 'Divider';
   return wrap;
 }
 
