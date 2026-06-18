@@ -349,6 +349,12 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 .block-hr-wrap hr { border: none; border-top: 2px solid var(--border); }
 .block-hr-wrap:hover hr { border-top-color: var(--accent); }
 
+/* LIST BLOCKS */
+.block-list { margin: 4px 0 4px 22px; padding: 0; }
+.block-list-item { outline: none; padding: 2px 0; line-height: 1.7; color: var(--canvas-text); font-size: 14px; }
+.block-list-item:focus { outline: none; }
+.block-list-item:empty::before { content: 'List item'; color: var(--canvas-muted); pointer-events: none; }
+
 /* FIELD CARDS */
 .field-card {
   background: var(--field-bg); border: 1.5px solid var(--field-border);
@@ -742,6 +748,14 @@ body.no-transitions #props-panel { transition: none !important; }
         <button class="ctrl-btn" id="btn-h2"><span class="ctrl-btn-icon">H2</span>Heading 2</button>
         <button class="ctrl-btn" id="btn-h3"><span class="ctrl-btn-icon">H3</span>Heading 3</button>
         <button class="ctrl-btn" id="btn-para"><span class="ctrl-btn-icon">&#182;</span>Paragraph</button>
+        <div class="ctrl-group-label">Inline Style</div>
+        <button class="ctrl-btn" id="btn-bold"><span class="ctrl-btn-icon"><b>B</b></span>Bold</button>
+        <button class="ctrl-btn" id="btn-italic"><span class="ctrl-btn-icon"><i>I</i></span>Italic</button>
+        <button class="ctrl-btn" id="btn-underline"><span class="ctrl-btn-icon"><u>U</u></span>Underline</button>
+        <div class="ctrl-group-label">Font</div>
+        <button class="ctrl-btn" id="btn-font-georgia"><span class="ctrl-btn-icon" style="font-family:Georgia,serif">Gg</span>Georgia</button>
+        <button class="ctrl-btn" id="btn-font-franklin"><span class="ctrl-btn-icon" style="font-family:'Franklin Gothic Book',sans-serif">Ff</span>Franklin Gothic</button>
+        <button class="ctrl-btn" id="btn-font-verdana"><span class="ctrl-btn-icon" style="font-family:Verdana,sans-serif">Vv</span>Verdana</button>
       </div>
     </div>
     <div class="ctrl-pane-tab" title="Toggle Format panel">
@@ -1042,7 +1056,9 @@ var INSERT_MENU_ITEMS = [
   { label: 'Heading 2', icon: 'H2', action: function(aid) { insertBlock({ type:'heading', level:2, text:'Heading', id:uid() }, aid); } },
   { label: 'Heading 3', icon: 'H3', action: function(aid) { insertBlock({ type:'heading', level:3, text:'Heading', id:uid() }, aid); } },
   { label: 'Paragraph', icon: '¶',  action: function(aid) { insertBlock({ type:'paragraph', text:'', id:uid() }, aid); } },
-  { label: 'Divider',   icon: '—',  action: function(aid) { insertBlock({ type:'hr', id:uid() }, aid); } },
+  { label: 'Divider',       icon: '—',  action: function(aid) { insertBlock({ type:'hr', id:uid() }, aid); } },
+  { label: 'Bulleted List', icon: '•',  action: function(aid) { insertBlock({ type:'list', ordered:false, items:[''], id:uid() }, aid); } },
+  { label: 'Ordered List',  icon: '1.', action: function(aid) { insertBlock({ type:'list', ordered:true,  items:[''], id:uid() }, aid); } },
   { group: 'BASIC FIELDS' },
   { label: 'Text Field',      icon: 'T',  action: function(aid) { insertField('text', aid); } },
   { label: 'Text Area',       icon: '📄', action: function(aid) { insertField('area', aid); } },
@@ -1086,6 +1102,10 @@ function serializeBlock(b) {
   if (b.type === 'heading') return '#'.repeat(b.level) + ' ' + (b.text||'');
   if (b.type === 'paragraph') return (b.text||'').replace(/<br\s*\/?>/gi,'\n').replace(/<[^>]+>/g,'');
   if (b.type === 'hr') return '---';
+  if (b.type === 'list') return (b.items || ['']).map(function(item, i) {
+    var text = item.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '');
+    return (b.ordered ? (i + 1) + '. ' : '- ') + text;
+  }).join('\n');
   if (b.type === 'codeblock') return '```' + (b.lang||'') + '\n' + (b.code||'') + '\n```';
   if (b.type === 'section') return '@section ' + (b.title||'Section') + '\n\n' + serializeBlocks(b.children||[]) + '\n\n@endsection';
   if (b.type === 'field') {
@@ -1259,7 +1279,7 @@ function createBlockEl(b, arr) {
 
   wrap.appendChild(actions);
 
-  if (b.type === 'heading' || b.type === 'paragraph' || b.type === 'hr') {
+  if (b.type === 'heading' || b.type === 'paragraph' || b.type === 'hr' || b.type === 'list') {
     var delBtn = document.createElement('button');
     delBtn.className = 'block-corner-del';
     delBtn.textContent = '×';
@@ -1274,6 +1294,7 @@ function createBlockEl(b, arr) {
   if (b.type === 'heading') inner.appendChild(createHeadingEl(b, arr));
   else if (b.type === 'paragraph') inner.appendChild(createParaEl(b, arr));
   else if (b.type === 'hr') inner.appendChild(createHrEl(b));
+  else if (b.type === 'list') inner.appendChild(createListEl(b));
   else if (b.type === 'field') inner.appendChild(createFieldEl(b));
   else if (b.type === 'section') inner.appendChild(createSectionEl(b));
   else if (b.type === 'codeblock') inner.appendChild(createCodeEl(b));
@@ -1360,6 +1381,62 @@ function createHrEl(b) {
   wrap.appendChild(hr);
   wrap.title = 'Divider';
   return wrap;
+}
+
+function placeCursorAtEnd(el) {
+  var range = document.createRange();
+  var sel = window.getSelection();
+  range.selectNodeContents(el);
+  range.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+function createListEl(b) {
+  var list = document.createElement(b.ordered ? 'ol' : 'ul');
+  list.className = 'block-list';
+
+  function syncItems() {
+    b.items = Array.from(list.querySelectorAll('.block-list-item')).map(function(li) { return li.innerHTML; });
+  }
+
+  function makeItemEl(html) {
+    var li = document.createElement('li');
+    li.className = 'block-list-item';
+    li.contentEditable = 'true';
+    li.innerHTML = html || '';
+    li.addEventListener('input', function() { syncItems(); markUnsaved(); });
+    li.addEventListener('focus', function() { lastFocusedTextBlockId = b.id; updateToolbarState(b); });
+    li.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        var newLi = makeItemEl('');
+        li.insertAdjacentElement('afterend', newLi);
+        syncItems();
+        markUnsaved();
+        newLi.focus();
+      }
+      if (e.key === 'Backspace' && li.textContent === '') {
+        e.preventDefault();
+        var prev = li.previousElementSibling;
+        if (!prev && !li.nextElementSibling) {
+          deleteBlock(b.id);
+        } else {
+          li.remove();
+          syncItems();
+          markUnsaved();
+          if (prev) { prev.focus(); placeCursorAtEnd(prev); }
+        }
+      }
+    });
+    return li;
+  }
+
+  (b.items && b.items.length ? b.items : ['']).forEach(function(text) {
+    list.appendChild(makeItemEl(text));
+  });
+
+  return list;
 }
 
 function createFieldEl(b) {
@@ -2091,6 +2168,34 @@ document.getElementById('btn-h1').addEventListener('click', function() { convert
 document.getElementById('btn-h2').addEventListener('click', function() { convertFocusedBlock('heading', 2); });
 document.getElementById('btn-h3').addEventListener('click', function() { convertFocusedBlock('heading', 3); });
 document.getElementById('btn-para').addEventListener('click', function() { convertFocusedBlock('paragraph'); });
+
+document.getElementById('btn-bold').addEventListener('click', function() { document.execCommand('bold'); });
+document.getElementById('btn-italic').addEventListener('click', function() { document.execCommand('italic'); });
+document.getElementById('btn-underline').addEventListener('click', function() { document.execCommand('underline'); });
+
+function applyFontFamily(family) {
+  var sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+  var range = sel.getRangeAt(0);
+  var frag = range.extractContents();
+  var span = document.createElement('span');
+  span.style.fontFamily = family;
+  span.appendChild(frag);
+  range.insertNode(span);
+  sel.removeAllRanges();
+  var blockWrap = span.closest('[data-block-id]');
+  if (blockWrap) {
+    var b = getBlock(blockWrap.dataset.blockId);
+    if (b && (b.type === 'paragraph' || b.type === 'list')) {
+      var ce = blockWrap.querySelector('[contenteditable]');
+      if (ce) { b.text = ce.innerHTML; markUnsaved(); }
+    }
+  }
+}
+
+document.getElementById('btn-font-georgia').addEventListener('click', function() { applyFontFamily('Georgia, serif'); });
+document.getElementById('btn-font-franklin').addEventListener('click', function() { applyFontFamily("'Franklin Gothic Book', sans-serif"); });
+document.getElementById('btn-font-verdana').addEventListener('click', function() { applyFontFamily('Verdana, sans-serif'); });
 
 function convertFocusedBlock(newType, level) {
   if (!lastFocusedTextBlockId) return;
