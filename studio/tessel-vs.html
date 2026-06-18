@@ -3398,7 +3398,7 @@ var MiniZipReader = (function() {
       var r  = ds.readable.getReader();
       w.write(entry.compData); w.close();
       var chunks = [];
-      function pump() {
+      var pump = function pump() {
         return r.read().then(function(res) {
           if (res.done) {
             var total = 0;
