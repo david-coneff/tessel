@@ -3528,9 +3528,17 @@ function dockPanel(panelId, zone) {
     closeAllDropdowns();
     dialog.classList.add('show');
     if (!dialog._dragged) {
-      dialog.style.left = Math.round((window.innerWidth - dialog.offsetWidth) / 2) + 'px';
-      dialog.style.top  = '80px';
-      dialog.style.transform = 'none';
+      var savedPos; try { savedPos = JSON.parse(localStorage.getItem('tvs:opts:pos')); } catch(e) {}
+      if (savedPos && savedPos.left && savedPos.top) {
+        dialog.style.left = savedPos.left;
+        dialog.style.top  = savedPos.top;
+        dialog.style.transform = 'none';
+        dialog._dragged = true;
+      } else {
+        dialog.style.left = Math.round((window.innerWidth - dialog.offsetWidth) / 2) + 'px';
+        dialog.style.top  = '80px';
+        dialog.style.transform = 'none';
+      }
     }
     try { localStorage.setItem('tvs:opts:open', '1'); } catch(e) {}
   }
@@ -3802,6 +3810,7 @@ function dockPanel(panelId, zone) {
     function onUp() {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
+      try { localStorage.setItem('tvs:opts:pos', JSON.stringify({left: dialog.style.left, top: dialog.style.top})); } catch(e) {}
     }
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
