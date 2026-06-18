@@ -3292,7 +3292,7 @@ function dockPanel(panelId, zone) {
     if (!dialog._dragged) {
       dialog.style.left = Math.round((window.innerWidth - dialog.offsetWidth) / 2) + 'px';
       dialog.style.top  = '80px';
-      dialog.style.transform = '';
+      dialog.style.transform = 'none';
     }
   }
   function closeDialog() { dialog.classList.remove('show'); }
@@ -3486,7 +3486,7 @@ function dockPanel(panelId, zone) {
     var rect = dialog.getBoundingClientRect();
     var startX = e.clientX - rect.left;
     var startY = e.clientY - rect.top;
-    dialog.style.transform = '';
+    dialog.style.transform = 'none';
     dialog._dragged = true;
     function onMove(e) {
       var dlgW = dialog.offsetWidth, dlgH = dialog.offsetHeight;
