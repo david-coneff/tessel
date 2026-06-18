@@ -2042,7 +2042,7 @@ function createFieldEl(b) {
     var attList = document.createElement('div');
     attList.className = 'attachment-file-list';
 
-    function renderAttFiles() {
+    var renderAttFiles = function renderAttFiles() {
       attList.innerHTML = '';
       (b.meta.files || []).forEach(function(f, idx) {
         var item = document.createElement('div');
@@ -2087,7 +2087,7 @@ function createFieldEl(b) {
     attInput.type = 'file'; attInput.multiple = true;
     attDrop.appendChild(attInput);
 
-    function processAttFiles(fileList) {
+    var processAttFiles = function processAttFiles(fileList) {
       Array.from(fileList).forEach(function(file) {
         var reader = new FileReader();
         reader.onload = function(ev) {
@@ -2448,7 +2448,7 @@ function renderProps() {
     optList.className = 'opt-list';
     b.options = b.options || [];
 
-    function renderOptList() {
+    var renderOptList = function renderOptList() {
       optList.innerHTML = '';
       b.options.forEach(function(opt, i) {
         var row = document.createElement('div'); row.className = 'opt-item';
@@ -3644,7 +3644,6 @@ function exportMd() {
     setTimeout(function() { URL.revokeObjectURL(url); }, 1200);
     setStatus('Exported ' + _filename + '.zip (' + attachments.length + ' asset' + (attachments.length !== 1 ? 's' : '') + ')');
   }
-}
 }
 
 function exportHtml() {
