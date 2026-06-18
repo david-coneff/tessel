@@ -2059,6 +2059,104 @@ function updateToolbarState(b) {
   });
 }
 
+// Normalise a computed font-family string to one of our known keys, or 'default'
+var FONT_MAP = [
+  { key: 'georgia',  re: /georgia/i },
+  { key: 'franklin', re: /franklin\s*gothic/i },
+  { key: 'verdana',  re: /verdana/i },
+];
+function normFont(fontFamily) {
+  for (var i = 0; i < FONT_MAP.length; i++) {
+    if (FONT_MAP[i].re.test(fontFamily)) return FONT_MAP[i].key;
+  }
+  return 'default';
+}
+
+// Walk every text node within a Range and collect their computed styles
+function collectRangeStyles(range) {
+  var bold = false, italic = false, underline = false;
+  var fonts = {};
+
+  // Grab the nearest contenteditable ancestor to constrain the walk
+  var root = range.commonAncestorContainer;
+  if (root.nodeType === 3) root = root.parentNode;
+  while (root && !root.isContentEditable) root = root.parentNode;
+  if (!root) return null;
+
+  // Iterate over every text node that overlaps the range
+  var iter = document.createNodeIterator(root, NodeFilter.SHOW_TEXT);
+  var node;
+  while ((node = iter.nextNode())) {
+    // Skip nodes completely outside the range
+    if (range.comparePoint(node, 0) > 0) continue;        // starts after range
+    if (range.comparePoint(node, node.length) < 0) continue; // ends before range
+    var el = node.parentNode;
+    var cs = window.getComputedStyle(el);
+    if (parseInt(cs.fontWeight, 10) >= 700 || cs.fontWeight === 'bold' || cs.fontWeight === 'bolder') bold = true;
+    if (cs.fontStyle === 'italic' || cs.fontStyle === 'oblique') italic = true;
+    if (cs.textDecorationLine && cs.textDecorationLine.indexOf('underline') !== -1) underline = true;
+    fonts[normFont(cs.fontFamily)] = true;
+  }
+
+  return { bold: bold, italic: italic, underline: underline, fonts: fonts };
+}
+
+function updateInlineFormatState() {
+  var sel = window.getSelection();
+  var empty = !sel || sel.rangeCount === 0 || sel.isCollapsed;
+
+  var bold = false, italic = false, underline = false;
+  var fonts = {};
+
+  if (!empty) {
+    var range = sel.getRangeAt(0);
+    var styles = collectRangeStyles(range);
+    if (styles) {
+      bold = styles.bold; italic = styles.italic; underline = styles.underline;
+      fonts = styles.fonts;
+    }
+  } else {
+    // Collapsed cursor — use execCommand query state for bold/italic/underline
+    try {
+      bold      = document.queryCommandState('bold');
+      italic    = document.queryCommandState('italic');
+      underline = document.queryCommandState('underline');
+    } catch(e) {}
+    // Font at cursor: walk up from the anchor node
+    if (sel && sel.anchorNode) {
+      var el = sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentNode : sel.anchorNode;
+      if (el && el.closest && el.closest('[contenteditable]')) {
+        fonts[normFont(window.getComputedStyle(el).fontFamily)] = true;
+      }
+    }
+  }
+
+  document.getElementById('btn-bold').classList.toggle('active', bold);
+  document.getElementById('btn-italic').classList.toggle('active', italic);
+  document.getElementById('btn-underline').classList.toggle('active', underline);
+
+  var fontBtnMap = {
+    'default':  'btn-font-default',
+    'georgia':  'btn-font-georgia',
+    'franklin': 'btn-font-franklin',
+    'verdana':  'btn-font-verdana',
+  };
+  Object.keys(fontBtnMap).forEach(function(key) {
+    document.getElementById(fontBtnMap[key]).classList.toggle('active', !!fonts[key]);
+  });
+}
+
+document.addEventListener('selectionchange', function() {
+  // Only update if the selection is inside a canvas contenteditable
+  var sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) { updateInlineFormatState(); return; }
+  var node = sel.anchorNode;
+  if (node && node.nodeType === 3) node = node.parentNode;
+  if (node && node.closest && node.closest('#canvas [contenteditable]')) {
+    updateInlineFormatState();
+  }
+});
+
 function markUnsaved() { _unsaved = true; setStatus('Unsaved changes'); }
 
 function isPersistUndo() {
@@ -2460,9 +2558,9 @@ document.getElementById('btn-indent-less').addEventListener('click', function() 
   if (wrap) wrap.style.paddingLeft = b.indent ? (b.indent * 24) + 'px' : '';
   markUnsaved();
 });
-document.getElementById('btn-bold').addEventListener('click', function() { document.execCommand('bold'); });
-document.getElementById('btn-italic').addEventListener('click', function() { document.execCommand('italic'); });
-document.getElementById('btn-underline').addEventListener('click', function() { document.execCommand('underline'); });
+document.getElementById('btn-bold').addEventListener('click', function() { document.execCommand('bold'); updateInlineFormatState(); });
+document.getElementById('btn-italic').addEventListener('click', function() { document.execCommand('italic'); updateInlineFormatState(); });
+document.getElementById('btn-underline').addEventListener('click', function() { document.execCommand('underline'); updateInlineFormatState(); });
 
 function applyFontFamily(family) {
   var sel = window.getSelection();
@@ -2488,10 +2586,10 @@ function applyFontFamily(family) {
   }
 }
 
-document.getElementById('btn-font-default').addEventListener('click', function() { applyFontFamily('inherit'); });
-document.getElementById('btn-font-georgia').addEventListener('click', function() { applyFontFamily('Georgia, serif'); });
-document.getElementById('btn-font-franklin').addEventListener('click', function() { applyFontFamily("'Franklin Gothic Book', sans-serif"); });
-document.getElementById('btn-font-verdana').addEventListener('click', function() { applyFontFamily('Verdana, sans-serif'); });
+document.getElementById('btn-font-default').addEventListener('click', function() { applyFontFamily('inherit'); updateInlineFormatState(); });
+document.getElementById('btn-font-georgia').addEventListener('click', function() { applyFontFamily('Georgia, serif'); updateInlineFormatState(); });
+document.getElementById('btn-font-franklin').addEventListener('click', function() { applyFontFamily("'Franklin Gothic Book', sans-serif"); updateInlineFormatState(); });
+document.getElementById('btn-font-verdana').addEventListener('click', function() { applyFontFamily('Verdana, sans-serif'); updateInlineFormatState(); });
 
 function getSelCharOffsets(el) {
   var sel = window.getSelection();
