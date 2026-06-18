@@ -2684,6 +2684,7 @@ function loadDraft() {
     }
     renderCanvas();
     updateUndoButtons();
+    try { var fn = localStorage.getItem('tvs:filename'); if (fn) _filename = fn; } catch(e) {}
     setStatus('Draft restored');
   } catch(e) {}
 }
@@ -2707,6 +2708,7 @@ function setStatus(msg) {
 function openMd(file) {
   if (typeof Tessel === 'undefined') { setStatus('Tessel bundle not loaded — cannot open .md files'); return; }
   _filename = file.name.replace(/\.md$/i, '');
+  try { localStorage.setItem('tvs:filename', _filename); } catch(e) {}
   var rd = new FileReader();
   rd.onload = function(e) {
     try {
@@ -2723,6 +2725,7 @@ function openMd(file) {
 
 function openHtml(file) {
   _filename = file.name.replace(/\.html?$/i, '');
+  try { localStorage.setItem('tvs:filename', _filename); } catch(e) {}
   var rd = new FileReader();
   rd.onload = function(e) {
     var html = e.target.result;
@@ -3046,6 +3049,8 @@ document.getElementById('btn-new').addEventListener('click', function() {
   undoStack = []; redoStack = [];
   updateUndoButtons();
   renderCanvas(); renderProps();
+  _filename = 'document';
+  try { localStorage.removeItem('tvs:filename'); } catch(e) {}
   setStatus('New document');
   _unsaved = false;
 });
