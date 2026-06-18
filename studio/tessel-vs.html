@@ -2331,6 +2331,11 @@ document.getElementById('btn-h2').addEventListener('click', function() { convert
 document.getElementById('btn-h3').addEventListener('click', function() { convertFocusedBlock('heading', 3); });
 document.getElementById('btn-para').addEventListener('click', function() { convertFocusedBlock('paragraph'); });
 
+// Prevent format pane buttons from stealing focus/selection from the canvas
+document.querySelector('#format-pane .ctrl-pane-body').addEventListener('mousedown', function(e) {
+  if (e.target.closest('.ctrl-btn')) e.preventDefault();
+});
+
 document.getElementById('btn-indent-more').addEventListener('click', function() {
   if (!lastFocusedTextBlockId) return;
   var b = getBlock(lastFocusedTextBlockId);
