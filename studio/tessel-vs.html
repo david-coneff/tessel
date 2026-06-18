@@ -681,6 +681,12 @@ body.no-transitions #props-panel { transition: none !important; }
 .mib-item-row:last-child { border-bottom: none; }
 .mib-item-row label { cursor: pointer; user-select: none; color: var(--text); }
 .mib-empty { padding: 14px 12px; font-size: 11px; color: var(--muted); font-style: italic; }
+.mib-group-divider {
+  padding: 5px 10px 4px; font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted); background: var(--surface2);
+  border-bottom: 1px solid var(--border); pointer-events: none; user-select: none;
+  position: sticky; top: 0; z-index: 1;
+}
 /* keep opts-coll for other sections that may still use it */
 .opts-coll { margin-bottom: 2px; }
 .opts-coll-btn {
@@ -3387,36 +3393,50 @@ function dockPanel(panelId, zone) {
     var itemsCol  = document.getElementById('mib-col-items');
     if (!panesCol) return;
 
-    var activePaneIdx  = 0;
-    var activeGroupIdx = 0;
-
-    function renderItems(paneKey, groupItems) {
+    // Render the right column: all groups + their items for the pane.
+    // Returns a map of groupLabel → divider element for scroll-jumping.
+    function renderAllItems(pane) {
       itemsCol.innerHTML = '';
-      var hidden = getHiddenItems(paneKey);
-      var uidBase = paneKey + '-' + Date.now();
-      groupItems.forEach(function(item, i) {
-        var id = 'mib-cb-' + uidBase + '-' + i;
-        var row = document.createElement('div');
-        row.className = 'mib-item-row';
-        var cb = document.createElement('input');
-        cb.type = 'checkbox'; cb.id = id;
-        cb.checked = !hidden.has(item.label);
-        cb.addEventListener('change', function() { setItemHidden(paneKey, item.label, !cb.checked); });
-        var lbl = document.createElement('label');
-        lbl.htmlFor = id; lbl.textContent = item.label;
-        row.appendChild(cb); row.appendChild(lbl);
-        itemsCol.appendChild(row);
+      var hidden  = getHiddenItems(pane.key);
+      var groups  = mibGetGroups(pane.items);
+      var anchors = {};
+      var uidBase = pane.key + '-' + Date.now();
+      var uidIdx  = 0;
+
+      groups.forEach(function(group) {
+        // Non-interactive section divider
+        var divider = document.createElement('div');
+        divider.className = 'mib-group-divider';
+        divider.textContent = group.label;
+        itemsCol.appendChild(divider);
+        anchors[group.label] = divider;
+
+        group.items.forEach(function(item) {
+          var id  = 'mib-cb-' + uidBase + '-' + (uidIdx++);
+          var row = document.createElement('div');
+          row.className = 'mib-item-row';
+          var cb  = document.createElement('input');
+          cb.type = 'checkbox'; cb.id = id;
+          cb.checked = !hidden.has(item.label);
+          cb.addEventListener('change', function() { setItemHidden(pane.key, item.label, !cb.checked); });
+          var lbl = document.createElement('label');
+          lbl.htmlFor = id; lbl.textContent = item.label;
+          row.appendChild(cb); row.appendChild(lbl);
+          itemsCol.appendChild(row);
+        });
       });
-      if (!groupItems.length) {
-        itemsCol.innerHTML = '<div class="mib-empty">No items in this category.</div>';
+
+      if (!groups.length) {
+        itemsCol.innerHTML = '<div class="mib-empty">No items in this pane.</div>';
       }
+      return anchors;
     }
 
     function renderGroups(paneIdx) {
-      var pane   = MIB_PANES[paneIdx];
-      var groups = mibGetGroups(pane.items);
+      var pane    = MIB_PANES[paneIdx];
+      var groups  = mibGetGroups(pane.items);
       groupsCol.innerHTML = '';
-      activeGroupIdx = 0;
+      var anchors = renderAllItems(pane);
 
       groups.forEach(function(group, gi) {
         var btn = document.createElement('button');
@@ -3426,14 +3446,12 @@ function dockPanel(panelId, zone) {
         btn.addEventListener('click', function() {
           groupsCol.querySelectorAll('.mib-btn').forEach(function(b) { b.classList.remove('active'); });
           btn.classList.add('active');
-          activeGroupIdx = gi;
-          renderItems(pane.key, group.items);
+          // Scroll the right column so this group's divider is at the top
+          var anchor = anchors[group.label];
+          if (anchor) itemsCol.scrollTop = anchor.offsetTop;
         });
         groupsCol.appendChild(btn);
       });
-
-      if (groups.length) renderItems(pane.key, groups[0].items);
-      else itemsCol.innerHTML = '<div class="mib-empty">No categories.</div>';
     }
 
     MIB_PANES.forEach(function(pane, pi) {
@@ -3444,7 +3462,6 @@ function dockPanel(panelId, zone) {
       btn.addEventListener('click', function() {
         panesCol.querySelectorAll('.mib-btn').forEach(function(b) { b.classList.remove('active'); });
         btn.classList.add('active');
-        activePaneIdx = pi;
         renderGroups(pi);
       });
       panesCol.appendChild(btn);
