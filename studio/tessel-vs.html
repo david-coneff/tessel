@@ -2367,7 +2367,11 @@ function applyFontFamily(family) {
   span.style.fontFamily = family;
   span.appendChild(frag);
   range.insertNode(span);
+  // Restore selection over the newly inserted span
+  var newRange = document.createRange();
+  newRange.selectNodeContents(span);
   sel.removeAllRanges();
+  sel.addRange(newRange);
   var blockWrap = span.closest('[data-block-id]');
   if (blockWrap) {
     var b = getBlock(blockWrap.dataset.blockId);
