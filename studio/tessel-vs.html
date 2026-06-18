@@ -637,6 +637,15 @@ body.no-transitions #props-panel { transition: none !important; }
   <div class="tb-sep"></div>
 
   <!-- Badge buttons — toggle sub-toolbar panels -->
+  <button class="badge-btn" id="badge-format" title="Format controls">
+    <svg width="14" height="15" viewBox="0 0 14 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <text x="1" y="11" font-family="serif" font-weight="700" font-size="9" fill="currentColor">H</text>
+      <text x="7" y="11" font-family="serif" font-weight="700" font-size="7" fill="currentColor">1</text>
+      <line x1="1" y1="13" x2="13" y2="13" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+    </svg>
+    Format
+  </button>
+
   <button class="badge-btn" id="badge-text" title="Text controls">
     <svg width="14" height="15" viewBox="0 0 14 15" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="1" y="2.5" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
@@ -711,11 +720,11 @@ body.no-transitions #props-panel { transition: none !important; }
   <!-- LEFT DOCK ZONE -->
   <div id="dock-left">
 
-  <!-- TEXT PANE -->
-  <div id="text-pane" class="ctrl-pane">
+  <!-- FORMAT PANE -->
+  <div id="format-pane" class="ctrl-pane">
     <div class="ctrl-pane-content">
       <div class="ctrl-pane-header">
-        <span class="ctrl-pane-title">Text</span>
+        <span class="ctrl-pane-title">Format</span>
         <button class="ctrl-pane-collapse-btn" title="Collapse panel">&#8249;</button>
       </div>
       <div class="ctrl-pane-body">
@@ -724,7 +733,22 @@ body.no-transitions #props-panel { transition: none !important; }
         <button class="ctrl-btn" id="btn-h2"><span class="ctrl-btn-icon">H2</span>Heading 2</button>
         <button class="ctrl-btn" id="btn-h3"><span class="ctrl-btn-icon">H3</span>Heading 3</button>
         <button class="ctrl-btn" id="btn-para"><span class="ctrl-btn-icon">&#182;</span>Paragraph</button>
-        <div class="ctrl-divider"></div>
+      </div>
+    </div>
+    <div class="ctrl-pane-tab" title="Toggle Format panel">
+      <span class="panel-tab-title">Format</span>
+      <button class="panel-tab-arrow">&#8249;</button>
+    </div>
+  </div><!-- #format-pane -->
+
+  <!-- TEXT PANE -->
+  <div id="text-pane" class="ctrl-pane">
+    <div class="ctrl-pane-content">
+      <div class="ctrl-pane-header">
+        <span class="ctrl-pane-title">Text</span>
+        <button class="ctrl-pane-collapse-btn" title="Collapse panel">&#8249;</button>
+      </div>
+      <div class="ctrl-pane-body">
         <div class="ctrl-group-label">Insert</div>
         <button class="ctrl-btn" id="btn-hr"><span class="ctrl-btn-icon">&#8212;</span>Divider</button>
         <button class="ctrl-btn" id="btn-insert-section"><span class="ctrl-btn-icon">&#9654;</span>Section</button>
@@ -860,6 +884,15 @@ body.no-transitions #props-panel { transition: none !important; }
   <div id="options-dialog-body">
     <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px;">Layout</div>
     <div id="opts-dock-settings">
+      <div class="opts-dock-row">
+        <span class="opts-dock-label">Format</span>
+        <div class="opts-dock-btns" data-dock-panel="format-pane">
+          <button class="opts-dock-btn active" data-zone="left">&#8592; Left</button>
+          <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
+          <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
+          <button class="opts-dock-btn" data-zone="right">&#8594; Right</button>
+        </div>
+      </div>
       <div class="opts-dock-row">
         <span class="opts-dock-label">Text</span>
         <div class="opts-dock-btns" data-dock-panel="text-pane">
@@ -1999,8 +2032,9 @@ function makeCtrlPane(cfg) {
   // else: default open
 }
 
-makeCtrlPane({ paneId: 'text-pane', badgeId: 'badge-text', lsKey: 'tvs:text-pane-state' });
-makeCtrlPane({ paneId: 'form-pane', badgeId: 'badge-form', lsKey: 'tvs:form-pane-state' });
+makeCtrlPane({ paneId: 'format-pane', badgeId: 'badge-format', lsKey: 'tvs:format-pane-state' });
+makeCtrlPane({ paneId: 'text-pane',   badgeId: 'badge-text',   lsKey: 'tvs:text-pane-state' });
+makeCtrlPane({ paneId: 'form-pane',   badgeId: 'badge-form',   lsKey: 'tvs:form-pane-state' });
 
 // Form pane field-insert buttons
 document.querySelectorAll('#form-pane .ctrl-btn[data-insert-field]').forEach(function(btn) {
@@ -2205,8 +2239,8 @@ function dockPanel(panelId, zone) {
 
   // Restore saved dock positions
   (function() {
-    var defaults = { 'text-pane': 'left', 'form-pane': 'left', 'outline-panel': 'left', 'props-panel': 'right' };
-    ['text-pane', 'form-pane', 'outline-panel', 'props-panel'].forEach(function(id) {
+    var defaults = { 'format-pane': 'left', 'text-pane': 'left', 'form-pane': 'left', 'outline-panel': 'left', 'props-panel': 'right' };
+    ['format-pane', 'text-pane', 'form-pane', 'outline-panel', 'props-panel'].forEach(function(id) {
       var saved;
       try { saved = localStorage.getItem('tvs:dock:' + id); } catch(e) {}
       var zone = (saved === 'left' || saved === 'right' || saved === 'top' || saved === 'bottom') ? saved : defaults[id];
