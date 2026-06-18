@@ -1541,10 +1541,10 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
  *   (editor title bar and _filename both reflect it); md header variable
  *   constructor for templating metadata into block content at export time
  *   (e.g. {{title}}, {{author}}, {{date}})
- * - Undo history sidecar: persist undo/redo stacks to a <name>.md.tvs file
+ * - Undo history sidecar: persist undo/redo stacks to a <name>.undo file
  *   alongside the .md (editor state, not document content — kept separate to
- *   preserve content hash); inside ZIP packages stored as _tessel/undo.json;
- *   schema: { schemaVersion, undoStack, redoStack, savedAt }; loaded
+ *   preserve content hash); inside ZIP packages stored as _tessel/<name>.undo;
+ *   schema: JSON { schemaVersion, undoStack, redoStack, savedAt }; loaded
  *   automatically when the matching .md or .zip is opened, silently ignored if absent
  * - Multi-document ZIP package support: index.json manifest auto-generated from
  *   each .md's YAML front-matter `title:` field (not the filename); manifest
