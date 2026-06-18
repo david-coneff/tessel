@@ -73,8 +73,10 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 .body { flex: 1; display: flex; overflow: hidden; }
 
 /* ── DOCK ZONES ── */
-#dock-top, #dock-bottom { display: flex; flex-direction: row; flex-shrink: 0; min-height: 0; }
-#dock-left, #dock-right { display: flex; flex-direction: column; flex-shrink: 0; min-width: 0; }
+#dock-top { display: flex; flex-direction: column; flex-shrink: 0; min-height: 0; }
+#dock-bottom { display: flex; flex-direction: column-reverse; flex-shrink: 0; min-height: 0; }
+#dock-left { display: flex; flex-direction: row; flex-shrink: 0; min-width: 0; }
+#dock-right { display: flex; flex-direction: row-reverse; flex-shrink: 0; min-width: 0; }
 
 /* ── HORIZONTAL PANEL MODE (.pane-h) ── */
 #controls-pane.pane-h {
@@ -1927,46 +1929,55 @@ setupDropdown('btn-insert-dd', 'dm-insert');
 buildInsertMenuHTML();
 
 // Controls pane: badge panel-selector + collapse
+// Text and Form sub-panels can both be active simultaneously.
+// Activation order determines innermost stacking within the dock zone.
 (function() {
-  var pane         = document.getElementById('controls-pane');
-  var paneTitle    = document.getElementById('ctrl-pane-title');
-  var collapseBtn  = document.getElementById('ctrl-pane-collapse');
-  var tabEl        = document.getElementById('ctrl-pane-tab');
-  var tabTitle     = document.getElementById('ctrl-pane-tab-title');
-  var tabArrow     = document.getElementById('ctrl-pane-tab-arrow');
-  var LABELS       = { 'ctrl-panel-text': 'Text', 'ctrl-panel-form': 'Form' };
+  var pane        = document.getElementById('controls-pane');
+  var paneTitle   = document.getElementById('ctrl-pane-title');
+  var collapseBtn = document.getElementById('ctrl-pane-collapse');
+  var tabEl       = document.getElementById('ctrl-pane-tab');
+  var tabTitle    = document.getElementById('ctrl-pane-tab-title');
+  var tabArrow    = document.getElementById('ctrl-pane-tab-arrow');
+  var LABELS      = { 'ctrl-panel-text': 'Text', 'ctrl-panel-form': 'Form' };
 
-  // Switch which panel's content is visible (does not affect pane open/closed state)
-  function activatePanel(panelId) {
-    document.querySelectorAll('.ctrl-panel').forEach(function(p){ p.classList.remove('active'); });
-    document.querySelectorAll('.badge-btn[data-panel]').forEach(function(b){ b.classList.remove('active'); });
-    var panel = document.getElementById(panelId);
-    if (panel) panel.classList.add('active');
-    var label = LABELS[panelId] || '';
-    paneTitle.textContent = label;
-    tabTitle.textContent  = label;
-    var matchingBadge = document.querySelector('.badge-btn[data-panel="' + panelId + '"]');
-    if (matchingBadge) matchingBadge.classList.add('active');
-  }
-
-  function ls(k)  { try { return localStorage.getItem(k); } catch(e) { return null; } }
+  function ls(k)   { try { return localStorage.getItem(k); } catch(e) { return null; } }
   function lss(k,v){ try { localStorage.setItem(k, v); } catch(e) {} }
 
-  // Pane has three states:
-  //   open      — full width, content visible          (no special class)
-  //   collapsed — 28px tab strip, badge stays ON       (.collapsed)
-  //   off       — completely hidden, no tab strip       (.off)
+  function getActivePanelIds() {
+    return Array.prototype.slice.call(document.querySelectorAll('.ctrl-panel.active')).map(function(p){ return p.id; });
+  }
 
-  function openPane(panelId) {
+  function updateTitle() {
+    var labels = getActivePanelIds().map(function(id){ return LABELS[id] || id; }).join(' + ') || 'Controls';
+    paneTitle.textContent = labels;
+    tabTitle.textContent  = labels;
+  }
+
+  function showPanel(panelId) {
+    var panel = document.getElementById(panelId);
+    if (panel) panel.classList.add('active');
+    var badge = document.querySelector('.badge-btn[data-panel="' + panelId + '"]');
+    if (badge) badge.classList.add('active');
+    updateTitle();
+  }
+
+  function hidePanel(panelId) {
+    var panel = document.getElementById(panelId);
+    if (panel) panel.classList.remove('active');
+    var badge = document.querySelector('.badge-btn[data-panel="' + panelId + '"]');
+    if (badge) badge.classList.remove('active');
+    updateTitle();
+  }
+
+  function openPane() {
     pane.classList.remove('collapsed', 'off');
     collapseBtn.textContent = '‹';
     tabArrow.innerHTML = '&#8249;';
-    if (panelId) activatePanel(panelId);
     lss('tvs:pane-state', 'open');
-    if (panelId) lss('tvs:pane-panel', panelId);
+    // Move to innermost position in zone (last child = innermost for row/row-reverse/column)
+    if (pane.parentElement) pane.parentElement.appendChild(pane);
   }
 
-  // Tab-strip collapse: badge stays ON, tab strip visible
   function collapsePane() {
     pane.classList.remove('off');
     pane.classList.add('collapsed');
@@ -1975,58 +1986,53 @@ buildInsertMenuHTML();
     lss('tvs:pane-state', 'collapsed');
   }
 
-  // Badge turn-off: no panel selected, pane fully hidden
   function hidePane() {
     pane.classList.remove('collapsed');
     pane.classList.add('off');
     lss('tvs:pane-state', 'off');
   }
 
-  function activePanelId() {
-    var b = document.querySelector('.badge-btn[data-panel].active');
-    return b ? b.dataset.panel : null;
+  function togglePaneVisibility() {
+    if (pane.classList.contains('collapsed')) { openPane(); }
+    else { collapsePane(); }
   }
 
-  // Tab strip + header button: toggle between open ↔ collapsed (never fully off)
-  function togglePaneVisibility() {
-    if (pane.classList.contains('collapsed')) {
-      openPane(activePanelId() || ls('tvs:pane-panel') || 'ctrl-panel-text');
-    } else {
-      collapsePane();
-    }
-  }
   collapseBtn.addEventListener('click', togglePaneVisibility);
   tabEl.addEventListener('click', togglePaneVisibility);
 
-  // Badge buttons: panel on/off selectors
-  //   OFF → click → ON : select panel, open pane
-  //   ON  → click → OFF: deselect panel, fully hide pane (off)
-  //   Other ON → click : switch panels, keep pane open
+  // Badge buttons: independent on/off per sub-panel
+  // Both Text and Form can be active at the same time.
   document.querySelectorAll('.badge-btn[data-panel]').forEach(function(btn) {
     btn.addEventListener('click', function(e) {
       e.stopPropagation();
       var panelId = btn.dataset.panel;
       if (btn.classList.contains('active')) {
-        btn.classList.remove('active');
-        hidePane();
+        hidePanel(panelId);
+        lss('tvs:pane-panels', JSON.stringify(getActivePanelIds()));
+        if (getActivePanelIds().length === 0) hidePane();
       } else {
-        openPane(panelId);
+        showPanel(panelId);
+        lss('tvs:pane-panels', JSON.stringify(getActivePanelIds()));
+        if (pane.classList.contains('off')) openPane();
       }
     });
   });
 
   // Restore from localStorage
   (function() {
-    var state  = ls('tvs:pane-state');
-    var panel  = ls('tvs:pane-panel') || 'ctrl-panel-text';
-    if (state === 'off') {
-      hidePane(); // no badge active
-    } else if (state === 'collapsed') {
-      activatePanel(panel); // badge ON, tab strip visible, content hidden
-      collapsePane();
-    } else {
-      openPane(panel); // default: open
+    var state = ls('tvs:pane-state');
+    var savedRaw = ls('tvs:pane-panels');
+    var saved;
+    try { saved = JSON.parse(savedRaw); } catch(e) {}
+    if (!saved || !saved.length) {
+      // Migrate from old single-panel key
+      var old = ls('tvs:pane-panel');
+      saved = [old || 'ctrl-panel-text'];
     }
+    saved.forEach(function(id) { showPanel(id); });
+    if (state === 'off' || !saved.length) { hidePane(); }
+    else if (state === 'collapsed') { collapsePane(); }
+    // else: default open
   })();
 })();
 
@@ -2134,6 +2140,8 @@ function makeSidePanel(cfg) {
     arrow.innerHTML = cfg.arrowOpen;
     badge.classList.add('active');
     lss(cfg.lsKey, 'open');
+    // Move to innermost position in dock zone (last child = innermost)
+    if (panel.parentElement) panel.parentElement.appendChild(panel);
   }
   function collapse() {
     panel.classList.remove('off');
