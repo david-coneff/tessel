@@ -2387,12 +2387,43 @@ document.getElementById('btn-font-georgia').addEventListener('click', function()
 document.getElementById('btn-font-franklin').addEventListener('click', function() { applyFontFamily("'Franklin Gothic Book', sans-serif"); });
 document.getElementById('btn-font-verdana').addEventListener('click', function() { applyFontFamily('Verdana, sans-serif'); });
 
+function getSelCharOffsets(el) {
+  var sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return null;
+  var range = sel.getRangeAt(0);
+  if (!el.contains(range.commonAncestorContainer)) return null;
+  var pre = range.cloneRange();
+  pre.selectNodeContents(el);
+  pre.setEnd(range.startContainer, range.startOffset);
+  var start = pre.toString().length;
+  return { start: start, end: start + range.toString().length };
+}
+
+function restoreSelCharOffsets(el, offsets) {
+  if (!offsets) return;
+  var sel = window.getSelection();
+  var range = document.createRange();
+  var charCount = 0, startNode, startOff = 0, endNode, endOff = 0;
+  (function walk(node) {
+    if (startNode && endNode) return;
+    if (node.nodeType === 3) {
+      var len = node.nodeValue.length;
+      if (!startNode && charCount + len >= offsets.start) { startNode = node; startOff = offsets.start - charCount; }
+      if (!endNode   && charCount + len >= offsets.end)   { endNode   = node; endOff   = offsets.end   - charCount; }
+      charCount += len;
+    } else { for (var i = 0; i < node.childNodes.length; i++) walk(node.childNodes[i]); }
+  })(el);
+  if (!startNode) { startNode = el; startOff = 0; }
+  if (!endNode)   { endNode = startNode; endOff = startOff; }
+  try { range.setStart(startNode, startOff); range.setEnd(endNode, endOff); sel.removeAllRanges(); sel.addRange(range); } catch(e) {}
+}
+
 function convertFocusedBlock(newType, level) {
   if (!lastFocusedTextBlockId) return;
   var b = getBlock(lastFocusedTextBlockId);
   if (!b) return;
 
-  // Heading level change — update in-place, no re-render needed
+  // Heading level change — purely in-place, no DOM replacement
   if (newType === 'heading' && b.type === 'heading') {
     b.level = level;
     var blockWrap = document.querySelector('[data-block-id="' + b.id + '"]');
@@ -2408,20 +2439,33 @@ function convertFocusedBlock(newType, level) {
     return;
   }
 
-  // Type conversion — re-render then refocus
+  // Type conversion — swap inner element, preserve selection via char offsets
+  var oldCe = document.querySelector('[data-block-id="' + b.id + '"] [contenteditable]');
+  var savedSel = oldCe ? getSelCharOffsets(oldCe) : null;
+
   if (newType === 'heading') {
     b.type = 'heading'; b.level = level;
-    if (!b.text) b.text = (b.text || '').replace(/<[^>]+>/g, '') || 'Heading';
+    b.text = (b.text || '').replace(/<[^>]+>/g, '') || 'Heading';
   } else {
     b.type = 'paragraph';
     if (b.text === undefined) b.text = '';
   }
-  renderCanvas();
+
+  var wrap = document.querySelector('[data-block-id="' + b.id + '"]');
+  if (wrap) {
+    var inner = wrap.querySelector('.block-inner');
+    if (inner) {
+      inner.innerHTML = '';
+      if (b.type === 'heading') inner.appendChild(createHeadingEl(b));
+      else inner.appendChild(createParaEl(b));
+    }
+  }
+
+  updateToolbarState(b);
   markUnsaved();
-  setTimeout(function() {
-    var el = document.querySelector('[data-block-id="' + lastFocusedTextBlockId + '"] [contenteditable]');
-    if (el) el.focus();
-  }, 20);
+
+  var newCe = document.querySelector('[data-block-id="' + b.id + '"] [contenteditable]');
+  if (newCe) { newCe.focus(); if (savedSel) restoreSelCharOffsets(newCe, savedSel); }
 }
 
 document.getElementById('btn-preview').addEventListener('click', showPreview);
