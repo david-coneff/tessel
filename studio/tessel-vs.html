@@ -103,10 +103,10 @@ body.layout-h #ctrl-panel-text > .dropdown { display: flex; align-items: center;
 /* CONTROLS PANE */
 #controls-pane {
   width: 192px; background: var(--surface); border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden;
+  display: flex; flex-direction: column; flex-shrink: 0;
   transition: width .2s ease;
 }
-#controls-pane.collapsed { width: 0; border-right-color: transparent; }
+#controls-pane.collapsed { width: 0; overflow: hidden; border-right-color: transparent; }
 #ctrl-pane-header {
   display: flex; align-items: center; padding: 6px 8px 6px 10px;
   border-bottom: 1px solid var(--border); flex-shrink: 0; gap: 6px; min-height: 32px;
@@ -115,11 +115,11 @@ body.layout-h #ctrl-panel-text > .dropdown { display: flex; align-items: center;
   font-size: 10px; font-weight: 700; text-transform: uppercase;
   color: var(--muted); letter-spacing: .5px; flex: 1; white-space: nowrap;
 }
-#ctrl-pane-collapse {
+#ctrl-pane-collapse, .panel-collapse-btn {
   background: none; border: none; cursor: pointer; color: var(--muted);
   font-size: 14px; padding: 2px 4px; line-height: 1; border-radius: 3px; flex-shrink: 0;
 }
-#ctrl-pane-collapse:hover { background: var(--surface2); color: var(--text); }
+#ctrl-pane-collapse:hover, .panel-collapse-btn:hover { background: var(--surface2); color: var(--text); }
 #ctrl-pane-body { flex: 1; overflow-y: auto; }
 
 /* ctrl-panel inside the pane */
@@ -143,13 +143,16 @@ body.layout-h #ctrl-panel-text > .dropdown { display: flex; align-items: center;
 /* OUTLINE PANEL */
 #outline-panel {
   width: 148px; background: var(--surface); border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden;
+  display: flex; flex-direction: column; flex-shrink: 0;
+  transition: width .2s ease;
 }
+#outline-panel.collapsed { width: 0; overflow: hidden; border-right-color: transparent; }
 #outline-panel h3 {
   padding: 8px 10px 6px; font-size: 10px; font-weight: 700; text-transform: uppercase;
   color: var(--muted); letter-spacing: .5px; border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
+  flex-shrink: 0; display: flex; align-items: center; gap: 4px;
 }
+#outline-panel h3 span { flex: 1; }
 #outline-list { flex: 1; overflow-y: auto; padding: 4px 0; }
 .outline-item {
   padding: 4px 10px; font-size: 11px; cursor: pointer;
@@ -321,13 +324,16 @@ body.layout-h #ctrl-panel-text > .dropdown { display: flex; align-items: center;
 /* PROPERTIES PANEL */
 #props-panel {
   width: 260px; background: var(--surface); border-left: 1px solid var(--border);
-  display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden;
+  display: flex; flex-direction: column; flex-shrink: 0;
+  transition: width .2s ease;
 }
+#props-panel.collapsed { width: 0; overflow: hidden; border-left-color: transparent; }
 #props-panel h3 {
   padding: 8px 12px 6px; font-size: 10px; font-weight: 700; text-transform: uppercase;
   color: var(--muted); letter-spacing: .5px; border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
+  flex-shrink: 0; display: flex; align-items: center; gap: 4px;
 }
+#props-panel h3 span { flex: 1; }
 #props-body { flex: 1; overflow-y: auto; padding: 12px; }
 #props-empty { color: var(--muted); font-size: 11px; padding: 16px 12px; text-align: center; }
 
@@ -599,7 +605,7 @@ select.prop-input { cursor: pointer; }
   <div id="content-row">
 
     <div id="outline-panel">
-      <h3>Outline</h3>
+      <h3><span>Outline</span><button class="panel-collapse-btn" id="btn-outline-collapse" title="Collapse">&#8249;</button></h3>
       <div id="outline-list"><div style="padding:10px;font-size:11px;color:var(--muted)">No headings yet</div></div>
     </div>
 
@@ -615,7 +621,7 @@ select.prop-input { cursor: pointer; }
     </div>
 
     <div id="props-panel">
-      <h3>Properties</h3>
+      <h3><button class="panel-collapse-btn" id="btn-props-collapse" title="Collapse">&#8250;</button><span>Properties</span></h3>
       <div id="props-body">
         <div id="props-empty">Select a field block to edit its properties</div>
       </div>
@@ -1851,6 +1857,40 @@ loadDraft();
 renderProps();
 updateToolbarState(null);
 updateUndoButtons();
+
+// ── Outline panel collapse ───────────────────────────────────────────────────
+(function() {
+  var panel = document.getElementById('outline-panel');
+  var btn   = document.getElementById('btn-outline-collapse');
+  function restore() {
+    var v = (function(){ try{ return localStorage.getItem('tvs:outline-open'); }catch(e){ return null; } })();
+    if (v === '0') { panel.classList.add('collapsed'); btn.textContent = '›'; }
+  }
+  btn.addEventListener('click', function() {
+    var closing = !panel.classList.contains('collapsed');
+    panel.classList.toggle('collapsed');
+    btn.textContent = closing ? '›' : '‹';
+    try { localStorage.setItem('tvs:outline-open', closing ? '0' : '1'); } catch(e) {}
+  });
+  restore();
+})();
+
+// ── Properties panel collapse ────────────────────────────────────────────────
+(function() {
+  var panel = document.getElementById('props-panel');
+  var btn   = document.getElementById('btn-props-collapse');
+  function restore() {
+    var v = (function(){ try{ return localStorage.getItem('tvs:props-open'); }catch(e){ return null; } })();
+    if (v === '0') { panel.classList.add('collapsed'); btn.textContent = '›'; }
+  }
+  btn.addEventListener('click', function() {
+    var closing = !panel.classList.contains('collapsed');
+    panel.classList.toggle('collapsed');
+    btn.textContent = closing ? '›' : '‹';
+    try { localStorage.setItem('tvs:props-open', closing ? '0' : '1'); } catch(e) {}
+  });
+  restore();
+})();
 
 // ── Options dialog ──────────────────────────────────────────────────────────
 (function() {
