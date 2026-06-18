@@ -71,41 +71,106 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 
 /* BODY LAYOUT */
 .body { flex: 1; display: flex; overflow: hidden; }
-#content-row { flex: 1; display: flex; overflow: hidden; min-width: 0; }
 
-/* ── HORIZONTAL LAYOUT MODE ── */
-body.layout-h .body          { flex-direction: column; }
-body.layout-h #content-row   { flex: 1; }
-body.layout-h #controls-pane {
+/* ── DOCK ZONES ── */
+#dock-top, #dock-bottom { display: flex; flex-direction: row; flex-shrink: 0; min-height: 0; }
+#dock-left, #dock-right { display: flex; flex-direction: column; flex-shrink: 0; min-width: 0; }
+
+/* ── HORIZONTAL PANEL MODE (.pane-h) ── */
+#controls-pane.pane-h {
   width: auto; height: 44px; max-height: 44px;
   flex-direction: row; overflow-x: auto; overflow-y: hidden;
   border-right: none; border-bottom: 1px solid var(--border);
   transition: max-height .2s ease;
 }
-body.layout-h #controls-pane.collapsed { max-height: 0; height: 0; overflow: hidden; border-bottom-color: transparent; }
-/* hide the vertical tab strip in horizontal mode */
-body.layout-h #ctrl-pane-tab { display: none; }
-/* content area fills the bar as a flex row */
-body.layout-h #ctrl-pane-content {
+#controls-pane.pane-h.collapsed { max-height: 0; height: 0; overflow: hidden; border-bottom-color: transparent; }
+#controls-pane.pane-h.off { max-height: 0; height: 0; overflow: hidden; border-bottom-color: transparent; }
+#controls-pane.pane-h #ctrl-pane-tab { display: none; }
+#controls-pane.pane-h #ctrl-pane-content {
   flex: 1; flex-direction: row; border-right: none;
   overflow-x: auto; overflow-y: hidden; width: auto; height: 44px;
 }
-body.layout-h #ctrl-pane-header {
+#controls-pane.pane-h #ctrl-pane-header {
   border-bottom: none; border-right: 1px solid var(--border);
   min-width: 88px; height: 44px; flex-shrink: 0;
 }
-body.layout-h #ctrl-pane-body  { flex: 1; overflow-x: auto; overflow-y: hidden; display: flex; height: 44px; }
-body.layout-h .ctrl-panel.active { flex: 1; flex-direction: row; align-items: center; width: auto; min-width: 0; gap: 0; padding: 0 4px; }
-body.layout-h .ctrl-group-label { display: none; }
-body.layout-h .ctrl-divider     { width: 1px; height: 22px; margin: 0 4px; flex-shrink: 0; }
-body.layout-h .ctrl-btn {
+#controls-pane.pane-h #ctrl-pane-body { flex: 1; overflow-x: auto; overflow-y: hidden; display: flex; height: 44px; }
+#controls-pane.pane-h .ctrl-panel.active { flex: 1; flex-direction: row; align-items: center; width: auto; min-width: 0; gap: 0; padding: 0 4px; }
+#controls-pane.pane-h .ctrl-group-label { display: none; }
+#controls-pane.pane-h .ctrl-divider { width: 1px; height: 22px; margin: 0 4px; flex-shrink: 0; }
+#controls-pane.pane-h .ctrl-btn {
   width: auto; border-left: none; border-bottom: 2px solid transparent;
   padding: 0 10px; height: 44px; flex-shrink: 0; border-radius: 0; white-space: nowrap;
 }
-body.layout-h .ctrl-btn:hover  { background: var(--surface2); border-bottom-color: var(--accent); border-left-color: transparent; }
-body.layout-h .ctrl-btn.active { background: rgba(91,138,240,.1); border-bottom-color: var(--accent); border-left-color: transparent; color: var(--accent); }
-/* dropdown inside the text panel sits nicely in the bar */
-body.layout-h #ctrl-panel-text > .dropdown { display: flex; align-items: center; padding: 0 6px; }
+#controls-pane.pane-h .ctrl-btn:hover { background: var(--surface2); border-bottom-color: var(--accent); border-left-color: transparent; }
+#controls-pane.pane-h .ctrl-btn.active { background: rgba(91,138,240,.1); border-bottom-color: var(--accent); border-left-color: transparent; color: var(--accent); }
+#controls-pane.pane-h #ctrl-panel-text > .dropdown { display: flex; align-items: center; padding: 0 6px; }
+
+/* Outline panel horizontal mode */
+#outline-panel.pane-h {
+  width: auto; height: 36px;
+  flex-direction: row; overflow: hidden;
+  border-right: none; border-bottom: 1px solid var(--border);
+  transition: height .2s ease;
+}
+#outline-panel.pane-h.collapsed { height: 0; overflow: hidden; }
+#outline-panel.pane-h.off { height: 0; overflow: hidden; }
+#outline-panel.pane-h #outline-tab { display: none; }
+#outline-panel.pane-h #outline-content {
+  flex: 1; flex-direction: row; border-right: none; overflow: hidden; min-width: 0; align-items: center;
+}
+#outline-panel.pane-h #outline-content h3 {
+  border-bottom: none; border-right: 1px solid var(--border);
+  padding: 0 10px; flex-shrink: 0; display: flex; align-items: center; height: 100%;
+}
+#outline-panel.pane-h #outline-list {
+  flex: 1; display: flex; flex-direction: row; overflow-x: auto; overflow-y: hidden;
+  padding: 0; align-items: stretch; scrollbar-gutter: stable;
+}
+#outline-panel.pane-h .outline-item {
+  white-space: nowrap; border-left: none; border-bottom: 2px solid transparent;
+  display: flex; align-items: center;
+}
+#outline-panel.pane-h .outline-item:hover { background: var(--surface2); border-left-color: transparent; border-bottom-color: var(--accent); }
+#outline-panel.pane-h .outline-item.h2 { padding-left: 10px; }
+#outline-panel.pane-h .outline-item.h3 { padding-left: 10px; }
+
+/* Properties panel horizontal mode */
+#props-panel.pane-h {
+  width: auto; height: 44px;
+  flex-direction: row; overflow: hidden;
+  border-left: none; border-bottom: 1px solid var(--border);
+  transition: height .2s ease;
+}
+#props-panel.pane-h.off { height: 0; overflow: hidden; }
+#props-panel.pane-h #props-tab { display: none; }
+#props-panel.pane-h #props-content {
+  flex: 1; flex-direction: row; border-left: none; overflow-x: auto; overflow-y: hidden; align-items: center;
+}
+#props-panel.pane-h #props-content h3 {
+  border-bottom: none; border-right: 1px solid var(--border);
+  padding: 0 10px; flex-shrink: 0; display: flex; align-items: center; height: 100%;
+}
+#props-panel.pane-h #props-body {
+  flex: 1; display: flex; flex-direction: row; overflow-x: auto; overflow-y: hidden;
+  align-items: center; gap: 12px; padding: 0 12px; height: 100%; scrollbar-gutter: stable;
+}
+#props-panel.pane-h .prop-row { display: flex; flex-direction: row; align-items: center; gap: 6px; margin: 0; flex-shrink: 0; }
+#props-panel.pane-h .prop-label { margin: 0; }
+#props-panel.pane-h .prop-input { width: auto; min-width: 80px; }
+
+/* ── DOCK POSITION: TAB STRIP FLIP ── */
+/* Controls + Outline docked right: flip tab strip to left edge */
+#controls-pane.dock-right,
+#outline-panel.dock-right { flex-direction: row-reverse; }
+#controls-pane.dock-right #ctrl-pane-content { border-right: none; }
+#controls-pane.dock-right #ctrl-pane-tab { border-right: none; border-left: 1px solid var(--border); }
+#outline-panel.dock-right #outline-content { border-right: none; }
+#outline-panel.dock-right #outline-tab { border-right: none; border-left: 1px solid var(--border); }
+/* Props docked left: flip tab strip to right edge */
+#props-panel.dock-left { flex-direction: row-reverse; }
+#props-panel.dock-left #props-content { border-left: none; border-right: 1px solid var(--border); }
+#props-panel.dock-left #props-tab { border-left: none; border-right: 1px solid var(--border); }
 
 /* CONTROLS PANE */
 #controls-pane {
@@ -524,7 +589,19 @@ select.prop-input { cursor: pointer; }
 body.no-transitions #controls-pane,
 body.no-transitions #outline-panel,
 body.no-transitions #props-panel { transition: none !important; }
-body.layout-h.no-transitions #controls-pane { transition: none !important; }
+
+/* Dock picker in Options */
+.opts-dock-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.opts-dock-label { font-size: 11px; color: var(--text); flex-shrink: 0; width: 68px; }
+.opts-dock-btns { display: flex; gap: 4px; }
+.opts-dock-btn {
+  padding: 4px 8px; font-size: 10px; font-weight: 500;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 4px; cursor: pointer; color: var(--muted);
+  transition: border-color .12s, color .12s;
+}
+.opts-dock-btn:hover { border-color: var(--accent); color: var(--text); }
+.opts-dock-btn.active { background: rgba(91,138,240,.15); border-color: var(--accent); color: var(--accent); }
 
 /* BADGE BUTTONS (controls pane toggles) */
 .badge-btn {
@@ -627,10 +704,16 @@ body.layout-h.no-transitions #controls-pane { transition: none !important; }
 <input type="file" id="pick-md" accept=".md" style="display:none">
 <input type="file" id="pick-html" accept=".html" style="display:none">
 
+<!-- TOP DOCK ZONE -->
+<div id="dock-top"></div>
+
 <!-- BODY -->
 <div class="body">
 
-  <!-- CONTROLS PANE (left side, collapsible) -->
+  <!-- LEFT DOCK ZONE -->
+  <div id="dock-left">
+
+  <!-- CONTROLS PANE -->
   <div id="controls-pane">
     <div id="ctrl-pane-content">
       <div id="ctrl-pane-header">
@@ -702,46 +785,51 @@ body.layout-h.no-transitions #controls-pane { transition: none !important; }
     </div>
   </div><!-- #controls-pane -->
 
-  <!-- CONTENT ROW: outline + canvas + props (flex row, enables layout switching) -->
-  <div id="content-row">
+  <div id="outline-panel">
+    <div id="outline-content">
+      <h3>Outline</h3>
+      <div id="outline-list"><div style="padding:10px;font-size:11px;color:var(--muted)">No headings yet</div></div>
+    </div>
+    <div id="outline-tab" title="Toggle Outline">
+      <span class="panel-tab-title">Outline</span>
+      <button class="panel-tab-arrow" id="btn-outline-collapse">&#8249;</button>
+    </div>
+  </div>
 
-    <div id="outline-panel">
-      <div id="outline-content">
-        <h3>Outline</h3>
-        <div id="outline-list"><div style="padding:10px;font-size:11px;color:var(--muted)">No headings yet</div></div>
+  </div><!-- #dock-left -->
+
+  <div id="canvas-wrap">
+    <div id="canvas">
+      <div id="canvas-empty">
+        <div style="font-size:32px">&#128221;</div>
+        <div>Start building your document</div>
+        <p>Use the toolbar to insert blocks, or click Insert &#9662; to add content</p>
       </div>
-      <div id="outline-tab" title="Toggle Outline">
-        <span class="panel-tab-title">Outline</span>
-        <button class="panel-tab-arrow" id="btn-outline-collapse">&#8249;</button>
+      <div id="blocks-root"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT DOCK ZONE -->
+  <div id="dock-right">
+
+  <div id="props-panel">
+    <div id="props-tab" title="Toggle Properties">
+      <button class="panel-tab-arrow" id="btn-props-collapse">&#8250;</button>
+      <span class="panel-tab-title">Properties</span>
+    </div>
+    <div id="props-content">
+      <h3>Properties</h3>
+      <div id="props-body">
+        <div id="props-empty">Select a field block to edit its properties</div>
       </div>
     </div>
+  </div>
 
-    <div id="canvas-wrap">
-      <div id="canvas">
-        <div id="canvas-empty">
-          <div style="font-size:32px">&#128221;</div>
-          <div>Start building your document</div>
-          <p>Use the toolbar to insert blocks, or click Insert &#9662; to add content</p>
-        </div>
-        <div id="blocks-root"></div>
-      </div>
-    </div>
-
-    <div id="props-panel">
-      <div id="props-tab" title="Toggle Properties">
-        <button class="panel-tab-arrow" id="btn-props-collapse">&#8250;</button>
-        <span class="panel-tab-title">Properties</span>
-      </div>
-      <div id="props-content">
-        <h3>Properties</h3>
-        <div id="props-body">
-          <div id="props-empty">Select a field block to edit its properties</div>
-        </div>
-      </div>
-    </div>
-
-  </div><!-- #content-row -->
+  </div><!-- #dock-right -->
 </div><!-- .body -->
+
+<!-- BOTTOM DOCK ZONE -->
+<div id="dock-bottom"></div>
 
 <!-- INSERT FLOAT MENU -->
 <div id="insert-float"></div>
@@ -766,23 +854,34 @@ body.layout-h.no-transitions #controls-pane { transition: none !important; }
   </div>
   <div id="options-dialog-body">
     <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px;">Layout</div>
-    <div style="display:flex;gap:10px;">
-      <button class="opts-layout-btn" id="opts-layout-v" data-layout="v">
-        <svg width="40" height="34" viewBox="0 0 40 34" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="1" y="1" width="38" height="32" rx="3" stroke="currentColor" stroke-width="1.5"/>
-          <rect x="1" y="1" width="12" height="32" rx="3" fill="currentColor" opacity=".18"/>
-          <line x1="13" y1="1" x2="13" y2="33" stroke="currentColor" stroke-width="1.5"/>
-        </svg>
-        Vertical (left panel)
-      </button>
-      <button class="opts-layout-btn" id="opts-layout-h" data-layout="h">
-        <svg width="40" height="34" viewBox="0 0 40 34" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="1" y="1" width="38" height="32" rx="3" stroke="currentColor" stroke-width="1.5"/>
-          <rect x="1" y="1" width="38" height="11" rx="3" fill="currentColor" opacity=".18"/>
-          <line x1="1" y1="12" x2="39" y2="12" stroke="currentColor" stroke-width="1.5"/>
-        </svg>
-        Horizontal (top bar)
-      </button>
+    <div id="opts-dock-settings">
+      <div class="opts-dock-row">
+        <span class="opts-dock-label">Controls</span>
+        <div class="opts-dock-btns" data-dock-panel="controls-pane">
+          <button class="opts-dock-btn active" data-zone="left">&#8592; Left</button>
+          <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
+          <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
+          <button class="opts-dock-btn" data-zone="right">&#8594; Right</button>
+        </div>
+      </div>
+      <div class="opts-dock-row">
+        <span class="opts-dock-label">Outline</span>
+        <div class="opts-dock-btns" data-dock-panel="outline-panel">
+          <button class="opts-dock-btn active" data-zone="left">&#8592; Left</button>
+          <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
+          <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
+          <button class="opts-dock-btn" data-zone="right">&#8594; Right</button>
+        </div>
+      </div>
+      <div class="opts-dock-row">
+        <span class="opts-dock-label">Properties</span>
+        <div class="opts-dock-btns" data-dock-panel="props-panel">
+          <button class="opts-dock-btn" data-zone="left">&#8592; Left</button>
+          <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
+          <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
+          <button class="opts-dock-btn active" data-zone="right">&#8594; Right</button>
+        </div>
+      </div>
     </div>
     <div class="opts-divider"></div>
     <div class="opts-section-label">Transitions</div>
@@ -2082,47 +2181,72 @@ makeSidePanel({
   lsKey: 'tvs:props-state'
 });
 
+// ── Dock panel system ────────────────────────────────────────────────────────
+// Moves a panel element into the specified dock zone and applies CSS classes.
+// zone: 'left' | 'right' | 'top' | 'bottom'
+function dockPanel(panelId, zone) {
+  var panel = document.getElementById(panelId);
+  var zoneEl = document.getElementById('dock-' + zone);
+  if (!panel || !zoneEl) return;
+
+  zoneEl.appendChild(panel);
+  panel.classList.remove('dock-left', 'dock-right', 'dock-top', 'dock-bottom', 'pane-h');
+  panel.classList.add('dock-' + zone);
+  if (zone === 'top' || zone === 'bottom') panel.classList.add('pane-h');
+
+  // Sync Options dialog dock buttons
+  document.querySelectorAll('.opts-dock-btns[data-dock-panel="' + panelId + '"] .opts-dock-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.zone === zone);
+  });
+
+  try { localStorage.setItem('tvs:dock:' + panelId, zone); } catch(e) {}
+}
+
 // ── Options dialog ──────────────────────────────────────────────────────────
 (function() {
   var dialog  = document.getElementById('options-dialog');
   var btnOpen = document.getElementById('btn-options');
   var btnClose= document.getElementById('options-dialog-close');
-  var btnV    = document.getElementById('opts-layout-v');
-  var btnH    = document.getElementById('opts-layout-h');
 
   function openDialog() {
     closeAllDropdowns();
     dialog.classList.add('show');
-    // centre if not yet dragged
     if (!dialog._dragged) {
       dialog.style.left = Math.round((window.innerWidth - dialog.offsetWidth) / 2) + 'px';
       dialog.style.top  = '80px';
       dialog.style.transform = '';
     }
-    syncLayoutBtns();
   }
   function closeDialog() { dialog.classList.remove('show'); }
 
-  function syncLayoutBtns() {
-    var isH = document.body.classList.contains('layout-h');
-    btnV.classList.toggle('active', !isH);
-    btnH.classList.toggle('active',  isH);
-  }
+  // Dock picker buttons
+  document.querySelectorAll('.opts-dock-btns').forEach(function(group) {
+    var panelId = group.dataset.dockPanel;
+    group.querySelectorAll('.opts-dock-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        dockPanel(panelId, btn.dataset.zone);
+      });
+    });
+  });
 
-  function applyLayout(mode) {
-    if (mode === 'h') {
-      document.body.classList.add('layout-h');
-    } else {
-      document.body.classList.remove('layout-h');
-    }
-    try { localStorage.setItem('tvs:layout', mode); } catch(e) {}
-    syncLayoutBtns();
-  }
-
-  // Restore saved layout
+  // Restore saved dock positions
   (function() {
-    var saved = (function(){ try { return localStorage.getItem('tvs:layout'); } catch(e) { return null; } })();
-    if (saved === 'h') applyLayout('h');
+    var defaults = { 'controls-pane': 'left', 'outline-panel': 'left', 'props-panel': 'right' };
+    ['controls-pane', 'outline-panel', 'props-panel'].forEach(function(id) {
+      var saved;
+      try { saved = localStorage.getItem('tvs:dock:' + id); } catch(e) {}
+      var zone = (saved === 'left' || saved === 'right' || saved === 'top' || saved === 'bottom') ? saved : defaults[id];
+      if (zone !== defaults[id]) dockPanel(id, zone);
+      else {
+        // apply dock class without moving (already in correct zone from HTML)
+        var panel = document.getElementById(id);
+        if (panel) {
+          panel.classList.remove('dock-left', 'dock-right', 'dock-top', 'dock-bottom', 'pane-h');
+          panel.classList.add('dock-' + zone);
+          if (zone === 'top' || zone === 'bottom') panel.classList.add('pane-h');
+        }
+      }
+    });
   })();
 
   // ── Transitions toggle ────────────────────────────────────────────────────
@@ -2142,8 +2266,6 @@ makeSidePanel({
 
   btnOpen.addEventListener('click', function(e) { e.stopPropagation(); openDialog(); });
   btnClose.addEventListener('click', closeDialog);
-  btnV.addEventListener('click', function() { applyLayout('v'); });
-  btnH.addEventListener('click', function() { applyLayout('h'); });
 
   // Drag with viewport clamping
   var header = document.getElementById('options-dialog-header');
