@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 985.24146 734.01453"
+   version="1.1"
+   id="svg6681"
+   width="985.24146"
+   height="734.01453"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs6677">
+    <g
+       id="t00001s" />
+    <g
+       id="t00001f">
+      <polygon
+         points="1,-1.7320508 1.5,-0.8660254 3,-1.7320508 4.5,-0.8660254 4,0 3,0 3,1.7320508 1.5,2.5980762 1,1.7320508 0,1.7320508 0,0 -1.5,-0.8660254 -1,-1.7320508 "
+         stroke="#000000"
+         stroke-width="0.1"
+         fill="rgb(148 205 235)"
+         id="polygon6606" />
+    </g>
+    <g
+       id="t00002s" />
+    <g
+       id="t00002f">
+      <polygon
+         points="1,-1.7320508 1.5,-0.8660254 3,-1.7320508 4.5,-0.8660254 4,0 3,0 3,1.7320508 1.5,2.5980762 1,1.7320508 0,1.7320508 0,0 -1.5,-0.8660254 -1,-1.7320508 "
+         stroke="#000000"
+         stroke-width="0.1"
+         fill="rgb(0 137 212)"
+         id="polygon6610" />
+    </g>
+    <g
+       id="t00000s">
+      <use
+         xlink:href="#t00001s"
+         transform="matrix(-0.25,-0.4330127,0.4330127,-0.25,1,1.7320508)"
+         id="use6613"
+         x="0"
+         y="0"
+         width="100%"
+         height="100%" />
+      <use
+         xlink:href="#t00001s"
+         transform="matrix(-0.25,-0.4330127,0.4330127,-0.25,4,1.7320508)"
+         id="use6615"
+         x="0"
+         y="0"
+         width="100%"
+         height="100%" />
+      <use
+         xlink:href="#t00001s"
+         transform="matrix(-0.25,0.4330127,-0.4330127,-0.25,2.5,2.5980762)"
+         id="use6617"
+         x="0"
+         y="0"
+         width="100%"
+         height="100%" />
+      <use
+         xlink:href="#t00002s"
+         transform="matrix(-0.25,0.4330127,0.4330127,0.25,2.5,0.8660254)"
+         id="use6619"
+         x="0"
+         y="0"
+         width="100%"
+         height="100%" />
+      <polygon
+         points="2.5,4.330127 1.5,4.330127 -0.5,0.8660254 0,0 4,0 4.5,0.8660254 "
+         fill="none"
+         stroke="#000000"
+         stroke-width="0.1"
+         id="polygon6621" />
+    </g>
+    <g
+       id="t00000f">
+      <use
+         xlink:href="#t00001f"
+         transform="matrix(-0.25,-0.4330127,0.4330127,-0.25,1,1.7320508)"
+         id="use6624"
+         x="0"
+         y="0"
+         width="100%"
+         height="100%" />
+      <use
+         xlink:href="#t00001f"
+         transform="matrix(-0.25,-0.4330127,0.4330127,-0.25,4,1.7320508)"
+         id="use6626"
+         x="0"
+         y="0"
+         width="100%"
+         height="100%" />
+      <use
+         xlink:href="#t00001f"
+         transform="matrix(-0.25,0.4330127,-0.4330127,-0.25,2.5,2.5980762)"
+         id="use6628"
+         x="0"
+         y="0"
+         width="100%"
+         height="100%" />
+      <use
+         xlink:href="#t00002f"
+         transform="matrix(-0.25,0.4330127,0.4330127,0.25,2.5,0.8660254)"
+         id="use6630"
+         x="0"
+         y="0"
+         width="100%"
+         height="100%" />
+    </g>
+    <g
+       id="t00004s" />
+    <g
+       id="t00004f">
+      <polygon
+         points="1,-1.7320508 1.5,-0.8660254 3,-1.7320508 4.5,-0.8660254 4,0 3,0 3,1.7320508 1.5,2.5980762 1,1.7320508 0,1.7320508 0,0 -1.5,-0.8660254 -1,-1.7320508 "
+         stroke="#000000"
+         stroke-width="0.1"
+         fill="rgb(251 251 251)"
+         id="polygon6634" />
+    </g>
+    <g
+       id="t00003s">
+      <use
+         xlink:href="#t00004s"
+         transform="matrix(0.5,0,0,0.5,0.5,0.8660254)"
+         id="use6637"
+         x="0"
+         y="0"
+         width="100%"
+         height="100%" />
+      <polygon
+         points="0,0 3,0 1.5,2.5980762 "
+         fill="none"
+         stroke="#000000"
+         stroke-width="0.1"
+         id="polygon6639" />
+    </g>
+    <g
+       id="t00003f">
+      <use
+         xlink:href="#t00004f"
+         transform="matrix(0.5,0,0,0.5,0.5,0.8660254)"
+         id="use6642"
+         x="0"
+         y="0"
+         width="100%"
+         height="100%" />
+    </g>
+    <g
+       id="t00006s" />
+    <g
+       id="t00006f">
+      <polygon
+         points="1,-1.7320508 1.5,-0.8660254 3,-1.7320508 4.5,-0.8660254 4,0 3,0 3,1.7320508 1.5,2.5980762 1,1.7320508 0,1.7320508 0,0 -1.5,-0.8660254 -1,-1.7320508 "
+         stroke="#000000"
+         stroke-width="0.1"
+         fill="rgb(250 250 250)"
+         id="polygon6646" />
+    </g>
+    <g
+       id="t00005s">
+      <use
+         xlink:href="#t00006s"
+         transform="matrix(0.5,0,0,0.5,1.5,0.8660254)"
+         id="use6649"
+         x="0"
+         y="0"
+         width="100%"
+         height="100%" />
+      <use
+         xlink:href="#t00006s"
+         transform="matrix(0.25,-0.4330127,0.4330127,0.25,0,1.7320508)"
+         id="use6651"
+         x="0"
+         y="0"
+         width="100%"
+         height="100%" />
+      <polygon
+         points="-1,1.7320508 0,0 4,0 3,1.7320508 "
+         fill="none"
+         stroke="#000000"
+         stroke-width="0.1"
+         id="polygon6653" />
+    </g>
+    <g
+       id="t00005f">
+      <use
+         xlink:href="#t00006f"
+         transform="matrix(0.5,0,0,0.5,1.5,0.8660254)"
+         id="use6656"
+         x="0"
+         y="0"
+         width="100%"
+         height="100%" />
+      <use
+         xlink:href="#t00006f"
+         transform="matrix(0.25,-0.4330127,0.4330127,0.25,0,1.7320508)"
+         id="use6658"
+         x="0"
+         y="0"
+         width="100%"
+         height="100%" />
+    </g>
+    <g
+       id="t00008s" />
+    <g
+       id="t00008f">
+      <polygon
+         points="1,-1.7320508 1.5,-0.8660254 3,-1.7320508 4.5,-0.8660254 4,0 3,0 3,1.7320508 1.5,2.5980762 1,1.7320508 0,1.7320508 0,0 -1.5,-0.8660254 -1,-1.7320508 "
+         stroke="#000000"
+         stroke-width="0.1"
+         fill="rgb(191 191 191)"
+         id="polygon6662" />
+    </g>
+    <g
+       id="t00007s">
+      <use
+         xlink:href="#t00008s"
+         transform="matrix(0.5,0,0,0.5,1.5,0.8660254)"
+         id="use6665"
+         x="0"
+         y="0"
+         width="100%"
+         height="100%" />
+      <use
+         xlink:href="#t00008s"
+         transform="matrix(0.25,-0.4330127,0.4330127,0.25,0,1.7320508)"
+         id="use6667"
+         x="0"
+         y="0"
+         width="100%"
+         height="100%" />
+      <polygon
+         points="3,1.7320508 -1,1.7320508 0,0 3,0 3.5,0.8660254 "
+         fill="none"
+         stroke="#000000"
+         stroke-width="0.1"
+         id="polygon6669" />
+    </g>
+    <g
+       id="t00007f">
+      <use
+         xlink:href="#t00008f"
+         transform="matrix(0.5,0,0,0.5,1.5,0.8660254)"
+         id="use6672"
+         x="0"
+         y="0"
+         width="100%"
+         height="100%" />
+      <use
+         xlink:href="#t00008f"
+         transform="matrix(0.25,-0.4330127,0.4330127,0.25,0,1.7320508)"
+         id="use6674"
+         x="0"
+         y="0"
+         width="100%"
+         height="100%" />
+    </g>
+  </defs>
+  <path
+     style="fill:#ffffff;fill-opacity:1;stroke:#000509;stroke-width:15;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+     d="m 39.999634,563.21005 75.519996,130.80448 h 302.08 l 75.52,-130.80448 L 717.69724,694.00702 945.2418,564.92313 870.7152,433.55012 719.67964,432.40557 720.66434,172.51718 495.10205,39.999631 418.59299,170.22808 l -154.01579,0.57606 1.98243,261.60144 z"
+     id="path10114" />
+</svg>
