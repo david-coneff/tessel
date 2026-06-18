@@ -2168,9 +2168,9 @@ function makeCtrlPane(cfg) {
   });
 
   var state = ls(cfg.lsKey);
-  if (state === 'off')           { hide(); }
-  else if (state === 'collapsed') { open(); collapse(); }
-  // else: default open
+  if (state === 'off')            { hide(); }
+  else if (state === 'collapsed') { collapse(); }
+  else                            { open(); }
 }
 
 makeCtrlPane({ paneId: 'format-pane', badgeId: 'badge-format', lsKey: 'tvs:format-pane-state' });
@@ -2406,9 +2406,9 @@ function makeSidePanel(cfg) {
 
   // Restore
   var state = ls(cfg.lsKey);
-  if (state === 'off')       { hide(); }
-  else if (state === 'collapsed') { open(); collapse(); }
-  // else: open by default
+  if (state === 'off')            { hide(); }
+  else if (state === 'collapsed') { collapse(); }
+  else                            { open(); }
 }
 
 makeSidePanel({
