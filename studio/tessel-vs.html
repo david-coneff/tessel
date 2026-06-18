@@ -1386,8 +1386,11 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
           <button class="opts-toggle" id="opts-embed-fonts"></button>
         </div>
         <p class="opts-helper-text" style="margin-top:4px;">When on, custom font data is inlined into the exported file so it renders correctly without internet access.</p>
+      </div>
 
-        <div class="opts-divider"></div>
+      <!-- PREFERENCES IMPORT / EXPORT -->
+      <div class="opts-section" id="opts-section-prefs-io">
+        <div class="opts-section-label">Export</div>
         <div class="opts-toggle-row">
           <span>Save behavior</span>
           <select class="opts-select" id="opts-export-mode">
@@ -1396,11 +1399,10 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
           </select>
         </div>
         <p class="opts-helper-text" style="margin-top:4px;">File picker opens a native Save As dialog. Silent download saves immediately to your browser's default download location.</p>
-      </div>
 
-      <!-- PREFERENCES IMPORT / EXPORT -->
-      <div class="opts-section" id="opts-section-prefs-io">
-        <div class="opts-section-label">Export</div>
+        <div class="opts-divider"></div>
+
+        <div class="opts-section-label">Preferences file</div>
         <p class="opts-helper-text">Save all your Tessel preferences to a file you can bring to another instance.</p>
         <button class="opts-action-btn" id="opts-export-prefs">&#8595; Export preferences&hellip;</button>
 
