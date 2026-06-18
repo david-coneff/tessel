@@ -10308,6 +10308,8 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
       var pillVs = document.getElementById('mode-pill-vs');
 
       if (mode === 'visual') {
+        // Close any floating panels so they don't cover the visual canvas
+        if (window._tsCloseAllPanels) window._tsCloseAllPanels();
         // Save the currently active tab before hiding it
         var activeTab = document.querySelector('.ribbon-tab.active');
         if (activeTab && activeTab.dataset.tab) wsPrevTabId = activeTab.dataset.tab;
