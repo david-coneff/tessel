@@ -1386,6 +1386,16 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
           <button class="opts-toggle" id="opts-embed-fonts"></button>
         </div>
         <p class="opts-helper-text" style="margin-top:4px;">When on, custom font data is inlined into the exported file so it renders correctly without internet access.</p>
+
+        <div class="opts-divider"></div>
+        <div class="opts-toggle-row">
+          <span>Save behavior</span>
+          <select class="opts-select" id="opts-export-mode">
+            <option value="picker">File picker (Save As dialog)</option>
+            <option value="download">Silent download to Downloads folder</option>
+          </select>
+        </div>
+        <p class="opts-helper-text" style="margin-top:4px;">File picker opens a native Save As dialog. Silent download saves immediately to your browser's default download location.</p>
       </div>
 
       <!-- PREFERENCES IMPORT / EXPORT -->
@@ -3199,7 +3209,8 @@ function exportHtml() {
   try {
     var html = getCompiledHtml();
     var fname = _filename + '.html';
-    if (window.showSaveFilePicker) {
+    var mode = (function(){ try { return localStorage.getItem('tvs:opts:export-mode') || 'picker'; } catch(e) { return 'picker'; } })();
+    if (mode === 'picker' && window.showSaveFilePicker) {
       window.showSaveFilePicker({
         suggestedName: fname,
         types: [{ description: 'HTML file', accept: { 'text/html': ['.html'] } }]
@@ -3211,7 +3222,6 @@ function exportHtml() {
         if (ex.name !== 'AbortError') setStatus('Save error: ' + ex.message);
       });
     } else {
-      // Fallback: browser download
       var blob = new Blob([html], {type:'text/html'});
       var url = URL.createObjectURL(blob);
       var a = document.createElement('a');
@@ -4573,6 +4583,16 @@ function dockPanel(panelId, zone) {
     syncEmbedBtn();
   });
   syncEmbedBtn();
+
+  // Export mode select
+  var exportModeSel = document.getElementById('opts-export-mode');
+  function getExportMode() {
+    try { return localStorage.getItem('tvs:opts:export-mode') || 'picker'; } catch(e) { return 'picker'; }
+  }
+  exportModeSel.value = getExportMode();
+  exportModeSel.addEventListener('change', function() {
+    try { localStorage.setItem('tvs:opts:export-mode', exportModeSel.value); } catch(e) {}
+  });
 
   // Render font list when Fonts section becomes visible
   document.querySelector('[data-opts-section="fonts"]').addEventListener('click', renderFontList);
