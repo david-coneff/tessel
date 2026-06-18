@@ -548,22 +548,38 @@ select.prop-input { cursor: pointer; }
   display: none; position: fixed; z-index: 900;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,.4);
-  width: 340px; min-width: 260px;
+  width: 520px; min-width: 380px;
   top: 80px; left: 50%; transform: translateX(-50%);
   user-select: none;
 }
-#options-dialog.show { display: block; }
+#options-dialog.show { display: flex; flex-direction: column; }
 #options-dialog-header {
   display: flex; align-items: center; padding: 10px 14px;
   border-bottom: 1px solid var(--border); cursor: move; gap: 8px;
+  flex-shrink: 0;
 }
 #options-dialog-header h2 { font-size: 13px; font-weight: 600; flex: 1; }
+#options-dialog-main { display: flex; min-height: 0; height: 420px; }
+#opts-nav {
+  width: 140px; flex-shrink: 0; border-right: 1px solid var(--border);
+  padding: 8px 6px; display: flex; flex-direction: column; gap: 2px;
+  overflow-y: auto;
+}
+.opts-nav-btn {
+  text-align: left; padding: 7px 10px; font-size: 12px; font-weight: 500;
+  background: none; border: none; cursor: pointer; border-radius: 5px;
+  color: var(--text); white-space: nowrap;
+}
+.opts-nav-btn:hover { background: var(--surface2); }
+.opts-nav-btn.active { background: rgba(91,138,240,.15); color: var(--accent); font-weight: 600; }
+#opts-content { flex: 1; overflow-y: auto; padding: 16px; min-width: 0; }
+.opts-section { display: none; }
+.opts-section.active { display: block; }
 #options-dialog-close {
   background: none; border: none; cursor: pointer; color: var(--muted);
   font-size: 16px; padding: 2px 5px; line-height: 1; border-radius: 4px;
 }
 #options-dialog-close:hover { background: var(--surface2); color: var(--text); }
-#options-dialog-body { padding: 16px; }
 
 .opts-section-title {
   font-size: 10px; font-weight: 700; text-transform: uppercase;
@@ -900,67 +916,85 @@ body.no-transitions #props-panel { transition: none !important; }
     <h2>Options</h2>
     <button id="options-dialog-close" title="Close">&#10005;</button>
   </div>
-  <div id="options-dialog-body">
-    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px;">Layout</div>
-    <div id="opts-dock-settings">
-      <div class="opts-dock-row">
-        <span class="opts-dock-label">Format</span>
-        <div class="opts-dock-btns" data-dock-panel="format-pane">
-          <button class="opts-dock-btn active" data-zone="left">&#8592; Left</button>
-          <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
-          <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
-          <button class="opts-dock-btn" data-zone="right">&#8594; Right</button>
+  <div id="options-dialog-main">
+    <nav id="opts-nav">
+      <button class="opts-nav-btn active" data-opts-section="layout">Layout</button>
+      <button class="opts-nav-btn" data-opts-section="animations">Animations</button>
+      <button class="opts-nav-btn" data-opts-section="menu-items">Menu Items</button>
+    </nav>
+    <div id="opts-content">
+
+      <!-- LAYOUT -->
+      <div class="opts-section active" id="opts-section-layout">
+        <div class="opts-section-label">Panel Positions</div>
+        <div id="opts-dock-settings">
+          <div class="opts-dock-row">
+            <span class="opts-dock-label">Format</span>
+            <div class="opts-dock-btns" data-dock-panel="format-pane">
+              <button class="opts-dock-btn active" data-zone="left">&#8592; Left</button>
+              <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
+              <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
+              <button class="opts-dock-btn" data-zone="right">&#8594; Right</button>
+            </div>
+          </div>
+          <div class="opts-dock-row">
+            <span class="opts-dock-label">Text</span>
+            <div class="opts-dock-btns" data-dock-panel="text-pane">
+              <button class="opts-dock-btn active" data-zone="left">&#8592; Left</button>
+              <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
+              <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
+              <button class="opts-dock-btn" data-zone="right">&#8594; Right</button>
+            </div>
+          </div>
+          <div class="opts-dock-row">
+            <span class="opts-dock-label">Form</span>
+            <div class="opts-dock-btns" data-dock-panel="form-pane">
+              <button class="opts-dock-btn active" data-zone="left">&#8592; Left</button>
+              <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
+              <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
+              <button class="opts-dock-btn" data-zone="right">&#8594; Right</button>
+            </div>
+          </div>
+          <div class="opts-dock-row">
+            <span class="opts-dock-label">Outline</span>
+            <div class="opts-dock-btns" data-dock-panel="outline-panel">
+              <button class="opts-dock-btn active" data-zone="left">&#8592; Left</button>
+              <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
+              <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
+              <button class="opts-dock-btn" data-zone="right">&#8594; Right</button>
+            </div>
+          </div>
+          <div class="opts-dock-row">
+            <span class="opts-dock-label">Properties</span>
+            <div class="opts-dock-btns" data-dock-panel="props-panel">
+              <button class="opts-dock-btn" data-zone="left">&#8592; Left</button>
+              <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
+              <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
+              <button class="opts-dock-btn active" data-zone="right">&#8594; Right</button>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="opts-dock-row">
-        <span class="opts-dock-label">Text</span>
-        <div class="opts-dock-btns" data-dock-panel="text-pane">
-          <button class="opts-dock-btn active" data-zone="left">&#8592; Left</button>
-          <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
-          <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
-          <button class="opts-dock-btn" data-zone="right">&#8594; Right</button>
+
+      <!-- ANIMATIONS -->
+      <div class="opts-section" id="opts-section-animations">
+        <div class="opts-section-label">Transitions</div>
+        <div class="opts-toggle-row">
+          <span>Animate panel open / close</span>
+          <button class="opts-toggle on" id="opts-transitions-toggle" title="Toggle transitions"></button>
         </div>
       </div>
-      <div class="opts-dock-row">
-        <span class="opts-dock-label">Form</span>
-        <div class="opts-dock-btns" data-dock-panel="form-pane">
-          <button class="opts-dock-btn active" data-zone="left">&#8592; Left</button>
-          <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
-          <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
-          <button class="opts-dock-btn" data-zone="right">&#8594; Right</button>
-        </div>
+
+      <!-- MENU ITEMS -->
+      <div class="opts-section" id="opts-section-menu-items">
+        <div class="opts-section-label">Text Pane Items</div>
+        <div id="opts-text-items" class="opts-items-list"></div>
+        <div class="opts-divider"></div>
+        <div class="opts-section-label">Format Pane Items</div>
+        <div id="opts-format-items" class="opts-items-list"></div>
       </div>
-      <div class="opts-dock-row">
-        <span class="opts-dock-label">Outline</span>
-        <div class="opts-dock-btns" data-dock-panel="outline-panel">
-          <button class="opts-dock-btn active" data-zone="left">&#8592; Left</button>
-          <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
-          <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
-          <button class="opts-dock-btn" data-zone="right">&#8594; Right</button>
-        </div>
-      </div>
-      <div class="opts-dock-row">
-        <span class="opts-dock-label">Properties</span>
-        <div class="opts-dock-btns" data-dock-panel="props-panel">
-          <button class="opts-dock-btn" data-zone="left">&#8592; Left</button>
-          <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
-          <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
-          <button class="opts-dock-btn active" data-zone="right">&#8594; Right</button>
-        </div>
-      </div>
+
     </div>
-    <div class="opts-divider"></div>
-    <div class="opts-section-label">Transitions</div>
-    <div class="opts-toggle-row">
-      <span>Animate panel open / close</span>
-      <button class="opts-toggle on" id="opts-transitions-toggle" title="Toggle transitions"></button>
-    </div>
-    <div class="opts-divider"></div>
-    <div class="opts-section-label">Text Pane Items</div>
-    <div id="opts-text-items" class="opts-items-list"></div>
-    <div class="opts-divider"></div>
-    <div class="opts-section-label">Format Pane Items</div>
-    <div id="opts-format-items" class="opts-items-list"></div>
   </div>
 </div>
 
@@ -2452,6 +2486,24 @@ function dockPanel(panelId, zone) {
     if (saved === '0') applyTransitions(false);
   })();
 
+  // Left nav section switching
+  var navBtns = document.querySelectorAll('#opts-nav .opts-nav-btn');
+  navBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      navBtns.forEach(function(b) { b.classList.remove('active'); });
+      document.querySelectorAll('#opts-content .opts-section').forEach(function(s) { s.classList.remove('active'); });
+      btn.classList.add('active');
+      var sec = document.getElementById('opts-section-' + btn.dataset.optsSection);
+      if (sec) sec.classList.add('active');
+      // Build checklists lazily when menu-items section first shown
+      if (btn.dataset.optsSection === 'menu-items' && !dialog._checklistsBuilt) {
+        buildChecklist('opts-text-items',   'text',   INSERT_MENU_ITEMS);
+        buildChecklist('opts-format-items', 'format', FORMAT_PANE_ITEMS);
+        dialog._checklistsBuilt = true;
+      }
+    });
+  });
+
   // Item visibility checklists
   function buildChecklist(containerId, pane, items) {
     var container = document.getElementById(containerId);
@@ -2483,17 +2535,6 @@ function dockPanel(panelId, zone) {
       }
     });
   }
-
-  var _checklistsBuilt = false;
-  var origOpen = openDialog;
-  openDialog = function() {
-    origOpen();
-    if (!_checklistsBuilt) {
-      buildChecklist('opts-text-items',   'text',   INSERT_MENU_ITEMS);
-      buildChecklist('opts-format-items', 'format', FORMAT_PANE_ITEMS);
-      _checklistsBuilt = true;
-    }
-  };
 
   btnOpen.addEventListener('click', function(e) { e.stopPropagation(); openDialog(); });
   btnClose.addEventListener('click', closeDialog);
