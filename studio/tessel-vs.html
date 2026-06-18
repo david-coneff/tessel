@@ -1286,7 +1286,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
         <div class="opts-toggle-row">
           <span>Transparency</span>
           <div style="display:flex;align-items:center;gap:8px">
-            <input type="range" id="opts-float-opacity" min="10" max="100" value="70" style="width:100px">
+            <input type="range" id="opts-float-opacity" min="0" max="100" value="70" style="width:100px">
             <span id="opts-float-opacity-val" style="font-size:11px;color:var(--muted);min-width:28px">70%</span>
           </div>
         </div>
@@ -3586,7 +3586,7 @@ function dockPanel(panelId, zone) {
   var floatOpacitySlider = document.getElementById('opts-float-opacity');
   var floatOpacityVal    = document.getElementById('opts-float-opacity-val');
   function applyFloatOpacity(val) {
-    val = Math.max(10, Math.min(100, val || 70));
+    val = Math.max(0, Math.min(100, isNaN(val) ? 70 : val));
     document.documentElement.style.setProperty('--float-panel-opacity', val + '%');
     if (floatOpacityVal)    floatOpacityVal.textContent    = val + '%';
     if (floatOpacitySlider) floatOpacitySlider.value       = val;
@@ -3599,7 +3599,7 @@ function dockPanel(panelId, zone) {
   }
   (function() {
     var saved; try { saved = parseInt(localStorage.getItem('tvs:opts:float-opacity'), 10); } catch(e) {}
-    applyFloatOpacity(isNaN(saved) ? 70 : saved);
+    applyFloatOpacity(isNaN(saved) || saved === null ? 70 : saved);
   })();
 
   var floatBlurSlider = document.getElementById('opts-float-blur');
