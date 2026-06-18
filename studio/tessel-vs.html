@@ -1389,7 +1389,12 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
           <span>Embed fonts in exported HTML</span>
           <button class="opts-toggle" id="opts-embed-fonts"></button>
         </div>
-        <p class="opts-helper-text" style="margin-top:4px;">When on, custom font data is inlined into the exported file so it renders correctly without internet access.</p>
+        <p class="opts-helper-text" style="margin-top:4px;">When on, custom font data is inlined into the exported HTML so it renders correctly without internet access.</p>
+        <div class="opts-toggle-row" style="margin-top:8px;">
+          <span>Include fonts in .zip package</span>
+          <button class="opts-toggle" id="opts-embed-fonts-zip"></button>
+        </div>
+        <p class="opts-helper-text" style="margin-top:4px;">When on, custom font files are bundled into a <code>fonts/</code> folder inside the ZIP.</p>
       </div>
 
       <!-- PREFERENCES IMPORT / EXPORT -->
@@ -1406,6 +1411,13 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
         <div class="opts-toggle-row" style="margin-bottom:8px;">
           <span>HTML export (.html)</span>
           <select class="opts-select" id="opts-export-mode">
+            <option value="picker">File picker</option>
+            <option value="download">Silent download</option>
+          </select>
+        </div>
+        <div class="opts-toggle-row" style="margin-bottom:8px;">
+          <span>ZIP package (.zip)</span>
+          <select class="opts-select" id="opts-export-mode-zip">
             <option value="picker">File picker</option>
             <option value="download">Silent download</option>
           </select>
@@ -3243,7 +3255,7 @@ function saveFile(fname, content, mimeType, lsKey) {
   var mode = (function(){ try { return localStorage.getItem(lsKey) || 'picker'; } catch(e) { return 'picker'; } })();
   if (mode === 'picker' && window.showSaveFilePicker) {
     var ext = fname.split('.').pop().toLowerCase();
-    var typeMap = { html: 'text/html', md: 'text/markdown', json: 'application/json' };
+    var typeMap = { html: 'text/html', md: 'text/markdown', json: 'application/json', zip: 'application/zip' };
     window.showSaveFilePicker({
       suggestedName: fname,
       types: [{ description: fname, accept: { [typeMap[ext] || mimeType]: ['.' + ext] } }]
@@ -3511,20 +3523,33 @@ function openZip(file) {
   rd.readAsArrayBuffer(file);
 }
 
-// ── exportZip — always writes a zip regardless of export-mode setting ─────────
+// ── exportZip — save .zip package; respects tvs:opts:export-mode-zip ─────────
 function exportZip() {
   var attachments = collectAttachments(blocks);
   var assetDir = _filename;
   var md = serializeBlocksForExport(blocks, assetDir);
   var zipFiles = [{ name: _filename + '.md', data: md }];
   attachments.forEach(function(a) { zipFiles.push({ name: assetDir + '/' + a.name, data: a.data }); });
+
+  // Optionally bundle custom fonts into fonts/ subdirectory
+  try {
+    if (localStorage.getItem('tvs:opts:embed-fonts-zip') === '1') {
+      var prefix = 'tvs:font:';
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf(prefix) === 0) {
+          var fd = JSON.parse(localStorage.getItem(k));
+          // Strip the data URL header to get raw bytes
+          var bytes = MiniZip.dataUrlToBytes(fd.dataUrl);
+          var ext = fd.format === 'truetype' ? 'ttf' : fd.format === 'opentype' ? 'otf' : fd.format;
+          zipFiles.push({ name: 'fonts/' + fd.family + '.' + ext, data: bytes });
+        }
+      }
+    }
+  } catch(e) {}
+
   var zipBytes = MiniZip.create(zipFiles);
-  var blob = new Blob([zipBytes], { type: 'application/zip' });
-  var url  = URL.createObjectURL(blob);
-  var a    = document.createElement('a');
-  a.href = url; a.download = _filename + '.zip';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(function() { URL.revokeObjectURL(url); }, 1200);
+  saveFile(_filename + '.zip', zipBytes, 'application/zip', 'tvs:opts:export-mode-zip');
   setStatus('Saved ' + _filename + '.zip');
 }
 
@@ -5001,6 +5026,17 @@ function dockPanel(panelId, zone) {
   });
   syncEmbedBtn();
 
+  var embedZipBtn = document.getElementById('opts-embed-fonts-zip');
+  function isEmbedFontsZip() {
+    try { return localStorage.getItem('tvs:opts:embed-fonts-zip') === '1'; } catch(e) { return false; }
+  }
+  function syncEmbedZipBtn() { embedZipBtn.classList.toggle('on', isEmbedFontsZip()); }
+  embedZipBtn.addEventListener('click', function() {
+    try { localStorage.setItem('tvs:opts:embed-fonts-zip', isEmbedFontsZip() ? '0' : '1'); } catch(e) {}
+    syncEmbedZipBtn();
+  });
+  syncEmbedZipBtn();
+
   // Export mode selects
   function bindExportModeSel(id, lsKey) {
     var sel = document.getElementById(id);
@@ -5012,6 +5048,7 @@ function dockPanel(panelId, zone) {
   }
   bindExportModeSel('opts-export-mode',       'tvs:opts:export-mode');
   bindExportModeSel('opts-export-mode-md',    'tvs:opts:export-mode-md');
+  bindExportModeSel('opts-export-mode-zip',   'tvs:opts:export-mode-zip');
   bindExportModeSel('opts-export-mode-prefs', 'tvs:opts:export-mode-prefs');
 
   // Render font list when Fonts section becomes visible
