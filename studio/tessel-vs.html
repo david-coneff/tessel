@@ -1776,16 +1776,17 @@ setupDropdown('btn-file-dd', 'dm-file');
 setupDropdown('btn-insert-dd', 'dm-insert');
 buildInsertMenuHTML();
 
-// Controls pane: badge toggle + collapse
+// Controls pane: badge panel-selector + collapse
 (function() {
-  var pane       = document.getElementById('controls-pane');
-  var paneTitle  = document.getElementById('ctrl-pane-title');
+  var pane         = document.getElementById('controls-pane');
+  var paneTitle    = document.getElementById('ctrl-pane-title');
   var collapseBtn  = document.getElementById('ctrl-pane-collapse');
   var tabEl        = document.getElementById('ctrl-pane-tab');
   var tabTitle     = document.getElementById('ctrl-pane-tab-title');
   var tabArrow     = document.getElementById('ctrl-pane-tab-arrow');
   var LABELS       = { 'ctrl-panel-text': 'Text', 'ctrl-panel-form': 'Form' };
 
+  // Switch which panel's content is visible (does not affect pane open/closed state)
   function activatePanel(panelId) {
     document.querySelectorAll('.ctrl-panel').forEach(function(p){ p.classList.remove('active'); });
     document.querySelectorAll('.badge-btn').forEach(function(b){ b.classList.remove('active'); });
@@ -1798,48 +1799,55 @@ buildInsertMenuHTML();
     if (matchingBadge) matchingBadge.classList.add('active');
   }
 
+  // Show the pane. If a panelId is supplied, switch to that panel.
   function openPane(panelId) {
     pane.classList.remove('collapsed');
     collapseBtn.textContent = '‹';
-    tabArrow.innerHTML = '&#8249;'; // ‹ pointing left = collapse
-    activatePanel(panelId);
-    try { localStorage.setItem('tvs:pane-open', '1'); localStorage.setItem('tvs:pane-panel', panelId); } catch(e){}
+    tabArrow.innerHTML = '&#8249;';
+    if (panelId) activatePanel(panelId);
+    try { localStorage.setItem('tvs:pane-open', '1'); if (panelId) localStorage.setItem('tvs:pane-panel', panelId); } catch(e){}
   }
 
+  // Hide the pane. Badge active state is intentionally preserved —
+  // the badge shows which panel is selected regardless of pane visibility.
   function closePane() {
     pane.classList.add('collapsed');
     collapseBtn.textContent = '›';
-    tabArrow.innerHTML = '&#8250;'; // › pointing right = expand toward canvas
-    document.querySelectorAll('.badge-btn').forEach(function(b){ b.classList.remove('active'); });
+    tabArrow.innerHTML = '&#8250;';
     try { localStorage.setItem('tvs:pane-open', '0'); } catch(e){}
   }
 
-  collapseBtn.addEventListener('click', function() {
+  function activePanelId() {
+    var b = document.querySelector('.badge-btn.active');
+    return b ? b.dataset.panel : null;
+  }
+
+  // Tab strip and header collapse button: toggle pane visibility only.
+  // They never change which panel is selected.
+  function togglePaneVisibility() {
     if (pane.classList.contains('collapsed')) {
-      var last = (function(){ try{ return localStorage.getItem('tvs:pane-panel'); }catch(e){ return null; } })();
-      openPane(last || 'ctrl-panel-text');
+      openPane(activePanelId() || (function(){ try{ return localStorage.getItem('tvs:pane-panel'); }catch(e){ return null; } })() || 'ctrl-panel-text');
     } else {
       closePane();
     }
-  });
+  }
+  collapseBtn.addEventListener('click', togglePaneVisibility);
+  tabEl.addEventListener('click', togglePaneVisibility);
 
-  tabEl.addEventListener('click', function() {
-    if (pane.classList.contains('collapsed')) {
-      var last = (function(){ try{ return localStorage.getItem('tvs:pane-panel'); }catch(e){ return null; } })();
-      openPane(last || 'ctrl-panel-text');
-    } else {
-      closePane();
-    }
-  });
-
+  // Badge buttons: on/off panel selectors.
+  //   OFF → click → ON: select this panel, expand pane
+  //   ON  → click → OFF: deselect, collapse pane
+  //   Other panel ON → click this → switch panels, keep pane open
   document.querySelectorAll('.badge-btn').forEach(function(btn) {
     btn.addEventListener('click', function(e) {
       e.stopPropagation();
       var panelId = btn.dataset.panel;
-      // If pane is open and this panel is already active → close; otherwise open/switch
-      if (!pane.classList.contains('collapsed') && btn.classList.contains('active')) {
+      if (btn.classList.contains('active')) {
+        // This panel is already selected and visible — turn it off, hide pane
+        btn.classList.remove('active');
         closePane();
       } else {
+        // Select this panel (switches content if pane was already open with another panel)
         openPane(panelId);
       }
     });
@@ -1849,10 +1857,11 @@ buildInsertMenuHTML();
   (function() {
     var savedOpen  = (function(){ try{ return localStorage.getItem('tvs:pane-open'); }catch(e){ return null; } })();
     var savedPanel = (function(){ try{ return localStorage.getItem('tvs:pane-panel'); }catch(e){ return null; } })();
+    var panel = savedPanel || 'ctrl-panel-text';
+    // Always restore which panel is selected (badge stays active even when pane is closed)
+    activatePanel(panel);
     if (savedOpen === '0') {
       closePane();
-    } else {
-      openPane(savedPanel || 'ctrl-panel-text');
     }
   })();
 })();
