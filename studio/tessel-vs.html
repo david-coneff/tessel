@@ -217,6 +217,13 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 }
 .ctrl-pane-collapse-btn:hover { background: var(--surface2); color: var(--text); }
 .pane-h .ctrl-pane-collapse-btn { display: none; }
+.pane-expand-all-btn {
+  background: none; border: none; cursor: pointer; color: var(--muted);
+  font-size: 10px; padding: 2px 4px; line-height: 1; border-radius: 3px; flex-shrink: 0;
+  letter-spacing: -1px;
+}
+.pane-expand-all-btn:hover { background: var(--surface2); color: var(--text); }
+.pane-h .pane-expand-all-btn { display: none; }
 .ctrl-pane-body { flex: 1; overflow-y: auto; overflow-x: hidden; min-width: 0; scrollbar-gutter: stable; }
 .ctrl-group-label {
   font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--muted);
@@ -3875,6 +3882,65 @@ function buildTextPaneButtons() {
     }
   });
 }
+// Inject an expand/collapse-all button into the pane header for any body with 2+ groups.
+// Must be called after groups are in the DOM (post-initCollapsibleGroups / buildTextPaneButtons).
+function wireExpandAllBtn(bodyEl) {
+  var groups = Array.from(bodyEl.querySelectorAll('.ctrl-group-collapsible'));
+  if (groups.length < 2) return;
+  var header = bodyEl.closest('.ctrl-pane-content');
+  if (!header) return;
+  header = header.querySelector('.ctrl-pane-header');
+  if (!header) return;
+
+  // Remove any existing button (e.g. on rebuild)
+  var existing = header.querySelector('.pane-expand-all-btn');
+  if (existing) existing.remove();
+
+  var btn = document.createElement('button');
+  btn.className = 'pane-expand-all-btn';
+
+  function allOpen() {
+    return groups.every(function(lbl) {
+      var body = lbl.nextElementSibling;
+      return body && body.classList.contains('ctrl-group-body') && body.style.display !== 'none';
+    });
+  }
+  function syncBtn() {
+    if (allOpen()) {
+      btn.title = 'Collapse all groups';
+      btn.textContent = '▾▾';
+    } else {
+      btn.title = 'Expand all groups';
+      btn.textContent = '▸▸';
+    }
+  }
+  syncBtn();
+
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    var expand = !allOpen();
+    groups.forEach(function(lbl) {
+      var body = lbl.nextElementSibling;
+      if (!body || !body.classList.contains('ctrl-group-body')) return;
+      var isOpen = body.style.display !== 'none';
+      if (expand !== isOpen) lbl.click(); // reuse existing toggle logic
+    });
+    syncBtn();
+  });
+
+  // Keep button state in sync when individual groups are toggled
+  groups.forEach(function(lbl) {
+    lbl.addEventListener('click', function() {
+      setTimeout(syncBtn, 0); // after the click handler updates display
+    });
+  });
+
+  // Insert before the collapse button
+  var collapseBtn = header.querySelector('.ctrl-pane-collapse-btn');
+  if (collapseBtn) header.insertBefore(btn, collapseBtn);
+  else header.appendChild(btn);
+}
+
 function initCollapsibleGroups(bodyEl, lsPrefix) {
   var children = Array.from(bodyEl.children);
   var groups = [], current = null;
@@ -3917,6 +3983,9 @@ buildTextPaneButtons();
 applyFormatPaneVisibility();
 initCollapsibleGroups(document.querySelector('#format-pane .ctrl-pane-body'), 'tvs:grp:format');
 initCollapsibleGroups(document.querySelector('#form-pane .ctrl-pane-body'), 'tvs:grp:form');
+wireExpandAllBtn(document.querySelector('#text-pane .ctrl-pane-body'));
+wireExpandAllBtn(document.querySelector('#format-pane .ctrl-pane-body'));
+wireExpandAllBtn(document.querySelector('#form-pane .ctrl-pane-body'));
 
 // Form pane field-insert buttons
 document.querySelectorAll('#form-pane .ctrl-btn[data-insert-field]').forEach(function(btn) {
