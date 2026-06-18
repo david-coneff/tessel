@@ -632,10 +632,22 @@ body.no-transitions #props-panel { transition: none !important; }
 .opts-dock-btn:hover { border-color: var(--accent); color: var(--text); }
 .opts-dock-btn.active { background: rgba(91,138,240,.15); border-color: var(--accent); color: var(--accent); }
 .opts-items-list { display: flex; flex-direction: column; }
-.opts-item-group { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: .05em; margin: 8px 0 4px; }
 .opts-item-row { display: flex; align-items: center; gap: 8px; padding: 2px 0; cursor: pointer; }
 .opts-item-row input[type=checkbox] { width: 13px; height: 13px; cursor: pointer; accent-color: var(--accent); flex-shrink: 0; }
 .opts-item-row label { font-size: 12px; color: var(--text); cursor: pointer; user-select: none; }
+.opts-coll { margin-bottom: 2px; }
+.opts-coll-btn {
+  display: flex; align-items: center; gap: 5px; width: 100%; text-align: left;
+  background: none; border: none; cursor: pointer; padding: 5px 6px; border-radius: 4px;
+  font-size: 12px; font-weight: 600; color: var(--text);
+}
+.opts-coll-btn:hover { background: var(--surface2); }
+.opts-coll-arrow { display: inline-block; font-size: 8px; color: var(--muted); transition: transform .15s; flex-shrink: 0; }
+.opts-coll-btn.open .opts-coll-arrow { transform: rotate(90deg); }
+.opts-coll-body { display: none; padding-left: 10px; }
+.opts-coll-body.open { display: block; }
+.opts-coll-sub > .opts-coll-btn { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 4px 6px; }
+.opts-coll-sub > .opts-coll-btn:hover { color: var(--text); }
 
 /* BADGE BUTTONS (controls pane toggles) */
 .badge-btn {
@@ -774,6 +786,7 @@ body.no-transitions #props-panel { transition: none !important; }
         <button class="ctrl-btn" id="btn-italic"><span class="ctrl-btn-icon"><i>I</i></span>Italic</button>
         <button class="ctrl-btn" id="btn-underline"><span class="ctrl-btn-icon"><u>U</u></span>Underline</button>
         <div class="ctrl-group-label" id="fmt-group-font">Font</div>
+        <button class="ctrl-btn" id="btn-font-default"><span class="ctrl-btn-icon">Aa</span>Default</button>
         <button class="ctrl-btn" id="btn-font-georgia"><span class="ctrl-btn-icon" style="font-family:Georgia,serif">Gg</span>Georgia</button>
         <button class="ctrl-btn" id="btn-font-franklin"><span class="ctrl-btn-icon" style="font-family:'Franklin Gothic Book',sans-serif">Ff</span>Franklin Gothic</button>
         <button class="ctrl-btn" id="btn-font-verdana"><span class="ctrl-btn-icon" style="font-family:Verdana,sans-serif">Vv</span>Verdana</button>
@@ -987,11 +1000,18 @@ body.no-transitions #props-panel { transition: none !important; }
 
       <!-- MENU ITEMS -->
       <div class="opts-section" id="opts-section-menu-items">
-        <div class="opts-section-label">Text Pane Items</div>
-        <div id="opts-text-items" class="opts-items-list"></div>
-        <div class="opts-divider"></div>
-        <div class="opts-section-label">Format Pane Items</div>
-        <div id="opts-format-items" class="opts-items-list"></div>
+        <div class="opts-coll" id="opts-coll-text">
+          <button class="opts-coll-btn" data-coll-key="tvs:opts-coll:text">
+            <span class="opts-coll-arrow">&#9654;</span>Text Pane
+          </button>
+          <div class="opts-coll-body" id="opts-text-items"></div>
+        </div>
+        <div class="opts-coll" id="opts-coll-format">
+          <button class="opts-coll-btn" data-coll-key="tvs:opts-coll:format">
+            <span class="opts-coll-arrow">&#9654;</span>Format Pane
+          </button>
+          <div class="opts-coll-body" id="opts-format-items"></div>
+        </div>
       </div>
 
     </div>
@@ -2168,6 +2188,7 @@ var FORMAT_PANE_ITEMS = [
   { label: 'Italic',     btnId: 'btn-italic' },
   { label: 'Underline',  btnId: 'btn-underline' },
   { group: 'Font', labelId: 'fmt-group-font' },
+  { label: 'Default',         btnId: 'btn-font-default' },
   { label: 'Georgia',         btnId: 'btn-font-georgia' },
   { label: 'Franklin Gothic', btnId: 'btn-font-franklin' },
   { label: 'Verdana',         btnId: 'btn-font-verdana' },
@@ -2291,6 +2312,7 @@ function applyFontFamily(family) {
   }
 }
 
+document.getElementById('btn-font-default').addEventListener('click', function() { applyFontFamily('inherit'); });
 document.getElementById('btn-font-georgia').addEventListener('click', function() { applyFontFamily('Georgia, serif'); });
 document.getElementById('btn-font-franklin').addEventListener('click', function() { applyFontFamily("'Franklin Gothic Book', sans-serif"); });
 document.getElementById('btn-font-verdana').addEventListener('click', function() { applyFontFamily('Verdana, sans-serif'); });
@@ -2504,35 +2526,68 @@ function dockPanel(panelId, zone) {
     });
   });
 
-  // Item visibility checklists
+  // Collapsible toggle helper — reads/writes state to localStorage
+  function collToggle(btn, body, lsKey) {
+    var saved; try { saved = localStorage.getItem(lsKey); } catch(e) {}
+    var open = saved === '1';
+    if (open) { btn.classList.add('open'); body.classList.add('open'); }
+    btn.addEventListener('click', function() {
+      var nowOpen = body.classList.toggle('open');
+      btn.classList.toggle('open', nowOpen);
+      try { localStorage.setItem(lsKey, nowOpen ? '1' : '0'); } catch(e) {}
+    });
+  }
+
+  // Wire top-level pane collapsibles (already in HTML)
+  document.querySelectorAll('#opts-section-menu-items > .opts-coll > .opts-coll-btn').forEach(function(btn) {
+    var body = btn.nextElementSibling;
+    collToggle(btn, body, btn.dataset.collKey);
+  });
+
+  // Item visibility checklists — builds nested sub-group collapsibles
   function buildChecklist(containerId, pane, items) {
     var container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = '';
     var hidden = getHiddenItems(pane);
     var uid = 0;
+
+    // Collect groups
+    var groups = [], cur = null;
     items.forEach(function(item) {
-      if (item.group) {
-        var g = document.createElement('div');
-        g.className = 'opts-item-group';
-        g.textContent = item.group;
-        container.appendChild(g);
-      } else {
+      if (item.group) { cur = { label: item.group, items: [] }; groups.push(cur); }
+      else if (cur) cur.items.push(item);
+    });
+
+    groups.forEach(function(group) {
+      var lsKey = 'tvs:opts-coll:' + pane + ':' + group.label.toLowerCase().replace(/\s+/g, '-');
+      var coll = document.createElement('div');
+      coll.className = 'opts-coll opts-coll-sub';
+
+      var btn = document.createElement('button');
+      btn.className = 'opts-coll-btn';
+      btn.innerHTML = '<span class="opts-coll-arrow">&#9654;</span>' + group.label;
+
+      var body = document.createElement('div');
+      body.className = 'opts-coll-body';
+
+      group.items.forEach(function(item) {
         var id = 'opts-item-' + pane + '-' + (uid++);
         var row = document.createElement('div');
         row.className = 'opts-item-row';
         var cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.id = id;
+        cb.type = 'checkbox'; cb.id = id;
         cb.checked = !hidden.has(item.label);
         cb.addEventListener('change', function() { setItemHidden(pane, item.label, !cb.checked); });
         var lbl = document.createElement('label');
-        lbl.htmlFor = id;
-        lbl.textContent = item.label;
-        row.appendChild(cb);
-        row.appendChild(lbl);
-        container.appendChild(row);
-      }
+        lbl.htmlFor = id; lbl.textContent = item.label;
+        row.appendChild(cb); row.appendChild(lbl);
+        body.appendChild(row);
+      });
+
+      collToggle(btn, body, lsKey);
+      coll.appendChild(btn); coll.appendChild(body);
+      container.appendChild(coll);
     });
   }
 
