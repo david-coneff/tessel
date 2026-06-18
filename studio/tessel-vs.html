@@ -507,6 +507,53 @@ select.prop-input { cursor: pointer; }
   color: var(--text); border-radius: 4px; padding: 3px 6px; font-size: 11px;
 }
 .opt-item input:focus { outline: none; border-color: var(--accent); }
+
+/* ─── Floating panel system ────────────────────────────────────────────────── */
+#dock-float { position: fixed; inset: 0; pointer-events: none; z-index: 200; }
+.ctrl-pane.dock-float,
+#outline-panel.dock-float,
+#props-panel.dock-float {
+  pointer-events: all; position: absolute !important;
+  overflow: visible !important; display: flex !important; flex-direction: column !important;
+  width: auto; height: auto; transition: none;
+}
+.dock-float .ctrl-pane-content,
+.dock-float #outline-content,
+.dock-float #props-content {
+  flex: 1 !important; display: flex !important; flex-direction: column !important;
+  overflow: hidden !important; min-width: 0;
+  border: 1px solid var(--border) !important; border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.45); background: var(--surface);
+}
+.dock-float .ctrl-pane-body { flex: 1; overflow-y: auto; overflow-x: hidden; min-height: 0; }
+.dock-float #outline-list   { flex: 1; overflow-y: auto; min-height: 0; }
+.dock-float #props-body     { flex: 1; overflow-y: auto; min-height: 0; }
+.dock-float .ctrl-pane-tab,
+.dock-float #outline-tab,
+.dock-float #props-tab { display: none !important; }
+.ctrl-pane.dock-float.collapsed .ctrl-pane-content,
+#outline-panel.dock-float.collapsed #outline-content,
+#props-panel.dock-float.collapsed #props-content { display: flex !important; }
+.dock-float .ctrl-pane-header   { cursor: grab; user-select: none; }
+.dock-float #outline-content h3 { cursor: grab; user-select: none; }
+.dock-float #props-content h3   { cursor: grab; user-select: none; }
+.ctrl-pane-float-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--muted); padding: 1px 5px; font-size: 11px; line-height: 1;
+  border-radius: 3px; flex-shrink: 0;
+}
+.ctrl-pane-float-btn:hover { background: var(--surface2); color: var(--text); }
+.pane-resize-handle { position: absolute; z-index: 10; pointer-events: none; }
+.dock-float .pane-resize-handle { pointer-events: all; }
+.pane-resize-handle-n  { top: -3px;    left: 12px; right: 12px; height: 6px;  cursor: n-resize; }
+.pane-resize-handle-s  { bottom: -3px; left: 12px; right: 12px; height: 6px;  cursor: s-resize; }
+.pane-resize-handle-e  { right: -3px;  top: 12px; bottom: 12px; width: 6px;   cursor: e-resize; }
+.pane-resize-handle-w  { left: -3px;   top: 12px; bottom: 12px; width: 6px;   cursor: w-resize; }
+.pane-resize-handle-ne { top: -4px;    right: -4px;  width: 12px; height: 12px; cursor: ne-resize; }
+.pane-resize-handle-se { bottom: -4px; right: -4px;  width: 12px; height: 12px; cursor: se-resize; }
+.pane-resize-handle-sw { bottom: -4px; left: -4px;   width: 12px; height: 12px; cursor: sw-resize; }
+.pane-resize-handle-nw { top: -4px;    left: -4px;   width: 12px; height: 12px; cursor: nw-resize; }
+.opts-dock-btns { flex-wrap: wrap; }
 .opt-del { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 14px; padding: 0 3px; }
 .opt-del:hover { color: var(--red); }
 .opt-add { font-size: 11px; color: var(--accent); cursor: pointer; background: none;
@@ -1133,6 +1180,9 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
 <!-- BOTTOM DOCK ZONE -->
 <div id="dock-bottom"></div>
 
+<!-- FLOAT DOCK ZONE -->
+<div id="dock-float"></div>
+
 <!-- INSERT FLOAT MENU -->
 <div id="insert-float"></div>
 
@@ -1177,6 +1227,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
               <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
               <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
               <button class="opts-dock-btn" data-zone="right">&#8594; Right</button>
+              <button class="opts-dock-btn" data-zone="float">&#8599; Float</button>
             </div>
           </div>
           <div class="opts-dock-row">
@@ -1186,6 +1237,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
               <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
               <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
               <button class="opts-dock-btn" data-zone="right">&#8594; Right</button>
+              <button class="opts-dock-btn" data-zone="float">&#8599; Float</button>
             </div>
           </div>
           <div class="opts-dock-row">
@@ -1195,6 +1247,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
               <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
               <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
               <button class="opts-dock-btn" data-zone="right">&#8594; Right</button>
+              <button class="opts-dock-btn" data-zone="float">&#8599; Float</button>
             </div>
           </div>
           <div class="opts-dock-row">
@@ -1204,6 +1257,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
               <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
               <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
               <button class="opts-dock-btn" data-zone="right">&#8594; Right</button>
+              <button class="opts-dock-btn" data-zone="float">&#8599; Float</button>
             </div>
           </div>
           <div class="opts-dock-row">
@@ -1213,6 +1267,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
               <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
               <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
               <button class="opts-dock-btn active" data-zone="right">&#8594; Right</button>
+              <button class="opts-dock-btn" data-zone="float">&#8599; Float</button>
             </div>
           </div>
         </div>
@@ -3259,6 +3314,9 @@ makeSidePanel({
   lsKey: 'tvs:props-state'
 });
 
+// Forward declaration — assigned by the float IIFE below
+var floatPanel;
+
 // ── Dock panel system ────────────────────────────────────────────────────────
 // Moves a panel element into the specified dock zone and applies CSS classes.
 // zone: 'left' | 'right' | 'top' | 'bottom'
@@ -3267,8 +3325,15 @@ function dockPanel(panelId, zone) {
   var zoneEl = document.getElementById('dock-' + zone);
   if (!panel || !zoneEl) return;
 
+  // Clean up float styles if the panel was floating
+  if (panel.classList.contains('dock-float')) {
+    panel.style.left = panel.style.top = panel.style.width = panel.style.height = panel.style.zIndex = '';
+    var fb = document.querySelector('[data-pane-float-btn="' + panelId + '"]');
+    if (fb) { fb.innerHTML = '&#8599;'; fb.title = 'Undock to float'; }
+  }
+
   zoneEl.appendChild(panel);
-  panel.classList.remove('dock-left', 'dock-right', 'dock-top', 'dock-bottom', 'pane-h');
+  panel.classList.remove('dock-left', 'dock-right', 'dock-top', 'dock-bottom', 'dock-float', 'pane-h');
   panel.classList.add('dock-' + zone);
   if (zone === 'top' || zone === 'bottom') panel.classList.add('pane-h');
 
@@ -3279,6 +3344,153 @@ function dockPanel(panelId, zone) {
 
   try { localStorage.setItem('tvs:dock:' + panelId, zone); } catch(e) {}
 }
+
+// ── Floating panel system ────────────────────────────────────────────────────
+(function() {
+  var FLOAT_W = 260, FLOAT_H = 380, MIN_W = 160, MIN_H = 120;
+  var PANE_IDS = ['format-pane','text-pane','form-pane','outline-panel','props-panel'];
+  var PANE_DEF = {'format-pane':'left','text-pane':'left','form-pane':'left','outline-panel':'left','props-panel':'right'};
+  var lastZone = {};
+  var zCounter = 201;
+
+  function loadState(id) { try { return JSON.parse(localStorage.getItem('tvs:float:'+id))||null; } catch(e) { return null; } }
+  function saveState(id,x,y,w,h) { try { localStorage.setItem('tvs:float:'+id, JSON.stringify({x:x,y:y,w:w,h:h})); } catch(e) {} }
+
+  function curZoneOf(panel) {
+    if (panel.classList.contains('dock-left'))   return 'left';
+    if (panel.classList.contains('dock-right'))  return 'right';
+    if (panel.classList.contains('dock-top'))    return 'top';
+    if (panel.classList.contains('dock-bottom')) return 'bottom';
+    return null;
+  }
+
+  floatPanel = function(panelId) {
+    var panel = document.getElementById(panelId);
+    var fc    = document.getElementById('dock-float');
+    if (!panel || !fc) return;
+    var z = curZoneOf(panel);
+    if (z) lastZone[panelId] = z;
+    panel.classList.remove('collapsed');
+    fc.appendChild(panel);
+    panel.classList.remove('dock-left','dock-right','dock-top','dock-bottom','pane-h');
+    panel.classList.add('dock-float');
+    var s = loadState(panelId);
+    var w = (s&&s.w)||FLOAT_W, h = (s&&s.h)||FLOAT_H;
+    var x = (s&&s.x!=null) ? s.x : Math.round((window.innerWidth-w)/2);
+    var y = (s&&s.y!=null) ? s.y : Math.round((window.innerHeight-h)/4);
+    x = Math.max(0, Math.min(window.innerWidth-w,  x));
+    y = Math.max(0, Math.min(window.innerHeight-h, y));
+    panel.style.left=x+'px'; panel.style.top=y+'px';
+    panel.style.width=w+'px'; panel.style.height=h+'px';
+    panel.style.zIndex=String(zCounter++);
+    document.querySelectorAll('.opts-dock-btns[data-dock-panel="'+panelId+'"] .opts-dock-btn').forEach(function(b){
+      b.classList.toggle('active', b.dataset.zone==='float');
+    });
+    var fb = document.querySelector('[data-pane-float-btn="'+panelId+'"]');
+    if (fb) { fb.innerHTML='&#8601;'; fb.title='Dock panel'; }
+    try { localStorage.setItem('tvs:dock:'+panelId,'float'); } catch(e) {}
+  };
+
+  function dockBack(panelId) {
+    var panel = document.getElementById(panelId);
+    if (!panel||!panel.classList.contains('dock-float')) return;
+    saveState(panelId,
+      parseFloat(panel.style.left)||0, parseFloat(panel.style.top)||0,
+      parseFloat(panel.style.width)||FLOAT_W, parseFloat(panel.style.height)||FLOAT_H);
+    panel.style.left=panel.style.top=panel.style.width=panel.style.height=panel.style.zIndex='';
+    dockPanel(panelId, lastZone[panelId]||PANE_DEF[panelId]||'left');
+  }
+
+  // Add float button to each pane header
+  PANE_IDS.forEach(function(panelId) {
+    var panel = document.getElementById(panelId); if (!panel) return;
+    var hdr = panel.querySelector('.ctrl-pane-header') ||
+              panel.querySelector('#outline-content h3') ||
+              panel.querySelector('#props-content h3') ||
+              panel.querySelector('h3');
+    if (!hdr) return;
+    var btn = document.createElement('button');
+    btn.className = 'ctrl-pane-float-btn';
+    btn.setAttribute('data-pane-float-btn', panelId);
+    btn.innerHTML = '&#8599;'; btn.title = 'Undock to float';
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (panel.classList.contains('dock-float')) dockBack(panelId);
+      else floatPanel(panelId);
+    });
+    hdr.appendChild(btn);
+  });
+
+  // Add resize handles to all panels
+  var DIRS = ['n','ne','e','se','s','sw','w','nw'];
+  PANE_IDS.forEach(function(panelId) {
+    var panel = document.getElementById(panelId); if (!panel) return;
+    DIRS.forEach(function(dir) {
+      var el = document.createElement('div');
+      el.className = 'pane-resize-handle pane-resize-handle-'+dir;
+      el.setAttribute('data-resize-dir', dir);
+      panel.appendChild(el);
+    });
+  });
+
+  // Float panel drag (by header)
+  var fd=null, fdSX=0, fdSY=0, fdPX=0, fdPY=0;
+  document.getElementById('dock-float').addEventListener('mousedown', function(e) {
+    if (e.button!==0||e.target.tagName==='BUTTON') return;
+    if (e.target.classList.contains('pane-resize-handle')) return;
+    var hdr = e.target.closest('.ctrl-pane-header, #outline-content h3, #props-content h3');
+    if (!hdr) return;
+    var p = hdr;
+    while (p && p.parentElement && p.parentElement.id !== 'dock-float') p = p.parentElement;
+    if (!p||!p.classList.contains('dock-float')) return;
+    fd=p; fdSX=e.clientX; fdSY=e.clientY;
+    fdPX=parseFloat(p.style.left)||0; fdPY=parseFloat(p.style.top)||0;
+    p.style.zIndex=String(zCounter++);
+    e.preventDefault();
+  });
+
+  // Resize drag
+  var rd=null, rdDir='', rdSX=0, rdSY=0, rdPX=0, rdPY=0, rdPW=0, rdPH=0;
+  document.addEventListener('mousedown', function(e) {
+    if (e.button!==0||!e.target.classList.contains('pane-resize-handle')) return;
+    var p=e.target.parentElement;
+    if (!p||!p.classList.contains('dock-float')) return;
+    rd=p; rdDir=e.target.getAttribute('data-resize-dir');
+    rdSX=e.clientX; rdSY=e.clientY;
+    rdPX=parseFloat(p.style.left)||0; rdPY=parseFloat(p.style.top)||0;
+    rdPW=parseFloat(p.style.width)||FLOAT_W; rdPH=parseFloat(p.style.height)||FLOAT_H;
+    p.style.zIndex=String(zCounter++);
+    e.preventDefault(); e.stopPropagation();
+  }, true);
+
+  document.addEventListener('mousemove', function(e) {
+    if (fd) {
+      var w=parseFloat(fd.style.width)||FLOAT_W, h=parseFloat(fd.style.height)||FLOAT_H;
+      fd.style.left=Math.max(0,Math.min(window.innerWidth-w,  fdPX+(e.clientX-fdSX)))+'px';
+      fd.style.top =Math.max(0,Math.min(window.innerHeight-h, fdPY+(e.clientY-fdSY)))+'px';
+    }
+    if (rd) {
+      var dx=e.clientX-rdSX, dy=e.clientY-rdSY, dir=rdDir;
+      var x=rdPX,y=rdPY,w=rdPW,h=rdPH;
+      if (dir.indexOf('e')>=0) w=Math.max(MIN_W,rdPW+dx);
+      if (dir.indexOf('s')>=0) h=Math.max(MIN_H,rdPH+dy);
+      if (dir.indexOf('w')>=0) { var nw=Math.max(MIN_W,rdPW-dx); x=rdPX+(rdPW-nw); w=nw; }
+      if (dir.indexOf('n')>=0) { var nh=Math.max(MIN_H,rdPH-dy); y=rdPY+(rdPH-nh); h=nh; }
+      rd.style.left=x+'px'; rd.style.top=y+'px'; rd.style.width=w+'px'; rd.style.height=h+'px';
+    }
+  });
+
+  document.addEventListener('mouseup', function() {
+    if (fd) { saveState(fd.id,parseFloat(fd.style.left)||0,parseFloat(fd.style.top)||0,parseFloat(fd.style.width)||FLOAT_W,parseFloat(fd.style.height)||FLOAT_H); fd=null; }
+    if (rd) { saveState(rd.id,parseFloat(rd.style.left)||0,parseFloat(rd.style.top)||0,parseFloat(rd.style.width)||FLOAT_W,parseFloat(rd.style.height)||FLOAT_H); rd=null; rdDir=''; }
+  });
+
+  // Restore floating panels on load
+  PANE_IDS.forEach(function(panelId) {
+    var s; try { s=localStorage.getItem('tvs:dock:'+panelId); } catch(e) {}
+    if (s==='float') floatPanel(panelId);
+  });
+})();
 
 // ── Options dialog ──────────────────────────────────────────────────────────
 (function() {
@@ -3302,7 +3514,8 @@ function dockPanel(panelId, zone) {
     var panelId = group.dataset.dockPanel;
     group.querySelectorAll('.opts-dock-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
-        dockPanel(panelId, btn.dataset.zone);
+        if (btn.dataset.zone === 'float') { if (typeof floatPanel === 'function') floatPanel(panelId); }
+        else dockPanel(panelId, btn.dataset.zone);
       });
     });
   });
@@ -3313,6 +3526,7 @@ function dockPanel(panelId, zone) {
     ['format-pane', 'text-pane', 'form-pane', 'outline-panel', 'props-panel'].forEach(function(id) {
       var saved;
       try { saved = localStorage.getItem('tvs:dock:' + id); } catch(e) {}
+      if (saved === 'float') return; // float IIFE handles restore
       var zone = (saved === 'left' || saved === 'right' || saved === 'top' || saved === 'bottom') ? saved : defaults[id];
       if (zone !== defaults[id]) dockPanel(id, zone);
       else {
@@ -3819,9 +4033,11 @@ function dockPanel(panelId, zone) {
   var PANE_IDS = ['format-pane', 'text-pane', 'form-pane', 'outline-panel', 'props-panel'];
 
   function getZoneOf(panelId) {
+    var panel = document.getElementById(panelId);
+    if (panel && panel.classList.contains('dock-float')) return 'float';
     for (var i = 0; i < ZONES.length; i++) {
       var z = document.getElementById('dock-' + ZONES[i]);
-      if (z && z.contains(document.getElementById(panelId))) return ZONES[i];
+      if (z && z.contains(panel)) return ZONES[i];
     }
     return null;
   }
@@ -3925,6 +4141,7 @@ function dockPanel(panelId, zone) {
       var pr = pel.getBoundingClientRect();
       if (clientX >= pr.left && clientX <= pr.right && clientY >= pr.top && clientY <= pr.bottom) {
         var myZone = getZoneOf(pid);
+        if (myZone === 'float') continue;
         if (myZone !== dragZone) {
           // Cross-zone: highlight that zone's edge target
           if (edgeTargets[myZone]) edgeTargets[myZone].classList.add('active');
@@ -4004,9 +4221,10 @@ function dockPanel(panelId, zone) {
     handles.forEach(function(handle) {
       handle.addEventListener('mousedown', function(e) {
         if (e.button !== 0) return;
-        // Don't hijack clicks on buttons inside the handle (collapse btn etc.)
         if (e.target.tagName === 'BUTTON') return;
-        e.preventDefault(); // prevent text selection
+        var p = document.getElementById(panelId);
+        if (p && p.classList.contains('dock-float')) return;
+        e.preventDefault();
         paneDragId  = panelId;
         dragStarted = false;
         startX = e.clientX;
