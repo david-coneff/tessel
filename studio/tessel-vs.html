@@ -1556,6 +1556,14 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
  *   auto-built from each document's front-matter title; in exported HTML the
  *   badge becomes a collapsible sidebar nav with relative-path links between
  *   sibling pages, all titles sourced from front-matter not filesystem names
+ * - Conditional branch dimming: when a form user makes a decision that renders
+ *   a branch of the walkbook inapplicable, the affected content blocks collapse
+ *   to their topmost section heading, dim to reduced opacity, gain a dashed
+ *   border, and display a "not applicable" watermark (⊘ symbol + text overlay)
+ *   centered over the collapsed region; the content is not deleted — it remains
+ *   in the document model and can be revealed if the decision is reversed;
+ *   branch conditions are authored as a block-level property linking a block
+ *   group to a specific field block's value or option selection
  */
 (function() {
 'use strict';
