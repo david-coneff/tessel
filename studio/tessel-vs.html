@@ -685,7 +685,6 @@ body.no-transitions #props-panel { transition: none !important; }
   padding: 5px 10px 4px; font-size: 9px; font-weight: 700; text-transform: uppercase;
   letter-spacing: .06em; color: var(--muted); background: var(--surface2);
   border-bottom: 1px solid var(--border); pointer-events: none; user-select: none;
-  position: sticky; top: 0; z-index: 1;
 }
 /* keep opts-coll for other sections that may still use it */
 .opts-coll { margin-bottom: 2px; }
@@ -3399,17 +3398,20 @@ function dockPanel(panelId, zone) {
       itemsCol.innerHTML = '';
       var hidden  = getHiddenItems(pane.key);
       var groups  = mibGetGroups(pane.items);
-      var anchors = {};
+      var scrollTargets = {};
       var uidBase = pane.key + '-' + Date.now();
       var uidIdx  = 0;
 
+      if (!groups.length) {
+        itemsCol.innerHTML = '<div class="mib-empty">No items in this pane.</div>';
+        return scrollTargets;
+      }
+
       groups.forEach(function(group) {
-        // Non-interactive section divider
         var divider = document.createElement('div');
         divider.className = 'mib-group-divider';
         divider.textContent = group.label;
         itemsCol.appendChild(divider);
-        anchors[group.label] = divider;
 
         group.items.forEach(function(item) {
           var id  = 'mib-cb-' + uidBase + '-' + (uidIdx++);
@@ -3426,37 +3428,31 @@ function dockPanel(panelId, zone) {
         });
       });
 
-      if (!groups.length) {
-        itemsCol.innerHTML = '<div class="mib-empty">No items in this pane.</div>';
-        return anchors;
-      }
-
-      // Add a bottom spacer so the last divider can always scroll flush to the top.
-      // Measured after layout via rAF: spacer = clientHeight − height of last section.
+      // Add bottom spacer so the last divider can always scroll to the top.
       var spacer = document.createElement('div');
       itemsCol.appendChild(spacer);
-      requestAnimationFrame(function() {
-        var dividers = itemsCol.querySelectorAll('.mib-group-divider');
-        if (!dividers.length) return;
-        var lastDivider = dividers[dividers.length - 1];
-        // getBoundingClientRect gives accurate position regardless of offsetParent.
-        // Add current scrollTop to convert from viewport-relative to scroll-relative.
-        var colRect = itemsCol.getBoundingClientRect();
-        var divRect = lastDivider.getBoundingClientRect();
-        var dividerScrollTop = divRect.top - colRect.top + itemsCol.scrollTop;
-        var lastSectionH = itemsCol.scrollHeight - dividerScrollTop;
-        var needed = itemsCol.clientHeight - lastSectionH;
-        if (needed > 0) spacer.style.height = needed + 'px';
+
+      // Read offsetTop after DOM is appended (itemsCol has position:relative so it's offsetParent).
+      // This is synchronous and accurate regardless of scroll position.
+      var dividerEls = itemsCol.querySelectorAll('.mib-group-divider');
+      dividerEls.forEach(function(el, i) {
+        scrollTargets[groups[i].label] = el.offsetTop;
       });
 
-      return anchors;
+      // Spacer = enough height so the last divider's offsetTop is reachable as scrollTop.
+      // scrollTop max = scrollHeight - clientHeight; we need lastTarget <= that max.
+      var lastTarget = scrollTargets[groups[groups.length - 1].label] || 0;
+      var needed = lastTarget - (itemsCol.scrollHeight - itemsCol.clientHeight);
+      if (needed > 0) spacer.style.height = needed + 'px';
+
+      return scrollTargets;
     }
 
     function renderGroups(paneIdx) {
       var pane    = MIB_PANES[paneIdx];
       var groups  = mibGetGroups(pane.items);
       groupsCol.innerHTML = '';
-      var anchors = renderAllItems(pane);
+      var scrollTargets = renderAllItems(pane);
 
       groups.forEach(function(group, gi) {
         var btn = document.createElement('button');
@@ -3466,13 +3462,8 @@ function dockPanel(panelId, zone) {
         btn.addEventListener('click', function() {
           groupsCol.querySelectorAll('.mib-btn').forEach(function(b) { b.classList.remove('active'); });
           btn.classList.add('active');
-          // Scroll the right column so this group's divider is at the top
-          var anchor = anchors[group.label];
-          if (anchor) {
-            var colRect2 = itemsCol.getBoundingClientRect();
-            var ancRect  = anchor.getBoundingClientRect();
-            itemsCol.scrollTop += ancRect.top - colRect2.top;
-          }
+          var target = scrollTargets[group.label];
+          if (target !== undefined) itemsCol.scrollTop = target;
         });
         groupsCol.appendChild(btn);
       });
@@ -3522,12 +3513,7 @@ function dockPanel(panelId, zone) {
     e.preventDefault();
   });
 
-  // Close on outside click
-  document.addEventListener('click', function(e) {
-    if (dialog.classList.contains('show') && !dialog.contains(e.target) && e.target !== btnOpen) {
-      closeDialog();
-    }
-  });
+  // Close only via the X button (no outside-click dismiss)
 
   // ── Editing section ──────────────────────────────────────────────────────────
   var autoSaveTimer = null;
