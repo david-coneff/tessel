@@ -83,21 +83,28 @@ body.layout-h #controls-pane {
   transition: max-height .2s ease;
 }
 body.layout-h #controls-pane.collapsed { max-height: 0; height: 0; overflow: hidden; border-bottom-color: transparent; }
+/* hide the vertical tab strip in horizontal mode */
+body.layout-h #ctrl-pane-tab { display: none; }
+/* content area fills the bar as a flex row */
+body.layout-h #ctrl-pane-content {
+  flex: 1; flex-direction: row; border-right: none;
+  overflow-x: auto; overflow-y: hidden; width: auto; height: 44px;
+}
 body.layout-h #ctrl-pane-header {
   border-bottom: none; border-right: 1px solid var(--border);
   min-width: 88px; height: 44px; flex-shrink: 0;
 }
-body.layout-h #ctrl-pane-body  { flex: 1; overflow-x: auto; overflow-y: hidden; display: flex; }
-body.layout-h .ctrl-panel.active { flex-direction: row; align-items: center; gap: 0; padding: 0 4px; }
+body.layout-h #ctrl-pane-body  { flex: 1; overflow-x: auto; overflow-y: hidden; display: flex; height: 44px; }
+body.layout-h .ctrl-panel.active { flex: 1; flex-direction: row; align-items: center; width: auto; min-width: 0; gap: 0; padding: 0 4px; }
 body.layout-h .ctrl-group-label { display: none; }
 body.layout-h .ctrl-divider     { width: 1px; height: 22px; margin: 0 4px; flex-shrink: 0; }
 body.layout-h .ctrl-btn {
-  border-left: none; border-bottom: 2px solid transparent;
+  width: auto; border-left: none; border-bottom: 2px solid transparent;
   padding: 0 10px; height: 44px; flex-shrink: 0; border-radius: 0; white-space: nowrap;
 }
 body.layout-h .ctrl-btn:hover  { background: var(--surface2); border-bottom-color: var(--accent); border-left-color: transparent; }
 body.layout-h .ctrl-btn.active { background: rgba(91,138,240,.1); border-bottom-color: var(--accent); border-left-color: transparent; color: var(--accent); }
-/* also need the dropdown inside the text panel to sit nicely */
+/* dropdown inside the text panel sits nicely in the bar */
 body.layout-h #ctrl-panel-text > .dropdown { display: flex; align-items: center; padding: 0 6px; }
 
 /* CONTROLS PANE */
