@@ -739,7 +739,7 @@ body.no-transitions #props-panel { transition: none !important; }
 .mib-item-row label { cursor: pointer; user-select: none; color: var(--text); }
 .mib-empty { padding: 14px 12px; font-size: 11px; color: var(--muted); font-style: italic; }
 .mib-group-divider {
-  padding: 5px 10px 4px; font-size: 9px; font-weight: 700; text-transform: uppercase;
+  padding: 5px 10px 4px; font-size: 9px; font-weight: 700;
   letter-spacing: .06em; color: var(--muted); background: var(--surface2);
   border-bottom: 1px solid var(--border); pointer-events: none; user-select: none;
 }
@@ -1539,7 +1539,7 @@ var FIELD_TYPES = {
 };
 
 var INSERT_MENU_ITEMS = [
-  { group: 'TEXT CONTENT' },
+  { group: 'Text Content' },
   { label: 'Heading 1', icon: 'H1', action: function(aid) { insertBlock({ type:'heading', level:1, text:'Heading', id:uid() }, aid); } },
   { label: 'Heading 2', icon: 'H2', action: function(aid) { insertBlock({ type:'heading', level:2, text:'Heading', id:uid() }, aid); } },
   { label: 'Heading 3', icon: 'H3', action: function(aid) { insertBlock({ type:'heading', level:3, text:'Heading', id:uid() }, aid); } },
@@ -1547,7 +1547,7 @@ var INSERT_MENU_ITEMS = [
   { label: 'Divider',       icon: '—',  action: function(aid) { insertBlock({ type:'hr', id:uid() }, aid); } },
   { label: 'Bulleted List', icon: '•',  action: function(aid) { insertBlock({ type:'list', ordered:false, items:[''], id:uid() }, aid); } },
   { label: 'Ordered List',  icon: '1.', action: function(aid) { insertBlock({ type:'list', ordered:true,  items:[''], id:uid() }, aid); } },
-  { group: 'STRUCTURE' },
+  { group: 'Structure' },
   { label: 'Collapsible Section', icon: '▶',  action: function(aid) { insertBlock({ type:'section', title:'Section Title', children:[], id:uid() }, aid); } },
   { label: 'Code Block',          icon: '</>',action: function(aid) { insertBlock({ type:'codeblock', lang:'bash', code:'', id:uid() }, aid); } },
   { label: 'Attachment (author)', icon: '📎', action: function(aid) { insertBlock({ type:'attachment', files:[], id:uid() }, aid); } },
