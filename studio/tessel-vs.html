@@ -3530,8 +3530,11 @@ function dockPanel(panelId, zone) {
     if (!dialog._dragged) {
       var savedPos; try { savedPos = JSON.parse(localStorage.getItem('tvs:opts:pos')); } catch(e) {}
       if (savedPos && savedPos.left && savedPos.top) {
-        dialog.style.left = savedPos.left;
-        dialog.style.top  = savedPos.top;
+        var dlgW = dialog.offsetWidth, dlgH = dialog.offsetHeight;
+        var rx = Math.max(0, Math.min(window.innerWidth  - dlgW,  parseFloat(savedPos.left)));
+        var ry = Math.max(0, Math.min(window.innerHeight - dlgH, parseFloat(savedPos.top)));
+        dialog.style.left = rx + 'px';
+        dialog.style.top  = ry + 'px';
         dialog.style.transform = 'none';
         dialog._dragged = true;
       } else {
