@@ -748,17 +748,8 @@ body.no-transitions #props-panel { transition: none !important; }
         <span class="ctrl-pane-title">Text</span>
         <button class="ctrl-pane-collapse-btn" title="Collapse panel">&#8249;</button>
       </div>
-      <div class="ctrl-pane-body">
-        <div class="ctrl-group-label">Insert</div>
-        <button class="ctrl-btn" id="btn-hr"><span class="ctrl-btn-icon">&#8212;</span>Divider</button>
-        <button class="ctrl-btn" id="btn-insert-section"><span class="ctrl-btn-icon">&#9654;</span>Section</button>
-        <button class="ctrl-btn" id="btn-insert-code"><span class="ctrl-btn-icon">&lt;/&gt;</span>Code Block</button>
-        <div class="ctrl-divider"></div>
-        <div class="ctrl-group-label">All Blocks</div>
-        <div class="dropdown" id="dd-insert" style="padding:4px 6px">
-          <button id="btn-insert-dd" style="width:100%">Insert &#9662;</button>
-          <div class="dropdown-menu" id="dm-insert"></div>
-        </div>
+      <div class="ctrl-pane-body" id="text-pane-body">
+        <!-- populated by buildTextPaneButtons() -->
       </div>
     </div>
     <div class="ctrl-pane-tab" title="Toggle Text panel">
@@ -1812,8 +1803,7 @@ function buildInsertMenuContent(container, getAfterId) {
       var d = document.createElement('div'); d.className = 'dm-item';
       d.innerHTML = '<span class="dm-icon">' + esc(item.icon) + '</span>' + esc(item.label);
       d.addEventListener('click', function() {
-        // Keep the pane Insert menu open after selection; close float/toolbar dropdowns
-        if (!container.closest('#ctrl-pane-body')) closeAllDropdowns();
+        closeAllDropdowns();
         item.action(getAfterId ? getAfterId() : null);
       });
       container.appendChild(d);
@@ -1977,8 +1967,6 @@ function setupDropdown(btnId, menuId) {
 }
 
 setupDropdown('btn-file-dd', 'dm-file');
-setupDropdown('btn-insert-dd', 'dm-insert');
-buildInsertMenuHTML();
 
 // ── Ctrl pane factory (text-pane, form-pane) ────────────────────────────────
 // Each pane has 3 states: open | collapsed (tab strip) | off (hidden)
@@ -2036,6 +2024,29 @@ makeCtrlPane({ paneId: 'format-pane', badgeId: 'badge-format', lsKey: 'tvs:forma
 makeCtrlPane({ paneId: 'text-pane',   badgeId: 'badge-text',   lsKey: 'tvs:text-pane-state' });
 makeCtrlPane({ paneId: 'form-pane',   badgeId: 'badge-form',   lsKey: 'tvs:form-pane-state' });
 
+function buildTextPaneButtons() {
+  var body = document.getElementById('text-pane-body');
+  if (!body) return;
+  body.innerHTML = '';
+  INSERT_MENU_ITEMS.forEach(function(item) {
+    if (item.group) {
+      var lbl = document.createElement('div');
+      lbl.className = 'ctrl-group-label';
+      lbl.textContent = item.group;
+      body.appendChild(lbl);
+    } else {
+      var btn = document.createElement('button');
+      btn.className = 'ctrl-btn';
+      btn.innerHTML = '<span class="ctrl-btn-icon">' + esc(item.icon) + '</span>' + esc(item.label);
+      btn.addEventListener('click', function() {
+        item.action(lastFocusedTextBlockId || null);
+      });
+      body.appendChild(btn);
+    }
+  });
+}
+buildTextPaneButtons();
+
 // Form pane field-insert buttons
 document.querySelectorAll('#form-pane .ctrl-btn[data-insert-field]').forEach(function(btn) {
   btn.addEventListener('click', function() {
@@ -2043,13 +2054,6 @@ document.querySelectorAll('#form-pane .ctrl-btn[data-insert-field]').forEach(fun
   });
 });
 
-// Controls pane structural-insert buttons
-document.getElementById('btn-insert-section').addEventListener('click', function() {
-  insertBlock({ type:'section', title:'Section Title', children:[], id:uid() }, lastFocusedTextBlockId || null);
-});
-document.getElementById('btn-insert-code').addEventListener('click', function() {
-  insertBlock({ type:'codeblock', lang:'bash', code:'', id:uid() }, lastFocusedTextBlockId || null);
-});
 
 document.getElementById('btn-undo').addEventListener('click', undo);
 document.getElementById('btn-redo').addEventListener('click', redo);
@@ -2095,10 +2099,6 @@ function convertFocusedBlock(newType, level) {
     if (el) el.focus();
   }, 20);
 }
-
-document.getElementById('btn-hr').addEventListener('click', function() {
-  insertBlock({ type:'hr', id:uid() }, lastFocusedTextBlockId || null);
-});
 
 document.getElementById('btn-preview').addEventListener('click', showPreview);
 document.getElementById('preview-close').addEventListener('click', function() {
