@@ -647,6 +647,12 @@ body.no-transitions #props-panel { transition: none !important; }
 .opts-coll-btn:hover { background: var(--surface2); }
 .opts-coll-arrow { display: inline-block; font-size: 8px; color: var(--muted); transition: transform .15s; flex-shrink: 0; }
 .opts-coll-btn.open .opts-coll-arrow { transform: rotate(90deg); }
+.opts-select {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); font-size: 11px; padding: 3px 6px; cursor: pointer;
+  outline: none;
+}
+.opts-select:focus { border-color: var(--accent); }
 .opts-coll-body { display: none; padding-left: 10px; }
 .opts-coll-body.open { display: block; }
 .opts-coll-sub > .opts-coll-btn { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 4px 6px; }
@@ -940,6 +946,7 @@ body.no-transitions #props-panel { transition: none !important; }
       <button class="opts-nav-btn active" data-opts-section="layout">Layout</button>
       <button class="opts-nav-btn" data-opts-section="animations">Animations</button>
       <button class="opts-nav-btn" data-opts-section="menu-items">Menu Items</button>
+      <button class="opts-nav-btn" data-opts-section="editing">Editing</button>
     </nav>
     <div id="opts-content">
 
@@ -1020,6 +1027,37 @@ body.no-transitions #props-panel { transition: none !important; }
         </div>
       </div>
 
+      <!-- EDITING -->
+      <div class="opts-section" id="opts-section-editing">
+        <div class="opts-section-label">Auto-Save</div>
+        <div class="opts-toggle-row" style="margin-bottom:10px;">
+          <span>Save frequency</span>
+          <select id="opts-autosave-freq" class="opts-select">
+            <option value="0">Off</option>
+            <option value="30">Every 30 seconds</option>
+            <option value="60" selected>Every minute</option>
+            <option value="300">Every 5 minutes</option>
+            <option value="600">Every 10 minutes</option>
+          </select>
+        </div>
+        <div class="opts-divider"></div>
+        <div class="opts-section-label">Undo History</div>
+        <div class="opts-toggle-row" style="margin-bottom:10px;">
+          <span>Max undo steps</span>
+          <select id="opts-undo-depth" class="opts-select">
+            <option value="10">10 steps</option>
+            <option value="25">25 steps</option>
+            <option value="50" selected>50 steps</option>
+            <option value="100">100 steps</option>
+            <option value="200">200 steps</option>
+          </select>
+        </div>
+        <div class="opts-toggle-row">
+          <span>Save undo history with document</span>
+          <button class="opts-toggle" id="opts-persist-undo" title="Persist undo history"></button>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -1064,9 +1102,15 @@ var _filename = 'document';
 // Undo/Redo
 var undoStack = [], redoStack = [];
 
+function getUndoDepth() {
+  try { var v = parseInt(localStorage.getItem('tvs:opts:undo-depth'), 10); if (v > 0) return v; } catch(e) {}
+  return 50;
+}
+
 function pushUndo() {
   undoStack.push(JSON.stringify(blocks));
-  if (undoStack.length > 50) undoStack.shift();
+  var depth = getUndoDepth();
+  while (undoStack.length > depth) undoStack.shift();
   redoStack = [];
   updateUndoButtons();
 }
@@ -1974,16 +2018,35 @@ function updateToolbarState(b) {
 
 function markUnsaved() { _unsaved = true; setStatus('Unsaved changes'); }
 
+function isPersistUndo() {
+  try { return localStorage.getItem('tvs:opts:persist-undo') === '1'; } catch(e) { return false; }
+}
+
 function saveDraft() {
-  try { localStorage.setItem('tvs:draft', JSON.stringify(blocks)); } catch(e) {}
+  try {
+    var payload = { blocks: blocks };
+    if (isPersistUndo()) { payload.undoStack = undoStack; payload.redoStack = redoStack; }
+    localStorage.setItem('tvs:draft', JSON.stringify(payload));
+  } catch(e) {}
   _unsaved = false;
   setStatus('Draft saved');
 }
 
 function loadDraft() {
   try {
-    var d = localStorage.getItem('tvs:draft');
-    if (d) { blocks = JSON.parse(d); renderCanvas(); setStatus('Draft restored'); }
+    var raw = localStorage.getItem('tvs:draft');
+    if (!raw) return;
+    var payload = JSON.parse(raw);
+    // Support both old format (plain array) and new format (object with blocks key)
+    if (Array.isArray(payload)) {
+      blocks = payload;
+    } else {
+      blocks = payload.blocks || [];
+      if (payload.undoStack) { undoStack = payload.undoStack; redoStack = payload.redoStack || []; }
+    }
+    renderCanvas();
+    updateUndoButtons();
+    setStatus('Draft restored');
   } catch(e) {}
 }
 
@@ -2757,6 +2820,59 @@ function dockPanel(panelId, zone) {
       closeDialog();
     }
   });
+
+  // ── Editing section ──────────────────────────────────────────────────────────
+  var autoSaveTimer = null;
+
+  function getAutoSaveFreq() {
+    try { var v = parseInt(localStorage.getItem('tvs:opts:autosave-freq'), 10); if (!isNaN(v)) return v; } catch(e) {}
+    return 60; // default 1 minute
+  }
+
+  function restartAutoSave() {
+    if (autoSaveTimer) { clearInterval(autoSaveTimer); autoSaveTimer = null; }
+    var freq = getAutoSaveFreq();
+    if (freq > 0) { autoSaveTimer = setInterval(function() { if (_unsaved) saveDraft(); }, freq * 1000); }
+  }
+
+  var freqSel = document.getElementById('opts-autosave-freq');
+  var depthSel = document.getElementById('opts-undo-depth');
+  var persistBtn = document.getElementById('opts-persist-undo');
+
+  // Restore saved values
+  (function() {
+    var freq = getAutoSaveFreq();
+    for (var i = 0; i < freqSel.options.length; i++) {
+      if (parseInt(freqSel.options[i].value, 10) === freq) { freqSel.selectedIndex = i; break; }
+    }
+    var depth = getUndoDepth();
+    for (var j = 0; j < depthSel.options.length; j++) {
+      if (parseInt(depthSel.options[j].value, 10) === depth) { depthSel.selectedIndex = j; break; }
+    }
+    var persist = isPersistUndo();
+    persistBtn.classList.toggle('on', persist);
+  })();
+
+  freqSel.addEventListener('change', function() {
+    try { localStorage.setItem('tvs:opts:autosave-freq', freqSel.value); } catch(e) {}
+    restartAutoSave();
+  });
+
+  depthSel.addEventListener('change', function() {
+    var depth = parseInt(depthSel.value, 10);
+    try { localStorage.setItem('tvs:opts:undo-depth', depth); } catch(e) {}
+    // Trim existing stack if needed
+    while (undoStack.length > depth) undoStack.shift();
+    updateUndoButtons();
+  });
+
+  persistBtn.addEventListener('click', function() {
+    var nowOn = !persistBtn.classList.contains('on');
+    persistBtn.classList.toggle('on', nowOn);
+    try { localStorage.setItem('tvs:opts:persist-undo', nowOn ? '1' : '0'); } catch(e) {}
+  });
+
+  restartAutoSave();
 })();
 
 })();
