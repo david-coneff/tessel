@@ -8782,11 +8782,6 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
     var panels = document.querySelectorAll('.ribbon-panel');
     tabs.forEach(function(tab) {
       tab.addEventListener('click', function() {
-        // In visual mode, switch back to markdown then activate the tab
-        var wsEl = document.getElementById('ws-mode');
-        if (wsEl && wsEl.classList.contains('active')) {
-          wsSwitchMode('markdown');
-        }
         tabs.forEach(function(t) { t.classList.remove('active'); });
         panels.forEach(function(p) { p.classList.remove('active'); });
         tab.classList.add('active');
@@ -10348,7 +10343,8 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         wsPanels.forEach(function(p){ p.style.display = ''; });
         document.getElementById('rp-ws-edit').classList.add('active');
         document.getElementById('rp-ws-insert').classList.remove('active');
-        document.querySelectorAll('.ribbon-tab').forEach(function(t){ t.classList.remove('active'); });
+        // Hide markdown-specific tabs — they have no meaning in visual mode
+        document.querySelectorAll('.ribbon-tab').forEach(function(t){ t.style.display = 'none'; t.classList.remove('active'); });
         if (pillMd) { pillMd.classList.remove('active'); pillMd.setAttribute('aria-pressed','false'); }
         if (pillVs) { pillVs.classList.add('active');    pillVs.setAttribute('aria-pressed','true'); }
       } else {
@@ -10369,6 +10365,8 @@ return Tessel_api || { version:"0.1.0", parse:parse, compile:compile, compileAst
         }
         mdPanels.forEach(function(p){ p.style.display = ''; });
         wsPanels.forEach(function(p){ p.style.display = 'none'; p.classList.remove('active'); });
+        // Restore markdown tabs
+        document.querySelectorAll('.ribbon-tab').forEach(function(t){ t.style.display = ''; });
         // Restore the tab that was active before entering visual mode
         var restoredPanel = document.getElementById('rp-' + wsPrevTabId);
         var restoredTab = document.querySelector('.ribbon-tab[data-tab="' + wsPrevTabId + '"]');
