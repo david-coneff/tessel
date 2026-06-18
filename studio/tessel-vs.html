@@ -1557,13 +1557,17 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
  *   badge becomes a collapsible sidebar nav with relative-path links between
  *   sibling pages, all titles sourced from front-matter not filesystem names
  * - Conditional branch dimming: when a form user makes a decision that renders
- *   a branch of the walkbook inapplicable, the affected content blocks collapse
- *   to their topmost section heading, dim to reduced opacity, gain a dashed
- *   border, and display a "not applicable" watermark (⊘ symbol + text overlay)
- *   centered over the collapsed region; the content is not deleted — it remains
- *   in the document model and can be revealed if the decision is reversed;
- *   branch conditions are authored as a block-level property linking a block
- *   group to a specific field block's value or option selection
+ *   a branch of the walkbook inapplicable, the transition is immediate and overt
+ *   at the point of decision — the affected blocks animate-collapse to their
+ *   topmost section heading, dim to reduced opacity, gain a dashed border, and
+ *   display a "not applicable" watermark (⊘ symbol + text overlay) centered over
+ *   the collapsed region; the intentional visibility of the contraction is the UX
+ *   signal — the user sees the document responding to their input and understands
+ *   why content disappeared and that the remaining content is what applies to them;
+ *   collapsed branches are not deleted — they remain in the document model and
+ *   restore if the decision is reversed; branch conditions are authored as a
+ *   block-level property linking a block group to a specific field block's value
+ *   or option selection
  */
 (function() {
 'use strict';
