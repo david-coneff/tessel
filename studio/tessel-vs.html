@@ -650,6 +650,38 @@ body.no-transitions #props-panel { transition: none !important; }
 .opts-item-row { display: flex; align-items: center; gap: 8px; padding: 2px 0; cursor: pointer; }
 .opts-item-row input[type=checkbox] { width: 13px; height: 13px; cursor: pointer; accent-color: var(--accent); flex-shrink: 0; }
 .opts-item-row label { font-size: 12px; color: var(--text); cursor: pointer; user-select: none; }
+/* ── Menu Items 3-column browser ─────────────────────────────────────────── */
+.mib-browser {
+  display: flex; height: 300px;
+  border: 1px solid var(--border); border-radius: 5px; overflow: hidden;
+}
+.mib-col {
+  display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden;
+  border-right: 1px solid var(--border); flex-shrink: 0;
+  scrollbar-width: thin;
+}
+.mib-col:last-child { border-right: none; }
+#mib-col-panes  { width: 110px; }
+#mib-col-groups { width: 130px; }
+.mib-col-items  { flex: 1; flex-shrink: 1; }
+.mib-btn {
+  display: block; width: 100%; text-align: left; background: none;
+  border: none; border-bottom: 1px solid var(--border);
+  padding: 8px 10px; font-size: 11px; font-weight: 500;
+  color: var(--text); cursor: pointer; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.mib-btn:hover  { background: var(--surface2); }
+.mib-btn.active { background: var(--accent); color: #fff; }
+.mib-item-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+.mib-item-row:last-child { border-bottom: none; }
+.mib-item-row label { cursor: pointer; user-select: none; color: var(--text); }
+.mib-empty { padding: 14px 12px; font-size: 11px; color: var(--muted); font-style: italic; }
+/* keep opts-coll for other sections that may still use it */
 .opts-coll { margin-bottom: 2px; }
 .opts-coll-btn {
   display: flex; align-items: center; gap: 5px; width: 100%; text-align: left;
@@ -1192,17 +1224,13 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
 
       <!-- MENU ITEMS -->
       <div class="opts-section" id="opts-section-menu-items">
-        <div class="opts-coll" id="opts-coll-text">
-          <button class="opts-coll-btn" data-coll-key="tvs:opts-coll:text">
-            <span class="opts-coll-arrow">&#9654;</span>Text Pane
-          </button>
-          <div class="opts-coll-body" id="opts-text-items"></div>
-        </div>
-        <div class="opts-coll" id="opts-coll-format">
-          <button class="opts-coll-btn" data-coll-key="tvs:opts-coll:format">
-            <span class="opts-coll-arrow">&#9654;</span>Format Pane
-          </button>
-          <div class="opts-coll-body" id="opts-format-items"></div>
+        <p class="opts-helper-text" style="margin-bottom:8px;">Select a pane, then a category, then toggle individual items on or off.</p>
+        <div class="mib-browser">
+          <div class="mib-col" id="mib-col-panes"></div>
+          <div class="mib-col" id="mib-col-groups"></div>
+          <div class="mib-col mib-col-items" id="mib-col-items">
+            <div class="mib-empty">← Select a category</div>
+          </div>
         </div>
       </div>
 
@@ -3318,16 +3346,15 @@ function dockPanel(panelId, zone) {
       btn.classList.add('active');
       var sec = document.getElementById('opts-section-' + btn.dataset.optsSection);
       if (sec) sec.classList.add('active');
-      // Build checklists lazily when menu-items section first shown
-      if (btn.dataset.optsSection === 'menu-items' && !dialog._checklistsBuilt) {
-        buildChecklist('opts-text-items',   'text',   INSERT_MENU_ITEMS);
-        buildChecklist('opts-format-items', 'format', FORMAT_PANE_ITEMS);
-        dialog._checklistsBuilt = true;
+      // Build menu-items browser lazily on first visit
+      if (btn.dataset.optsSection === 'menu-items' && !dialog._mibBuilt) {
+        buildMenuItemsBrowser();
+        dialog._mibBuilt = true;
       }
     });
   });
 
-  // Collapsible toggle helper — reads/writes state to localStorage
+  // Collapsible toggle helper — still used by other opts sections
   function collToggle(btn, body, lsKey) {
     var saved; try { saved = localStorage.getItem(lsKey); } catch(e) {}
     var open = saved === '1';
@@ -3339,57 +3366,91 @@ function dockPanel(panelId, zone) {
     });
   }
 
-  // Wire top-level pane collapsibles (already in HTML)
-  document.querySelectorAll('#opts-section-menu-items > .opts-coll > .opts-coll-btn').forEach(function(btn) {
-    var body = btn.nextElementSibling;
-    collToggle(btn, body, btn.dataset.collKey);
-  });
+  // ── 3-column Menu Items browser ──────────────────────────────────────────
+  var MIB_PANES = [
+    { label: 'Text Pane',   key: 'text',   items: INSERT_MENU_ITEMS },
+    { label: 'Format Pane', key: 'format', items: FORMAT_PANE_ITEMS },
+  ];
 
-  // Item visibility checklists — builds nested sub-group collapsibles
-  function buildChecklist(containerId, pane, items) {
-    var container = document.getElementById(containerId);
-    if (!container) return;
-    container.innerHTML = '';
-    var hidden = getHiddenItems(pane);
-    var uid = 0;
-
-    // Collect groups
+  function mibGetGroups(items) {
     var groups = [], cur = null;
     items.forEach(function(item) {
       if (item.group) { cur = { label: item.group, items: [] }; groups.push(cur); }
       else if (cur) cur.items.push(item);
     });
+    return groups;
+  }
 
-    groups.forEach(function(group) {
-      var lsKey = 'tvs:opts-coll:' + pane + ':' + group.label.toLowerCase().replace(/\s+/g, '-');
-      var coll = document.createElement('div');
-      coll.className = 'opts-coll opts-coll-sub';
+  function buildMenuItemsBrowser() {
+    var panesCol  = document.getElementById('mib-col-panes');
+    var groupsCol = document.getElementById('mib-col-groups');
+    var itemsCol  = document.getElementById('mib-col-items');
+    if (!panesCol) return;
 
-      var btn = document.createElement('button');
-      btn.className = 'opts-coll-btn';
-      btn.innerHTML = '<span class="opts-coll-arrow">&#9654;</span>' + group.label;
+    var activePaneIdx  = 0;
+    var activeGroupIdx = 0;
 
-      var body = document.createElement('div');
-      body.className = 'opts-coll-body';
-
-      group.items.forEach(function(item) {
-        var id = 'opts-item-' + pane + '-' + (uid++);
+    function renderItems(paneKey, groupItems) {
+      itemsCol.innerHTML = '';
+      var hidden = getHiddenItems(paneKey);
+      var uidBase = paneKey + '-' + Date.now();
+      groupItems.forEach(function(item, i) {
+        var id = 'mib-cb-' + uidBase + '-' + i;
         var row = document.createElement('div');
-        row.className = 'opts-item-row';
+        row.className = 'mib-item-row';
         var cb = document.createElement('input');
         cb.type = 'checkbox'; cb.id = id;
         cb.checked = !hidden.has(item.label);
-        cb.addEventListener('change', function() { setItemHidden(pane, item.label, !cb.checked); });
+        cb.addEventListener('change', function() { setItemHidden(paneKey, item.label, !cb.checked); });
         var lbl = document.createElement('label');
         lbl.htmlFor = id; lbl.textContent = item.label;
         row.appendChild(cb); row.appendChild(lbl);
-        body.appendChild(row);
+        itemsCol.appendChild(row);
+      });
+      if (!groupItems.length) {
+        itemsCol.innerHTML = '<div class="mib-empty">No items in this category.</div>';
+      }
+    }
+
+    function renderGroups(paneIdx) {
+      var pane   = MIB_PANES[paneIdx];
+      var groups = mibGetGroups(pane.items);
+      groupsCol.innerHTML = '';
+      activeGroupIdx = 0;
+
+      groups.forEach(function(group, gi) {
+        var btn = document.createElement('button');
+        btn.className = 'mib-btn' + (gi === 0 ? ' active' : '');
+        btn.textContent = group.label;
+        btn.title = group.label;
+        btn.addEventListener('click', function() {
+          groupsCol.querySelectorAll('.mib-btn').forEach(function(b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          activeGroupIdx = gi;
+          renderItems(pane.key, group.items);
+        });
+        groupsCol.appendChild(btn);
       });
 
-      collToggle(btn, body, lsKey);
-      coll.appendChild(btn); coll.appendChild(body);
-      container.appendChild(coll);
+      if (groups.length) renderItems(pane.key, groups[0].items);
+      else itemsCol.innerHTML = '<div class="mib-empty">No categories.</div>';
+    }
+
+    MIB_PANES.forEach(function(pane, pi) {
+      var btn = document.createElement('button');
+      btn.className = 'mib-btn' + (pi === 0 ? ' active' : '');
+      btn.textContent = pane.label;
+      btn.title = pane.label;
+      btn.addEventListener('click', function() {
+        panesCol.querySelectorAll('.mib-btn').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        activePaneIdx = pi;
+        renderGroups(pi);
+      });
+      panesCol.appendChild(btn);
     });
+
+    renderGroups(0);
   }
 
   btnOpen.addEventListener('click', function(e) { e.stopPropagation(); openDialog(); });
