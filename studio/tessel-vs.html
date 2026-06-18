@@ -511,6 +511,9 @@ select.prop-input { cursor: pointer; }
 
 /* ─── Floating panel system ────────────────────────────────────────────────── */
 #dock-float { position: fixed; inset: 0; pointer-events: none; z-index: 200; }
+.ctrl-pane.dock-float.off,
+#outline-panel.dock-float.off,
+#props-panel.dock-float.off { display: none !important; }
 .ctrl-pane.dock-float,
 #outline-panel.dock-float,
 #props-panel.dock-float {
