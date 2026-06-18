@@ -1695,6 +1695,7 @@ function createSectionEl(b) {
   titleEl.contentEditable = 'true';
   titleEl.textContent = b.title || 'Section';
   titleEl.addEventListener('input', function() { b.title = titleEl.textContent; markUnsaved(); });
+  titleEl.addEventListener('focus', function() { lastFocusedTextBlockId = b.id; updateToolbarState(b); });
   titleEl.addEventListener('click', function(e) { e.stopPropagation(); });
   titleEl.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
@@ -1791,6 +1792,7 @@ function createCodeEl(b) {
   codeEl.placeholder = 'Enter code here…';
   codeEl.spellcheck = false;
   codeEl.addEventListener('input', function() { b.code = codeEl.value; markUnsaved(); });
+  codeEl.addEventListener('focus', function() { lastFocusedTextBlockId = b.id; updateToolbarState(b); });
   codeEl.addEventListener('keydown', function(e) {
     if (e.key === 'Tab') {
       e.preventDefault();
