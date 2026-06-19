@@ -4302,7 +4302,11 @@ function renderThemeSlots() {
       ? '<div class="theme-swatch" style="background:'+t.vars['--bg']+';width:14px;height:14px;" title="bg"></div>'
         + '<div class="theme-swatch" style="background:'+t.vars['--accent']+';width:14px;height:14px;" title="accent"></div>'
       : '';
-    slot.classList.toggle('active-slot', !previewing && activeSlot === slotName);
+    var previewingTheme = localStorage.getItem('tvs:previewing-theme');
+    slot.classList.toggle('active-slot',
+      (!previewing && activeSlot === slotName) ||
+      (previewing && !!previewingTheme && previewingTheme === themeId)
+    );
   }
 
   fillSlot('opts-slot-a', 'opts-slot-a-name', 'opts-slot-a-swatches', themeA, 'a');
@@ -4349,6 +4353,7 @@ function renderThemeSlots() {
     if (!slot) return;
     slot.onclick = function() {
       localStorage.removeItem('tvs:previewing');
+      localStorage.removeItem('tvs:previewing-theme');
       localStorage.setItem('tvs:active-slot', slot.getAttribute('data-slot'));
       applyTheme(getThemeId());
       renderThemeSlots();
@@ -4405,6 +4410,7 @@ function renderThemeSlots() {
       }
       // Apply whichever theme is now in the active slot
       localStorage.removeItem('tvs:previewing');
+      localStorage.removeItem('tvs:previewing-theme');
       var activeSlot = localStorage.getItem('tvs:active-slot') || 'a';
       var activeTheme = localStorage.getItem('tvs:theme-' + activeSlot) || 'dark';
       applyTheme(activeTheme);
@@ -4424,6 +4430,7 @@ function renderThemeList() {
   var activeId = localStorage.getItem('tvs:active-theme') || 'dark';
   var themeA = localStorage.getItem('tvs:theme-a') || 'dark';
   var themeB = localStorage.getItem('tvs:theme-b') || 'light';
+  var listPreviewing = !!localStorage.getItem('tvs:previewing');
   var all = getAllThemes();
   var html = '';
   for (var i = 0; i < all.length; i++) {
@@ -4431,7 +4438,7 @@ function renderThemeList() {
     var badges = '';
     if (t.id === themeA) badges += '<span class="theme-badge">A</span>';
     if (t.id === themeB) badges += '<span class="theme-badge">B</span>';
-    var isActive = t.id === activeId ? ' style="outline:2px solid var(--accent);"' : '';
+    var isActive = (listPreviewing && t.id === activeId) ? ' style="outline:2px solid var(--accent);"' : '';
     var actions = '<button class="theme-card-btn" data-theme-preview="'+t.id+'">Preview</button>';
     actions += '<button class="theme-card-btn" data-theme-dup="'+t.id+'">Duplicate</button>';
     if (!t.preset) {
@@ -4452,8 +4459,10 @@ function renderThemeList() {
   // wire buttons
   container.querySelectorAll('[data-theme-preview]').forEach(function(btn) {
     btn.addEventListener('click', function() {
+      var previewId = this.getAttribute('data-theme-preview');
       localStorage.setItem('tvs:previewing', '1');
-      applyTheme(this.getAttribute('data-theme-preview'));
+      localStorage.setItem('tvs:previewing-theme', previewId);
+      applyTheme(previewId);
       renderThemeList(); renderThemeSlots(); updateThemeBtn();
     });
   });
@@ -4622,6 +4631,7 @@ function showNewThemeEditor() {
   var pillB = document.getElementById('theme-pill-b');
   function toggleThemePill() {
     localStorage.removeItem('tvs:previewing');
+    localStorage.removeItem('tvs:previewing-theme');
     var curSlot = localStorage.getItem('tvs:active-slot') || 'a';
     var nextSlot = curSlot === 'a' ? 'b' : 'a';
     var nextTheme = localStorage.getItem('tvs:theme-' + nextSlot) || (nextSlot === 'a' ? 'dark' : 'light');
