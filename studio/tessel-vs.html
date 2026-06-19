@@ -1556,6 +1556,18 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
  *   auto-built from each document's front-matter title; in exported HTML the
  *   badge becomes a collapsible sidebar nav with relative-path links between
  *   sibling pages, all titles sourced from front-matter not filesystem names
+ * - Field type audit: methodical per-type review of all field types (text, area,
+ *   date, datetime, number, email, phone, url, select, radio, check, credential,
+ *   totp, filename, dir, parse, image, richtext, computed, signature, attachment)
+ *   covering: canvas preview fidelity vs. compiled HTML output, available
+ *   properties and whether any are missing per type, label/placeholder/description
+ *   consistency, validation options and their serialization, masking behavior for
+ *   credential and totp, expression syntax and evaluation for computed, options
+ *   management UX for radio/check/select, stub completeness for signature, and
+ *   whether each type round-trips correctly through serialize → parse → render;
+ *   also establish a per-field `description` / hint text property (secondary line
+ *   below the label, visible in both canvas and compiled output) as a standard
+ *   property across all field types
  * - Multi-column / multiple blocks per line: allow blocks to be placed side by
  *   side on the same row rather than strictly stacking vertically; authored via a
  *   row container block type that holds a set of child blocks laid out in a CSS
