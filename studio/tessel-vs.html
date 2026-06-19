@@ -1556,6 +1556,16 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
  *   auto-built from each document's front-matter title; in exported HTML the
  *   badge becomes a collapsible sidebar nav with relative-path links between
  *   sibling pages, all titles sourced from front-matter not filesystem names
+ * - Text alignment controls: horizontal (left/center/right/justify) and vertical
+ *   (top/center/bottom) alignment per block; both axes are set simultaneously via
+ *   a 3×3 grid widget in the right pane — nine clickable cells representing every
+ *   combination of vertical × horizontal alignment, with the active combination
+ *   highlighted; clicking a cell sets both axes at once without requiring two
+ *   separate controls; horizontal alignment maps to CSS text-align on the block
+ *   content; vertical alignment maps to flexbox align-items on the block container;
+ *   both properties are included in multi-block selection and apply to all eligible
+ *   blocks in the set; the 3×3 grid is also a natural candidate for the multi-select
+ *   pane since it communicates mixed state clearly (no cell highlighted = mixed)
  * - Multi-block selection in the canvas editor: shift+click selects a contiguous
  *   range of blocks, ctrl/cmd+click toggles individual blocks into or out of the
  *   selection set; selected blocks each show a distinct selection ring distinct from
