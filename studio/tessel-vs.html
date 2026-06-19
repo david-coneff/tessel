@@ -3915,6 +3915,7 @@ setupDropdown('btn-file-dd', 'dm-file');
 // ── Ctrl pane factory (text-pane, form-pane) ────────────────────────────────
 // Each pane has 3 states: open | collapsed (tab strip) | off (hidden)
 // cfg: { paneId, badgeId, lsKey }
+var _sidePanelArrowSync = {};
 function makeCtrlPane(cfg) {
   var pane        = document.getElementById(cfg.paneId);
   var badge       = document.getElementById(cfg.badgeId);
@@ -4451,7 +4452,6 @@ updateUndoButtons();
 
 // ── Side panel factory (outline + props) ────────────────────────────────────
 // States: open (full) | collapsed (tab strip) | off (fully hidden, badge only)
-var _sidePanelArrowSync = {};
 function makeSidePanel(cfg) {
   // cfg: { panelId, tabId, arrowId, badgeId, lsKey }
   var panel    = document.getElementById(cfg.panelId);
