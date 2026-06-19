@@ -1556,6 +1556,17 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
  *   auto-built from each document's front-matter title; in exported HTML the
  *   badge becomes a collapsible sidebar nav with relative-path links between
  *   sibling pages, all titles sourced from front-matter not filesystem names
+ * - PWA packaging: add a web app manifest (manifest.json) and minimal service
+ *   worker to make Tessel VS installable as a Progressive Web App in Chrome/Edge;
+ *   once installed it gets its own window, taskbar/dock icon, launches offline, and
+ *   registerProtocolHandler becomes available for the tessel:// edit-in-place badge
+ *   feature on exported HTML; the service worker caches the single HTML file so the
+ *   app works fully offline after first load; File System Access API native save
+ *   dialogs work without any additional changes; this is the lowest-friction path
+ *   to a native-feeling desktop experience with no packaging infrastructure, no
+ *   code signing requirement, and no distribution overhead; Tauri is deferred as a
+ *   later option if OS-level protocol registration, code-signed installers, or
+ *   per-type save path control beyond what the browser permits become necessary
  * - Filename suggestion toggle: a preference controlling whether the save dialog
  *   pre-populates the filename automatically from the state variable compositor
  *   (deriving the name from front-matter title, date, document ID, or other
