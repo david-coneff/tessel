@@ -3923,18 +3923,33 @@ function makeCtrlPane(cfg) {
   function ls(k)   { try { return localStorage.getItem(k); } catch(e) { return null; } }
   function lss(k,v){ try { localStorage.setItem(k, v); } catch(e) {} }
 
+  function arrowDir(isOpen) {
+    var onRight = pane.classList.contains('dock-right');
+    if (onRight) return isOpen ? '›' : '‹';
+    return isOpen ? '‹' : '›';
+  }
+  function syncArrow() {
+    var isOpen = !pane.classList.contains('collapsed') && !pane.classList.contains('off');
+    var ch = arrowDir(isOpen);
+    collapseBtn.textContent = ch;
+    tabArrow.innerHTML = ch;
+  }
+  _sidePanelArrowSync[cfg.paneId] = syncArrow;
+
   function open() {
     pane.classList.remove('collapsed', 'off');
-    collapseBtn.textContent = '‹';
-    tabArrow.innerHTML = '&#8249;';
+    var ch = arrowDir(true);
+    collapseBtn.textContent = ch;
+    tabArrow.innerHTML = ch;
     badge.classList.add('active');
     lss(cfg.lsKey, 'open');
   }
   function collapse() {
     pane.classList.remove('off');
     pane.classList.add('collapsed');
-    collapseBtn.textContent = '›';
-    tabArrow.innerHTML = '&#8250;';
+    var ch = arrowDir(false);
+    collapseBtn.textContent = ch;
+    tabArrow.innerHTML = ch;
     badge.classList.add('active');
     lss(cfg.lsKey, 'collapsed');
   }
