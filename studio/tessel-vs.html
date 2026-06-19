@@ -3403,44 +3403,45 @@ var TesselCompiler = (function() {
     var label = b.label || 'Field';
     var nid = b.meta && b.meta.id ? b.meta.id : slug(label);
     var req = b.meta && b.meta.required;
+    var reqAttr = req ? ' data-required="1"' : '';
     var labelHtml = '<label class="tc-field-label" for="tcf-' + e(nid) + '">' + e(label) + (req ? ' <span class="tc-req">*</span>' : '') + '</label>';
 
     var input = '';
     if (ft === 'area' || ft === 'richtext') {
-      input = '<textarea id="tcf-' + e(nid) + '" class="tc-field-input tc-area" data-note="' + e(nid) + '" rows="4" placeholder="' + e(label) + '"></textarea>';
+      input = '<textarea id="tcf-' + e(nid) + '" class="tc-field-input tc-area" data-note="' + e(nid) + '"' + reqAttr + ' rows="4" placeholder="' + e(label) + '"></textarea>';
     } else if (ft === 'select') {
       var opts = (b.options||[]).map(function(o){ return '<option value="' + e(o) + '">' + e(o) + '</option>'; }).join('');
-      input = '<select id="tcf-' + e(nid) + '" class="tc-field-input tc-select" data-note="' + e(nid) + '">' + opts + '</select>';
+      input = '<select id="tcf-' + e(nid) + '" class="tc-field-input tc-select" data-note="' + e(nid) + '"' + reqAttr + '>' + opts + '</select>';
     } else if (ft === 'radio') {
       input = '<div class="tc-radio-group">' + (b.options||[]).map(function(o, i) {
-        return '<label class="tc-radio-label"><input type="radio" name="' + e(nid) + '" value="' + e(o) + '" data-note="' + e(nid) + '"> ' + e(o) + '</label>';
+        return '<label class="tc-radio-label"><input type="radio" name="' + e(nid) + '" value="' + e(o) + '" data-note="' + e(nid) + '"' + reqAttr + '> ' + e(o) + '</label>';
       }).join('') + '</div>';
     } else if (ft === 'check') {
       input = '<div class="tc-check-group">' + (b.options||[]).map(function(o) {
-        return '<label class="tc-check-label"><input type="checkbox" data-note="' + e(nid) + '-' + e(slug(o)) + '"> ' + e(o) + '</label>';
+        return '<label class="tc-check-label"><input type="checkbox" data-note="' + e(nid) + '-' + e(slug(o)) + '"' + reqAttr + '> ' + e(o) + '</label>';
       }).join('') + '</div>';
     } else if (ft === 'credential' || ft === 'totp') {
-      input = '<input type="password" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '" placeholder="' + e(label) + '" autocomplete="off">';
+      input = '<input type="password" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '"' + reqAttr + ' placeholder="' + e(label) + '" autocomplete="off">';
     } else if (ft === 'date') {
       var dfmt = (b.meta && b.meta.dateFormat) || 'YYYY-MM-DD';
-      input = '<input type="date" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '" data-date-format="' + e(dfmt) + '">'
+      input = '<input type="date" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '"' + reqAttr + ' data-date-format="' + e(dfmt) + '">'
             + '<div class="tc-date-format-hint">' + e(dfmt) + '</div>';
     } else if (ft === 'datetime') {
       var dtfmt = (b.meta && b.meta.dateFormat) || 'YYYY-MM-DD HH:mm';
-      input = '<input type="datetime-local" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '" data-date-format="' + e(dtfmt) + '">'
+      input = '<input type="datetime-local" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '"' + reqAttr + ' data-date-format="' + e(dtfmt) + '">'
             + '<div class="tc-date-format-hint">' + e(dtfmt) + '</div>';
     } else if (ft === 'number') {
-      input = '<input type="number" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '" placeholder="' + e(label) + '">';
+      input = '<input type="number" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '"' + reqAttr + ' placeholder="' + e(label) + '">';
     } else if (ft === 'email') {
-      input = '<input type="email" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '" placeholder="' + e(label) + '">';
+      input = '<input type="email" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '"' + reqAttr + ' placeholder="' + e(label) + '">';
     } else if (ft === 'url') {
-      input = '<input type="url" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '" placeholder="https://">';
+      input = '<input type="url" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '"' + reqAttr + ' placeholder="https://">';
     } else if (ft === 'image') {
       var src = b.meta && b.meta.src ? b.meta.src : '';
       input = src ? '<img src="' + e(src) + '" class="tc-image" alt="' + e(label) + '">' : '<div class="tc-image-placeholder">' + e(label) + '</div>';
     } else {
       // text, dir, filename, phone, parse, computed, signature, attachment, etc.
-      input = '<input type="text" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '" placeholder="' + e(label) + '">';
+      input = '<input type="text" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '"' + reqAttr + ' placeholder="' + e(label) + '">';
     }
 
     return '<div class="tc-field" data-field-type="' + e(ft) + '">' + labelHtml + input + '</div>';
@@ -3527,6 +3528,7 @@ var TesselCompiler = (function() {
     '.tc-req{color:var(--red)}',
     '.tc-field-input{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:7px 10px;font-size:.9em;font-family:inherit;width:100%;box-sizing:border-box;transition:border-color .15s}',
     '.tc-field-input:focus{outline:none;border-color:var(--accent)}',
+    '.tc-field-input.tc-invalid{border-color:var(--red);box-shadow:0 0 0 2px rgba(220,60,60,.18)}',
     '.tc-date-format-hint{font-size:.75em;color:var(--muted);font-family:monospace;margin-top:1px}',
     '.tc-area{resize:vertical;min-height:80px}',
     '.tc-select{cursor:pointer}',
@@ -3584,8 +3586,22 @@ var TesselCompiler = (function() {
     '  if(el.type==="checkbox")saveField(el.dataset.note,el.checked?"1":"0");',
     '  else if(el.type==="radio"){if(el.checked)saveField(el.dataset.note,el.value);}',
     '  else saveField(el.dataset.note,el.value);',
+    '  if(el.dataset.required)validateField(el);',
     '});',
+    'function validateField(el){',
+    '  var empty=false;',
+    '  if(el.type==="checkbox"){empty=!el.checked;}',
+    '  else if(el.type==="radio"){',
+    '    var grp=document.querySelectorAll("input[type=radio][name=\\""+el.name+"\\"]");',
+    '    empty=!Array.prototype.some.call(grp,function(r){return r.checked;});',
+    '  } else{empty=!el.value.trim();}',
+    '  el.classList.toggle("tc-invalid",empty);',
+    '}',
+    'function validateAll(){',
+    '  document.querySelectorAll("[data-required]").forEach(validateField);',
+    '}',
     'loadFields();',
+    'validateAll();',
     '})();',
   ].join('\n');
 
