@@ -47,7 +47,31 @@ button:hover { border-color: var(--accent); }
 button.active, button.primary { background: var(--accent); border-color: #3d6dd4; color: var(--accent-text); }
 button:disabled { opacity: .4; cursor: default; }
 button.tb-icon { padding: 4px 7px; font-size: 13px; }
+#theme-pill {
+  display: flex; border: 1px solid var(--border); border-radius: 20px;
+  overflow: hidden; background: var(--surface2); flex-shrink: 0; gap: 0;
+}
+.theme-pill-btn {
+  padding: 3px 9px; font-size: 12px; background: none; border: none;
+  cursor: pointer; color: var(--muted); line-height: 1; border-radius: 0;
+  display: flex; align-items: center; gap: 3px;
+}
+.theme-pill-btn:hover { background: var(--surface2); color: var(--text); }
+.theme-pill-btn.active { background: var(--accent); color: var(--accent-text); }
 button.danger:hover { border-color: var(--red); color: var(--red); }
+#theme-pill {
+  display: flex; border: 1px solid var(--border); border-radius: 20px;
+  overflow: hidden; background: var(--surface2); flex-shrink: 0;
+}
+.theme-pill-btn {
+  padding: 3px 8px; font-size: 13px; background: none; border: none;
+  cursor: pointer; color: var(--muted); line-height: 1; border-radius: 0;
+  display: flex; align-items: center; justify-content: center; min-width: 28px;
+}
+.theme-pill-btn:hover { background: var(--surface2); color: var(--text); }
+.theme-pill-btn.active {
+  background: var(--accent); color: var(--accent-text);
+}
 
 /* dropdown wrapper */
 .dropdown { position: relative; display: inline-block; }
@@ -846,12 +870,32 @@ kbd {
 .opts-coll-sub > .opts-coll-btn { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 4px 6px; }
 .opts-coll-sub > .opts-coll-btn:hover { color: var(--text); }
 
-/* THEME CARDS */
+#opts-theme-slots {
+  display: flex; gap: 12px; margin-bottom: 4px;
+}
+.opts-theme-slot {
+  flex: 1; border: 2px dashed var(--border); border-radius: 10px;
+  padding: 14px 12px; display: flex; flex-direction: column; align-items: center;
+  gap: 6px; cursor: pointer; transition: border-color .15s, background .15s;
+  min-height: 80px; justify-content: center;
+}
+.opts-theme-slot:hover { border-color: var(--accent); background: var(--surface2); }
+.opts-theme-slot.drag-over { border-color: var(--accent); background: rgba(91,138,240,.08); border-style: solid; }
+.opts-theme-slot.active-slot { border-color: var(--accent); border-style: solid; }
+.opts-theme-slot-label {
+  font-size: 18px; font-weight: 800; color: var(--accent); line-height: 1;
+}
+.opts-theme-slot-name {
+  font-size: 12px; font-weight: 600; color: var(--text); text-align: center;
+}
+.opts-theme-slot-swatches { display: flex; gap: 4px; }
+
 .theme-card {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px;
-  margin-bottom: 6px; background: var(--surface2);
+  margin-bottom: 6px; background: var(--surface2); cursor: grab;
 }
+.theme-card:active { cursor: grabbing; }
 .theme-card-swatches { display: flex; gap: 3px; flex-shrink: 0; }
 .theme-swatch { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(128,128,128,0.3); flex-shrink: 0; }
 .theme-card-name { flex: 1; font-size: 12px; font-weight: 600; }
@@ -1090,7 +1134,10 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
   <div class="spacer"></div>
   <span class="logo">Tessel <span>VS</span></span>
   <div class="tb-sep"></div>
-  <button id="btn-theme" class="tb-icon" title="Toggle theme">&#9728;</button>
+  <div id="theme-pill" title="Toggle theme A/B">
+    <button id="theme-pill-a" class="theme-pill-btn" title="Theme A"></button>
+    <button id="theme-pill-b" class="theme-pill-btn" title="Theme B"></button>
+  </div>
 </div>
 
 
@@ -1571,7 +1618,20 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
 
       <div class="opts-section" id="opts-section-themes">
         <div class="opts-section-label">THEME A / B</div>
-        <p class="opts-helper-text">Set two themes as A and B. The toolbar button toggles between them.</p>
+        <p class="opts-helper-text">Drag a theme onto a slot to assign it. Click a slot to activate that theme.</p>
+        <div id="opts-theme-slots">
+          <div class="opts-theme-slot" id="opts-slot-a" data-slot="a">
+            <div class="opts-theme-slot-label">A</div>
+            <div class="opts-theme-slot-name" id="opts-slot-a-name">—</div>
+            <div class="opts-theme-slot-swatches" id="opts-slot-a-swatches"></div>
+          </div>
+          <div class="opts-theme-slot" id="opts-slot-b" data-slot="b">
+            <div class="opts-theme-slot-label">B</div>
+            <div class="opts-theme-slot-name" id="opts-slot-b-name">—</div>
+            <div class="opts-theme-slot-swatches" id="opts-slot-b-swatches"></div>
+          </div>
+        </div>
+        <div class="opts-section-label" style="margin-top:14px;">ALL THEMES</div>
         <div id="opts-themes-list"></div>
         <button class="theme-new-btn" id="btn-new-theme">+ New Custom Theme</button>
         <div id="theme-editor-container" style="display:none;"></div>
@@ -4085,17 +4145,80 @@ function applyTheme(themeId) {
 }
 
 function updateThemeBtn() {
-  var btn = document.getElementById('btn-theme');
-  if (!btn) return;
-  var activeId = localStorage.getItem('tvs:active-theme') || 'dark';
-  var theme = getThemeById(activeId);
-  var isLight = theme && isLightColor(theme.vars['--bg']);
-  btn.textContent = isLight ? '☾' : '☀';
+  var btnA = document.getElementById('theme-pill-a');
+  var btnB = document.getElementById('theme-pill-b');
+  if (!btnA || !btnB) return;
   var themeA = localStorage.getItem('tvs:theme-a') || 'dark';
   var themeB = localStorage.getItem('tvs:theme-b') || 'light';
-  var other = (activeId === themeA) ? themeB : themeA;
-  var otherTheme = getThemeById(other);
-  btn.title = otherTheme ? 'Switch to ' + otherTheme.name : 'Toggle theme';
+  var activeId = localStorage.getItem('tvs:active-theme') || 'dark';
+
+  function themeIcon(themeId) {
+    if (themeId === 'dark') {
+      return '<svg width="13" height="13" viewBox="0 0 13 13"><path d="M9.5 9.5A5 5 0 0 1 3.5 3.5a5.5 5.5 0 1 0 6 6z" fill="currentColor"/></svg>';
+    } else if (themeId === 'light') {
+      return '<svg width="13" height="13" viewBox="0 0 13 13"><circle cx="6.5" cy="6.5" r="2.8" fill="currentColor"/><g stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><line x1="6.5" y1="0.5" x2="6.5" y2="2"/><line x1="6.5" y1="11" x2="6.5" y2="12.5"/><line x1="0.5" y1="6.5" x2="2" y2="6.5"/><line x1="11" y1="6.5" x2="12.5" y2="6.5"/><line x1="2.4" y1="2.4" x2="3.4" y2="3.4"/><line x1="9.6" y1="9.6" x2="10.6" y2="10.6"/><line x1="10.6" y1="2.4" x2="9.6" y2="3.4"/><line x1="3.4" y1="9.6" x2="2.4" y2="10.6"/></g></svg>';
+    } else {
+      var t = getThemeById(themeId);
+      var bgColor = t ? (t.vars['--bg'] || '#222') : '#222';
+      var accentColor = t ? (t.vars['--accent'] || '#5b8af0') : '#5b8af0';
+      return '<svg width="13" height="13" viewBox="0 0 13 13"><circle cx="6.5" cy="6.5" r="5.5" fill="'+bgColor+'"/><path d="M6.5 1A5.5 5.5 0 0 1 6.5 12z" fill="'+accentColor+'"/></svg>';
+    }
+  }
+
+  btnA.innerHTML = themeIcon(themeA) + '<span style="font-size:10px;font-weight:700;margin-left:2px;">A</span>';
+  btnB.innerHTML = themeIcon(themeB) + '<span style="font-size:10px;font-weight:700;margin-left:2px;">B</span>';
+  btnA.classList.toggle('active', activeId === themeA);
+  btnB.classList.toggle('active', activeId === themeB);
+}
+
+function renderThemeSlots() {
+  var themeA = localStorage.getItem('tvs:theme-a') || 'dark';
+  var themeB = localStorage.getItem('tvs:theme-b') || 'light';
+  var activeId = localStorage.getItem('tvs:active-theme') || 'dark';
+
+  function fillSlot(slotId, nameId, swatchesId, themeId) {
+    var slot = document.getElementById(slotId);
+    var nameEl = document.getElementById(nameId);
+    var swatchesEl = document.getElementById(swatchesId);
+    if (!slot || !nameEl || !swatchesEl) return;
+    var t = getThemeById(themeId);
+    nameEl.textContent = t ? t.name : '—';
+    swatchesEl.innerHTML = t
+      ? '<div class="theme-swatch" style="background:'+t.vars['--bg']+';width:14px;height:14px;" title="bg"></div>'
+        + '<div class="theme-swatch" style="background:'+t.vars['--accent']+';width:14px;height:14px;" title="accent"></div>'
+      : '';
+    slot.classList.toggle('active-slot', activeId === themeId);
+  }
+
+  fillSlot('opts-slot-a', 'opts-slot-a-name', 'opts-slot-a-swatches', themeA);
+  fillSlot('opts-slot-b', 'opts-slot-b-name', 'opts-slot-b-swatches', themeB);
+
+  var slotA = document.getElementById('opts-slot-a');
+  var slotB = document.getElementById('opts-slot-b');
+
+  function wireSlotClick(slot, getThemeId) {
+    if (!slot) return;
+    slot.onclick = function() {
+      applyTheme(getThemeId());
+      renderThemeSlots();
+      updateThemeBtn();
+    };
+    slot.ondragover = function(e) { e.preventDefault(); slot.classList.add('drag-over'); };
+    slot.ondragleave = function() { slot.classList.remove('drag-over'); };
+    slot.ondrop = function(e) {
+      e.preventDefault();
+      slot.classList.remove('drag-over');
+      var droppedId = e.dataTransfer.getData('text/plain');
+      if (!droppedId) return;
+      localStorage.setItem(slot.getAttribute('data-slot') === 'a' ? 'tvs:theme-a' : 'tvs:theme-b', droppedId);
+      renderThemeSlots();
+      renderThemeList();
+      updateThemeBtn();
+    };
+  }
+
+  wireSlotClick(slotA, function() { return localStorage.getItem('tvs:theme-a') || 'dark'; });
+  wireSlotClick(slotB, function() { return localStorage.getItem('tvs:theme-b') || 'light'; });
 }
 
 function renderThemeList() {
@@ -4113,14 +4236,12 @@ function renderThemeList() {
     if (t.id === themeB) badges += '<span class="theme-badge">B</span>';
     var isActive = t.id === activeId ? ' style="outline:2px solid var(--accent);"' : '';
     var actions = '<button class="theme-card-btn" data-theme-preview="'+t.id+'">Preview</button>';
-    actions += '<button class="theme-card-btn" data-theme-set-a="'+t.id+'">Set A</button>';
-    actions += '<button class="theme-card-btn" data-theme-set-b="'+t.id+'">Set B</button>';
     actions += '<button class="theme-card-btn" data-theme-dup="'+t.id+'">Duplicate</button>';
     if (!t.preset) {
       actions += '<button class="theme-card-btn" data-theme-edit="'+t.id+'">Edit</button>';
       actions += '<button class="theme-card-btn danger" data-theme-del="'+t.id+'">Delete</button>';
     }
-    html += '<div class="theme-card"'+isActive+'>';
+    html += '<div class="theme-card" draggable="true" data-theme-id="'+t.id+'"'+isActive+'>';
     html += '<div class="theme-card-swatches">';
     html += '<div class="theme-swatch" style="background:'+t.vars['--bg']+';" title="bg"></div>';
     html += '<div class="theme-swatch" style="background:'+t.vars['--accent']+';" title="accent"></div>';
@@ -4135,19 +4256,12 @@ function renderThemeList() {
   container.querySelectorAll('[data-theme-preview]').forEach(function(btn) {
     btn.addEventListener('click', function() {
       applyTheme(this.getAttribute('data-theme-preview'));
-      renderThemeList();
+      renderThemeList(); renderThemeSlots();
     });
   });
-  container.querySelectorAll('[data-theme-set-a]').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      localStorage.setItem('tvs:theme-a', this.getAttribute('data-theme-set-a'));
-      renderThemeList(); updateThemeBtn();
-    });
-  });
-  container.querySelectorAll('[data-theme-set-b]').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      localStorage.setItem('tvs:theme-b', this.getAttribute('data-theme-set-b'));
-      renderThemeList(); updateThemeBtn();
+  container.querySelectorAll('.theme-card[data-theme-id]').forEach(function(card) {
+    card.addEventListener('dragstart', function(e) {
+      e.dataTransfer.setData('text/plain', card.getAttribute('data-theme-id'));
     });
   });
   container.querySelectorAll('[data-theme-dup]').forEach(function(btn) {
@@ -4158,7 +4272,7 @@ function renderThemeList() {
       var newId = 'custom-' + Date.now();
       customs.push({ id: newId, name: src.name + ' Copy', preset: false, vars: JSON.parse(JSON.stringify(src.vars)) });
       saveCustomThemes(customs);
-      renderThemeList();
+      renderThemeList(); renderThemeSlots();
     });
   });
   container.querySelectorAll('[data-theme-edit]').forEach(function(btn) {
@@ -4171,7 +4285,7 @@ function renderThemeList() {
       var id = this.getAttribute('data-theme-del');
       var customs = getCustomThemes().filter(function(t){ return t.id !== id; });
       saveCustomThemes(customs);
-      renderThemeList();
+      renderThemeList(); renderThemeSlots();
     });
   });
 }
@@ -4273,7 +4387,7 @@ function showThemeEditor(themeId) {
     saveCustomThemes(customs);
     edContainer.style.display = 'none';
     edContainer.innerHTML = '';
-    renderThemeList();
+    renderThemeList(); renderThemeSlots();
   });
   document.getElementById('theme-ed-cancel').addEventListener('click', function() {
     edContainer.style.display = 'none';
@@ -4288,7 +4402,7 @@ function showNewThemeEditor() {
   var customs = getCustomThemes();
   customs.push({ id: newId, name: 'Custom Theme', preset: false, vars: JSON.parse(JSON.stringify(src.vars)) });
   saveCustomThemes(customs);
-  renderThemeList();
+  renderThemeList(); renderThemeSlots();
   showThemeEditor(newId);
 }
 
@@ -4299,15 +4413,18 @@ function showNewThemeEditor() {
   if (!localStorage.getItem('tvs:theme-b')) localStorage.setItem('tvs:theme-b', 'light');
   applyTheme(activeId);
 
-  var btn = document.getElementById('btn-theme');
-  if (btn) {
-    btn.addEventListener('click', function() {
-      var curId = localStorage.getItem('tvs:active-theme') || 'dark';
-      var themeA = localStorage.getItem('tvs:theme-a') || 'dark';
-      var themeB = localStorage.getItem('tvs:theme-b') || 'light';
-      var next = (curId === themeA) ? themeB : themeA;
-      applyTheme(next);
-      renderThemeList();
+  var pillA = document.getElementById('theme-pill-a');
+  var pillB = document.getElementById('theme-pill-b');
+  if (pillA) {
+    pillA.addEventListener('click', function() {
+      applyTheme(localStorage.getItem('tvs:theme-a') || 'dark');
+      renderThemeList(); renderThemeSlots(); updateThemeBtn();
+    });
+  }
+  if (pillB) {
+    pillB.addEventListener('click', function() {
+      applyTheme(localStorage.getItem('tvs:theme-b') || 'light');
+      renderThemeList(); renderThemeSlots(); updateThemeBtn();
     });
   }
 
@@ -4323,7 +4440,7 @@ function showNewThemeEditor() {
       mutations.forEach(function(m) {
         if (m.type === 'attributes' && m.attributeName === 'class') {
           if (optsThemesSection.classList.contains('active')) {
-            renderThemeList();
+            renderThemeList(); renderThemeSlots();
           }
         }
       });
