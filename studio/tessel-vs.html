@@ -921,24 +921,21 @@ kbd {
 .opts-theme-slot {
   flex: 1; border: 2px dashed var(--border); border-radius: 10px;
   padding: 14px 12px; display: flex; flex-direction: column; align-items: center;
-  gap: 6px; cursor: grab; transition: border-color .15s, background .15s;
-  min-height: 80px; justify-content: center;
+  gap: 6px; cursor: grab; min-height: 80px; justify-content: center;
+  transition: border-color .15s, background .15s, transform .22s ease;
+  position: relative;
 }
 .opts-theme-slot:active { cursor: grabbing; }
 .opts-theme-slot:hover { border-color: var(--accent); background: var(--surface2); }
 .opts-theme-slot.drag-over { border-color: var(--accent); background: rgba(91,138,240,.08); border-style: solid; }
-.opts-theme-slot.swap-preview {
-  border-color: var(--accent); border-style: solid; background: rgba(91,138,240,.12);
-  position: relative; overflow: hidden;
-  animation: slot-swap-nudge .45s ease-in-out infinite alternate;
+/* Swap preview: slot slides partway toward where it'll end up after the swap */
+.opts-theme-slot.swap-to-left {
+  transform: translateX(-44%);
+  border-color: var(--accent); border-style: solid; background: rgba(91,138,240,.1);
 }
-@keyframes slot-swap-nudge {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-5px); }
-}
-.opts-theme-slot.swap-preview::after {
-  content: '⇄'; position: absolute; bottom: 4px; right: 7px;
-  font-size: 13px; color: var(--accent); opacity: 0.7; pointer-events: none;
+.opts-theme-slot.swap-to-right {
+  transform: translateX(44%);
+  border-color: var(--accent); border-style: solid; background: rgba(91,138,240,.1);
 }
 .opts-theme-slot.active-slot { border-color: var(--accent); border-style: solid; }
 .opts-theme-slot-label {
@@ -4273,13 +4270,18 @@ function renderThemeSlots() {
       var targetSlot = slot.getAttribute('data-slot');
       var isSwap = (targetSlot === 'a' && _draggedThemeId === (localStorage.getItem('tvs:theme-b') || 'light')) ||
                    (targetSlot === 'b' && _draggedThemeId === (localStorage.getItem('tvs:theme-a') || 'dark'));
-      slot.classList.toggle('swap-preview', isSwap);
-      slot.classList.toggle('drag-over', !isSwap);
+      slot.classList.remove('drag-over', 'swap-to-left', 'swap-to-right');
+      if (isSwap) {
+        // Slot slides toward the other slot's position: B goes left, A goes right
+        slot.classList.add(targetSlot === 'b' ? 'swap-to-left' : 'swap-to-right');
+      } else {
+        slot.classList.add('drag-over');
+      }
     };
-    slot.ondragleave = function() { slot.classList.remove('drag-over', 'swap-preview'); };
+    slot.ondragleave = function() { slot.classList.remove('drag-over', 'swap-to-left', 'swap-to-right'); };
     slot.ondrop = function(e) {
       e.preventDefault();
-      slot.classList.remove('drag-over', 'swap-preview');
+      slot.classList.remove('drag-over', 'swap-to-left', 'swap-to-right');
       var droppedId = e.dataTransfer.getData('text/plain');
       if (!droppedId) return;
       var targetSlot = slot.getAttribute('data-slot'); // 'a' or 'b'
