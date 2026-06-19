@@ -1775,6 +1775,9 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
 
       <!-- DATE FORMATS -->
       <div class="opts-section" id="opts-section-date-formats">
+        <div class="opts-section-label">Default Timezone</div>
+        <div id="opts-datefmt-tz-wrap"></div>
+        <div class="opts-divider"></div>
         <p class="opts-helper-text">Customize the preset patterns available in the date and date-time format dropdowns. Changes take effect the next time a date field is selected.</p>
         <div id="opts-datefmt-date-wrap"></div>
         <div class="opts-divider"></div>
@@ -1953,6 +1956,17 @@ var DATE_FMT_DEFAULTS = {
   date:     ['YYYY-MM-DD', 'MM/DD/YYYY', 'DD/MM/YYYY', 'DD MMM YYYY', 'MMM DD, YYYY', 'MMMM DD, YYYY'],
   datetime: ['YYYY-MM-DD HH:mm', 'YYYY-MM-DD HH:mm:ss', 'MM/DD/YYYY h:mm A', 'MM/DD/YYYY HH:mm', 'DD/MM/YYYY HH:mm', 'MMM DD, YYYY h:mm A', 'MMMM DD, YYYY h:mm A']
 };
+function getTzList() {
+  try { var tzs = Intl.supportedValuesOf('timeZone'); if (tzs && tzs.length) return tzs; } catch(e) {}
+  return ['UTC','America/New_York','America/Chicago','America/Denver','America/Los_Angeles','America/Phoenix','America/Anchorage','Pacific/Honolulu','Europe/London','Europe/Paris','Europe/Berlin','Europe/Moscow','Asia/Dubai','Asia/Kolkata','Asia/Singapore','Asia/Tokyo','Asia/Shanghai','Australia/Sydney','Pacific/Auckland'];
+}
+function getDefaultTimezone() {
+  try { var v = localStorage.getItem('tvs:defaultTimezone'); if (v) return v; } catch(e) {}
+  return '';
+}
+function saveDefaultTimezone(tz) {
+  try { localStorage.setItem('tvs:defaultTimezone', tz); } catch(e) {}
+}
 function getDateFmtPresets(type) {
   try {
     var raw = localStorage.getItem('tvs:dateFormatPresets:' + type);
@@ -2017,6 +2031,40 @@ function buildDateFmtSection() {
   }
   buildGroup('opts-datefmt-date-wrap', 'date', 'Date');
   buildGroup('opts-datefmt-datetime-wrap', 'datetime', 'Date-Time');
+  var tzWrap = document.getElementById('opts-datefmt-tz-wrap');
+  if (tzWrap) {
+    tzWrap.innerHTML = '';
+    var tzListId = 'tz-datalist-' + Date.now();
+    var tzDl = document.createElement('datalist');
+    tzDl.id = tzListId;
+    var tzs = getTzList();
+    for (var ti = 0; ti < tzs.length; ti++) {
+      var tzOpt = document.createElement('option');
+      tzOpt.value = tzs[ti];
+      tzDl.appendChild(tzOpt);
+    }
+    var tzInput = document.createElement('input');
+    tzInput.type = 'text';
+    tzInput.setAttribute('list', tzListId);
+    tzInput.placeholder = 'e.g. America/New_York';
+    tzInput.style.cssText = 'flex:1;min-width:0;';
+    var defTz = getDefaultTimezone();
+    if (defTz) tzInput.value = defTz;
+    tzInput.addEventListener('change', function() {
+      saveDefaultTimezone(tzInput.value.trim());
+    });
+    var tzClearBtn = document.createElement('button');
+    tzClearBtn.type = 'button';
+    tzClearBtn.textContent = 'Clear';
+    tzClearBtn.addEventListener('click', function() {
+      tzInput.value = '';
+      saveDefaultTimezone('');
+    });
+    tzWrap.style.cssText = 'display:flex;align-items:center;gap:4px;';
+    tzWrap.appendChild(tzDl);
+    tzWrap.appendChild(tzInput);
+    tzWrap.appendChild(tzClearBtn);
+  }
 }
 function formatDatePattern(date, pattern) {
   var ML = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -3076,6 +3124,30 @@ function renderProps() {
     body.appendChild(mkCheckRow('Require valid date', b.meta.requireValidDate, function(v) {
       b.meta.requireValidDate = v || undefined; markUnsaved();
     }));
+
+    var tzRow = mkPropRow('Timezone');
+    var tzListId2 = 'tz-datalist-props-' + Date.now();
+    var tzDl2 = document.createElement('datalist');
+    tzDl2.id = tzListId2;
+    var tzsList2 = getTzList();
+    for (var tzi = 0; tzi < tzsList2.length; tzi++) {
+      var tzOpt2 = document.createElement('option');
+      tzOpt2.value = tzsList2[tzi];
+      tzDl2.appendChild(tzOpt2);
+    }
+    var tzInp2 = document.createElement('input');
+    tzInp2.type = 'text';
+    tzInp2.className = 'prop-input';
+    tzInp2.setAttribute('list', tzListId2);
+    tzInp2.placeholder = getDefaultTimezone() || 'Local';
+    tzInp2.value = b.meta.timezone || '';
+    tzInp2.addEventListener('input', function() {
+      b.meta.timezone = tzInp2.value.trim() || undefined;
+      renderCanvas(); markUnsaved();
+    });
+    tzRow.appendChild(tzDl2);
+    tzRow.appendChild(tzInp2);
+    body.appendChild(tzRow);
   }
 
   if (def.hasOptions) {
@@ -3535,9 +3607,10 @@ var TesselCompiler = (function() {
       input = '<input type="password" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '"' + reqAttr + ' placeholder="' + e(label) + '" autocomplete="off">';
     } else if (ft === 'date') {
       var dfmt = (b.meta && b.meta.dateFormat) || 'YYYY-MM-DD';
+      var dateTz = (b.meta && b.meta.timezone) || getDefaultTimezone();
       var calIcon = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="1" y="3" width="14" height="12" rx="1.5"/><path d="M1 7h14M5 1v4M11 1v4"/></svg>';
       input = '<div class="tc-date-wrap">'
-            + '<input type="text" id="tcf-' + e(nid) + '" class="tc-field-input tc-date-text" data-note="' + e(nid) + '" data-field-type="date"' + reqAttr + requireIsoAttr + ' data-date-format="' + e(dfmt) + '" placeholder="' + e(dfmt) + '" maxlength="' + dfmt.length + '" autocomplete="off" spellcheck="false">'
+            + '<input type="text" id="tcf-' + e(nid) + '" class="tc-field-input tc-date-text" data-note="' + e(nid) + '" data-field-type="date"' + reqAttr + requireIsoAttr + ' data-date-format="' + e(dfmt) + '" data-timezone="' + e(dateTz) + '" placeholder="' + e(dfmt) + '" maxlength="' + dfmt.length + '" autocomplete="off" spellcheck="false">'
             + '<input type="date" class="tc-date-hidden-picker" tabindex="-1" aria-hidden="true">'
             + '<span class="tc-date-shortcuts">'
             + '<button type="button" class="tc-date-now-btn tc-date-clear-btn" onclick="tcClearDate(this)">Clear</button>'
@@ -3548,9 +3621,10 @@ var TesselCompiler = (function() {
             + '<div class="tc-date-format-hint">' + e(dfmt) + '</div>';
     } else if (ft === 'datetime') {
       var dtfmt = (b.meta && b.meta.dateFormat) || 'YYYY-MM-DD HH:mm';
+      var datetimeTz = (b.meta && b.meta.timezone) || getDefaultTimezone();
       var calIcon = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="1" y="3" width="14" height="12" rx="1.5"/><path d="M1 7h14M5 1v4M11 1v4"/></svg>';
       input = '<div class="tc-date-wrap">'
-            + '<input type="text" id="tcf-' + e(nid) + '" class="tc-field-input tc-date-text" data-note="' + e(nid) + '" data-field-type="datetime"' + reqAttr + requireIsoAttr + ' data-date-format="' + e(dtfmt) + '" placeholder="' + e(dtfmt) + '" maxlength="' + dtfmt.length + '" autocomplete="off" spellcheck="false">'
+            + '<input type="text" id="tcf-' + e(nid) + '" class="tc-field-input tc-date-text" data-note="' + e(nid) + '" data-field-type="datetime"' + reqAttr + requireIsoAttr + ' data-date-format="' + e(dtfmt) + '" data-timezone="' + e(datetimeTz) + '" placeholder="' + e(dtfmt) + '" maxlength="' + dtfmt.length + '" autocomplete="off" spellcheck="false">'
             + '<input type="datetime-local" class="tc-date-hidden-picker" tabindex="-1" aria-hidden="true">'
             + '<span class="tc-date-shortcuts">'
             + '<button type="button" class="tc-date-now-btn tc-date-clear-btn" onclick="tcClearDate(this)">Clear</button>'
@@ -3664,13 +3738,13 @@ var TesselCompiler = (function() {
     '.tc-field.tc-field-invalid::after{content:"!";position:absolute;left:calc(100% + 6px);top:50%;transform:translateY(-50%);color:#fff;background:var(--red);font-size:.7em;font-weight:700;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;pointer-events:none;line-height:16px;text-align:center}',
     '.tc-field{position:relative}',
     '.tc-date-format-hint{font-size:.75em;color:var(--muted);font-family:monospace;margin-top:1px}',
-    '.tc-date-wrap{position:relative;display:flex;}',
-    '.tc-date-wrap .tc-field-input{flex:1;}',
+    '.tc-date-wrap{display:flex;align-items:center;position:relative;gap:4px;padding-right:4px;}',
+    '.tc-date-wrap .tc-field-input{flex:1;min-width:0;}',
     '.tc-date-hidden-picker{position:absolute;right:0;top:0;width:32px;height:100%;opacity:0;pointer-events:none;border:none;padding:0;}',
-    '.tc-date-cal-btn{position:absolute;right:0;top:50%;transform:translateY(-50%);background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:3px 5px;color:var(--muted);line-height:1;display:flex;align-items:center;}',
-    '.tc-date-cal-btn:hover{border-color:var(--accent);color:var(--accent);}',
-    '.tc-date-shortcuts{position:absolute;bottom:5px;right:38px;display:flex;align-items:center;gap:8px;}',
-    '.tc-date-now-btn{font-size:.7em;padding:2px 7px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:4px;cursor:pointer;line-height:1.4;white-space:nowrap;opacity:.75;}',
+    '.tc-date-cal-btn{display:flex;align-items:center;flex-shrink:0;height:24px;padding:0 5px;background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);opacity:.7;line-height:1;}',
+    '.tc-date-cal-btn:hover{opacity:1;color:var(--accent);border-color:var(--accent);}',
+    '.tc-date-shortcuts{display:flex;align-items:center;gap:4px;flex-shrink:0;}',
+    '.tc-date-now-btn{font-size:.7em;padding:2px 7px;height:24px;display:inline-flex;align-items:center;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:4px;cursor:pointer;line-height:1.4;white-space:nowrap;opacity:.75;}',
     '.tc-date-now-btn:hover{border-color:var(--accent);color:var(--accent);opacity:1;}',
     '.tc-date-now-primary{font-weight:600;}',
     '.tc-date-now-primary:hover{border-color:var(--accent);color:var(--accent);opacity:1;background:rgba(137,180,250,.1);}',
@@ -3757,11 +3831,27 @@ var TesselCompiler = (function() {
     '}',
     'loadFields();',
     'validateAll();',
-    'function tcFmtDate(date,pattern){',
+    'function tcGetTzParts(date,tz){',
+    '  try{',
+    '    var fmt=new Intl.DateTimeFormat("en-US",{timeZone:tz,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false});',
+    '    var parts=fmt.formatToParts(date);',
+    '    var p={};',
+    '    for(var i=0;i<parts.length;i++){p[parts[i].type]=parts[i].value;}',
+    '    return{year:parseInt(p.year,10),month:parseInt(p.month,10),day:parseInt(p.day,10),hour:parseInt(p.hour,10)%24,minute:parseInt(p.minute,10),second:parseInt(p.second,10)};',
+    '  }catch(e){return null;}',
+    '}',
+    'function tcGetISOWithTz(date,tz){',
+    '  if(!tz)return date.toISOString();',
+    '  var p=tcGetTzParts(date,tz);',
+    '  if(!p)return date.toISOString();',
+    '  var pad=function(n){return n<10?"0"+n:""+n;};',
+    '  return p.year+"-"+pad(p.month)+"-"+pad(p.day)+"T"+pad(p.hour)+":"+pad(p.minute)+":"+pad(p.second);',
+    '}',
+    'function tcFmtDate(date,pattern,tz){',
     '  var ML=["January","February","March","April","May","June","July","August","September","October","November","December"];',
     '  var MS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];',
-    '  var Y=date.getFullYear(),Mo=date.getMonth(),D=date.getDate();',
-    '  var H=date.getHours(),mn=date.getMinutes(),sc=date.getSeconds();',
+    '  var Y,Mo,D,H,mn,sc;',
+    '  if(tz){var tzp=tcGetTzParts(date,tz);if(tzp){Y=tzp.year;Mo=tzp.month-1;D=tzp.day;H=tzp.hour;mn=tzp.minute;sc=tzp.second;}else{Y=date.getFullYear();Mo=date.getMonth();D=date.getDate();H=date.getHours();mn=date.getMinutes();sc=date.getSeconds();}}else{Y=date.getFullYear();Mo=date.getMonth();D=date.getDate();H=date.getHours();mn=date.getMinutes();sc=date.getSeconds();}',
     '  var h=H%12||12,ap=H<12?"AM":"PM";',
     '  var pad=function(n){return n<10?"0"+n:""+n;};',
     '  var tk={YYYY:Y,YY:String(Y).slice(-2),MMMM:ML[Mo],MMM:MS[Mo],MM:pad(Mo+1),M:Mo+1,DD:pad(D),D:D,HH:pad(H),H:H,hh:pad(h),h:h,mm:pad(mn),ss:pad(sc),A:ap,a:ap.toLowerCase()};',
@@ -3823,6 +3913,14 @@ var TesselCompiler = (function() {
     '  return Y+"-"+pad(Mo+1)+"-"+pad(D);',
     '}',
     // Blur: normalize and store ISO value for export
+    'document.addEventListener("input",function(e){',
+    '  if(!e.target||!e.target.classList||!e.target.classList.contains("tc-date-text"))return;',
+    '  var el=e.target;',
+    '  var iso=tcToISO(el.value,el.getAttribute("data-date-format")||"");',
+    '  el.setAttribute("data-iso-value",iso||"");',
+    '  var field=el.closest?el.closest("[data-field-id]"):null;',
+    '  if(field)validateField(field);',
+    '},true);',
     'document.addEventListener("blur",function(e){',
     '  var el=e.target;if(!el.classList.contains("tc-date-text"))return;',
     '  var iso=tcToISO(el.value.trim(),el.getAttribute("data-date-format")||"");',
