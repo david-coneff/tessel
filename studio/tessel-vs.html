@@ -4311,7 +4311,11 @@ function renderThemeSlots() {
       setTimeout(function() { slot.classList.add('dragging-source'); }, 0);
     };
     slot.ondragend = function() {
+      // Suppress border transition before revealing so mid-flight accent fade isn't visible
+      slot.style.transition = 'none';
       slot.classList.remove('dragging-source');
+      void slot.offsetWidth;
+      slot.style.transition = '';
       resetSlotDragClasses(true);
     };
   }
