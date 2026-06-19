@@ -951,6 +951,11 @@ kbd {
 .opts-num-input::-webkit-inner-spin-button,
 .opts-num-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .opts-num-input:focus { border-color: var(--accent); }
+.opts-text-input {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); font-size: 12px; padding: 5px 6px; outline: none; width: 100%;
+}
+.opts-text-input:focus { border-color: var(--accent); }
 .opts-num-step-btn {
   background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
   color: var(--muted); cursor: pointer; font-size: 14px; line-height: 1;
@@ -1977,6 +1982,14 @@ function getTzList() {
   try { var tzs = Intl.supportedValuesOf('timeZone'); if (tzs && tzs.length) return tzs; } catch(e) {}
   return ['UTC','America/New_York','America/Chicago','America/Denver','America/Los_Angeles','America/Phoenix','America/Anchorage','Pacific/Honolulu','Europe/London','Europe/Paris','Europe/Berlin','Europe/Moscow','Asia/Dubai','Asia/Kolkata','Asia/Singapore','Asia/Tokyo','Asia/Shanghai','Australia/Sydney','Pacific/Auckland'];
 }
+var TZ_SHORTCODES = [
+  'UTC','GMT',
+  'EST','EDT','CST','CDT','MST','MDT','PST','PDT','AKST','AKDT','HST',
+  'AST','NST','NDT',
+  'WET','CET','CEST','EET','EEST','MSK',
+  'IST','PKT','BST','ICT','WIB','CST','JST','KST','AEST','AEDT','ACST','ACDT','AWST',
+  'NZST','NZDT','SST','CHST'
+];
 function getDefaultTimezone() {
   try { var v = localStorage.getItem('tvs:defaultTimezone'); if (v) return v; } catch(e) {}
   return '';
@@ -2051,36 +2064,106 @@ function buildDateFmtSection() {
   var tzWrap = document.getElementById('opts-datefmt-tz-wrap');
   if (tzWrap) {
     tzWrap.innerHTML = '';
-    var tzListId = 'tz-datalist-' + Date.now();
-    var tzDl = document.createElement('datalist');
-    tzDl.id = tzListId;
-    var tzs = getTzList();
-    for (var ti = 0; ti < tzs.length; ti++) {
-      var tzOpt = document.createElement('option');
-      tzOpt.value = tzs[ti];
-      tzDl.appendChild(tzOpt);
+
+    // Mode pill: IANA (city) vs Shortcode
+    var tzModeKey = 'tvs:tzPickerMode';
+    function getTzMode() { try { return localStorage.getItem(tzModeKey) || 'iana'; } catch(e) { return 'iana'; } }
+    function saveTzMode(m) { try { localStorage.setItem(tzModeKey, m); } catch(e) {} }
+
+    var pillWrap = document.createElement('div');
+    pillWrap.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:8px;';
+    var pillLbl = document.createElement('span');
+    pillLbl.textContent = 'Format';
+    pillLbl.style.cssText = 'font-size:11px;color:var(--muted);';
+    var pill = document.createElement('div');
+    pill.className = 'opts-pill-group';
+    pill.id = 'opts-tz-mode-pill';
+    pill.innerHTML = '<div class="opts-pill-slider" id="opts-tz-mode-slider"></div>'
+      + '<input type="radio" name="tz-mode" id="opts-tz-mode-iana" value="iana">'
+      + '<label for="opts-tz-mode-iana">Region/City</label>'
+      + '<input type="radio" name="tz-mode" id="opts-tz-mode-short" value="short">'
+      + '<label for="opts-tz-mode-short">Shortcode</label>';
+    pillWrap.appendChild(pillLbl);
+    pillWrap.appendChild(pill);
+    tzWrap.appendChild(pillWrap);
+
+    // Datalists
+    var ianaListId = 'tz-iana-datalist';
+    var shortListId = 'tz-short-datalist';
+    var ianaDl = document.getElementById(ianaListId);
+    if (!ianaDl) {
+      ianaDl = document.createElement('datalist');
+      ianaDl.id = ianaListId;
+      var tzs = getTzList();
+      for (var ti = 0; ti < tzs.length; ti++) {
+        var o = document.createElement('option'); o.value = tzs[ti]; ianaDl.appendChild(o);
+      }
+      document.body.appendChild(ianaDl);
     }
+    var shortDl = document.getElementById(shortListId);
+    if (!shortDl) {
+      shortDl = document.createElement('datalist');
+      shortDl.id = shortListId;
+      for (var si = 0; si < TZ_SHORTCODES.length; si++) {
+        var so = document.createElement('option'); so.value = TZ_SHORTCODES[si]; shortDl.appendChild(so);
+      }
+      document.body.appendChild(shortDl);
+    }
+
+    // Input + Clear row
+    var inputRow = document.createElement('div');
+    inputRow.style.cssText = 'display:flex;align-items:center;gap:6px;';
     var tzInput = document.createElement('input');
     tzInput.type = 'text';
-    tzInput.setAttribute('list', tzListId);
-    tzInput.placeholder = 'e.g. America/New_York';
+    tzInput.className = 'opts-text-input';
     tzInput.style.cssText = 'flex:1;min-width:0;';
     var defTz = getDefaultTimezone();
     if (defTz) tzInput.value = defTz;
-    tzInput.addEventListener('change', function() {
-      saveDefaultTimezone(tzInput.value.trim());
-    });
     var tzClearBtn = document.createElement('button');
     tzClearBtn.type = 'button';
+    tzClearBtn.className = 'opts-num-step-btn';
+    tzClearBtn.style.cssText = 'font-size:11px;padding:5px 8px;';
     tzClearBtn.textContent = 'Clear';
-    tzClearBtn.addEventListener('click', function() {
-      tzInput.value = '';
-      saveDefaultTimezone('');
-    });
-    tzWrap.style.cssText = 'display:flex;align-items:center;gap:4px;';
-    tzWrap.appendChild(tzDl);
-    tzWrap.appendChild(tzInput);
-    tzWrap.appendChild(tzClearBtn);
+    inputRow.appendChild(tzInput);
+    inputRow.appendChild(tzClearBtn);
+    tzWrap.appendChild(inputRow);
+
+    function applyTzMode(mode) {
+      tzInput.setAttribute('list', mode === 'short' ? shortListId : ianaListId);
+      tzInput.placeholder = mode === 'short' ? 'e.g. MST, EDT, UTC' : 'e.g. America/New_York';
+      // sync pill radios
+      var radios = pill.querySelectorAll('input[type="radio"]');
+      for (var ri = 0; ri < radios.length; ri++) radios[ri].checked = (radios[ri].value === mode);
+      // sync slider
+      setTimeout(function() {
+        var slider = document.getElementById('opts-tz-mode-slider');
+        var labels = pill.querySelectorAll('label');
+        for (var li = 0; li < labels.length; li++) {
+          var r = pill.querySelectorAll('input[type="radio"]')[li];
+          if (r && r.checked) {
+            slider.style.left = labels[li].offsetLeft + 'px';
+            slider.style.width = labels[li].offsetWidth + 'px';
+            break;
+          }
+        }
+      }, 0);
+    }
+
+    var modeRadios = pill.querySelectorAll('input[type="radio"]');
+    for (var mri = 0; mri < modeRadios.length; mri++) {
+      modeRadios[mri].addEventListener('change', function() {
+        var m = this.value;
+        saveTzMode(m);
+        applyTzMode(m);
+        // Re-render props panel so the per-field tz picker uses the same mode
+        if (typeof renderProps === 'function') renderProps();
+      });
+    }
+
+    tzInput.addEventListener('change', function() { saveDefaultTimezone(tzInput.value.trim()); });
+    tzClearBtn.addEventListener('click', function() { tzInput.value = ''; saveDefaultTimezone(''); });
+
+    applyTzMode(getTzMode());
   }
 }
 function formatDatePattern(date, pattern) {
@@ -3143,26 +3226,30 @@ function renderProps() {
     }));
 
     var tzRow = mkPropRow('Timezone');
-    var tzListId2 = 'tz-datalist-props-' + Date.now();
-    var tzDl2 = document.createElement('datalist');
-    tzDl2.id = tzListId2;
-    var tzsList2 = getTzList();
-    for (var tzi = 0; tzi < tzsList2.length; tzi++) {
-      var tzOpt2 = document.createElement('option');
-      tzOpt2.value = tzsList2[tzi];
-      tzDl2.appendChild(tzOpt2);
+    // Ensure shared datalists exist (built in buildDateFmtSection; create fallbacks if not yet built)
+    var propTzMode = (function() { try { return localStorage.getItem('tvs:tzPickerMode') || 'iana'; } catch(e) { return 'iana'; } })();
+    var propTzListId = propTzMode === 'short' ? 'tz-short-datalist' : 'tz-iana-datalist';
+    if (!document.getElementById('tz-iana-datalist')) {
+      var _dl = document.createElement('datalist'); _dl.id = 'tz-iana-datalist';
+      var _tzs = getTzList();
+      for (var _ti = 0; _ti < _tzs.length; _ti++) { var _o = document.createElement('option'); _o.value = _tzs[_ti]; _dl.appendChild(_o); }
+      document.body.appendChild(_dl);
+    }
+    if (!document.getElementById('tz-short-datalist')) {
+      var _sdl = document.createElement('datalist'); _sdl.id = 'tz-short-datalist';
+      for (var _si = 0; _si < TZ_SHORTCODES.length; _si++) { var _so = document.createElement('option'); _so.value = TZ_SHORTCODES[_si]; _sdl.appendChild(_so); }
+      document.body.appendChild(_sdl);
     }
     var tzInp2 = document.createElement('input');
     tzInp2.type = 'text';
     tzInp2.className = 'prop-input';
-    tzInp2.setAttribute('list', tzListId2);
-    tzInp2.placeholder = getDefaultTimezone() || 'Local';
+    tzInp2.setAttribute('list', propTzListId);
+    tzInp2.placeholder = getDefaultTimezone() || (propTzMode === 'short' ? 'e.g. MST' : 'e.g. America/New_York');
     tzInp2.value = b.meta.timezone || '';
     tzInp2.addEventListener('input', function() {
       b.meta.timezone = tzInp2.value.trim() || undefined;
       renderCanvas(); markUnsaved();
     });
-    tzRow.appendChild(tzDl2);
     tzRow.appendChild(tzInp2);
     body.appendChild(tzRow);
   }
