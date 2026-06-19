@@ -301,10 +301,10 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
   border-color: var(--border); color: var(--text); background: var(--surface2);
 }
 .ctrl-pane-collapse-btn {
-  background: none; border: 1px solid transparent; cursor: pointer; color: var(--muted);
+  background: none; border: 1px solid var(--border); cursor: pointer; color: var(--muted);
   font-size: 16px; padding: 2px 5px; line-height: 1; border-radius: 5px; flex-shrink: 0;
 }
-.ctrl-pane-collapse-btn:hover { background: var(--surface2); border-color: var(--border); color: var(--text); }
+.ctrl-pane-collapse-btn:hover { background: var(--surface2); border-color: var(--accent); color: var(--text); }
 .pane-h .ctrl-pane-collapse-btn { display: none; }
 .dock-float .ctrl-pane-collapse-btn { display: none; }
 .dock-float #outline-content h3 .panel-tab-arrow,
@@ -312,7 +312,7 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 #outline-panel.pane-h #outline-content h3 .panel-tab-arrow,
 #props-panel.pane-h   #props-content h3   .panel-tab-arrow { display: none; }
 .pane-expand-all-btn {
-  position: absolute; top: 33px; right: 6px; z-index: 2;
+  position: absolute; top: 40px; right: 6px; z-index: 2;
   background: var(--surface); border: 1px solid var(--border); cursor: pointer; color: var(--muted);
   font-size: 10px; padding: 2px 5px; line-height: 1; border-radius: 3px;
   letter-spacing: -1px;
@@ -385,10 +385,10 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
   user-select: none; pointer-events: none;
 }
 .panel-tab-arrow {
-  background: none; border: 1px solid transparent; cursor: pointer; color: var(--muted);
+  background: none; border: 1px solid var(--border); cursor: pointer; color: var(--muted);
   font-size: 16px; padding: 2px 5px; line-height: 1; border-radius: 5px; flex-shrink: 0;
 }
-.panel-tab-arrow:hover { background: var(--surface2); border-color: var(--border); color: var(--text); }
+.panel-tab-arrow:hover { background: var(--surface2); border-color: var(--accent); color: var(--text); }
 
 /* CANVAS AREA */
 #canvas-wrap {
@@ -659,13 +659,13 @@ select.prop-input { cursor: pointer; }
 .dock-float #outline-content h3 { cursor: grab; user-select: none; }
 .dock-float #props-content h3   { cursor: grab; user-select: none; }
 .ctrl-pane-float-btn {
-  background: none; border: 1px solid transparent; cursor: pointer;
+  background: none; border: 1px solid var(--border); cursor: pointer;
   color: var(--muted); padding: 2px 5px; font-size: 14px; line-height: 1;
   border-radius: 5px; flex-shrink: 0;
 }
-.ctrl-pane-float-btn:hover { background: var(--surface2); border-color: var(--border); color: var(--text); }
+.ctrl-pane-float-btn:hover { background: var(--surface2); border-color: var(--accent); color: var(--text); }
 #outline-content h3 .ctrl-pane-float-btn,
-#props-content h3 .ctrl-pane-float-btn { margin-left: auto; }
+#props-content h3 .ctrl-pane-float-btn { margin-left: 2px; }
 .pane-resize-handle { position: absolute; z-index: 10; pointer-events: none; }
 .dock-float .pane-resize-handle { pointer-events: all; }
 .pane-resize-handle-n  { top: -3px;    left: 12px; right: 12px; height: 6px;  cursor: n-resize; }
@@ -3534,9 +3534,10 @@ var TesselCompiler = (function() {
     '.tc-field.tc-field-invalid::after{content:"!";position:absolute;left:calc(100% + 6px);top:50%;transform:translateY(-50%);color:#fff;background:var(--red);font-size:.7em;font-weight:700;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;pointer-events:none;line-height:16px;text-align:center}',
     '.tc-field{position:relative}',
     '.tc-date-format-hint{font-size:.75em;color:var(--muted);font-family:monospace;margin-top:1px}',
-    'input[type="date"]::-webkit-calendar-picker-indicator,input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.75) brightness(1.5);padding:3px 4px;border-radius:4px;cursor:pointer;box-shadow:0 0 0 1px transparent;transition:background .12s,box-shadow .12s}',
-    'input[type="date"]::-webkit-calendar-picker-indicator:hover,input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover{background:var(--surface2);box-shadow:0 0 0 1px var(--accent)}',
-    'body.light input[type="date"]::-webkit-calendar-picker-indicator,body.light input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:none}',
+    'input[type="date"],input[type="datetime-local"]{color-scheme:dark}',
+    'body.light input[type="date"],body.light input[type="datetime-local"]{color-scheme:light}',
+    'input[type="date"]::-webkit-calendar-picker-indicator,input[type="datetime-local"]::-webkit-calendar-picker-indicator{padding:3px 4px;border-radius:4px;cursor:pointer;box-shadow:0 0 0 1px transparent;transition:background .12s,box-shadow .12s}',
+    'input[type="date"]::-webkit-calendar-picker-indicator:hover,input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover{background:rgba(255,255,255,.12);box-shadow:0 0 0 1px var(--accent)}',
     '.tc-area{resize:vertical;min-height:80px}',
     '.tc-select{cursor:pointer}',
     '.tc-radio-group,.tc-check-group{display:flex;flex-direction:column;gap:6px;padding:4px 0}',
