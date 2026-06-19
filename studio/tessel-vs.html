@@ -4415,18 +4415,16 @@ function showNewThemeEditor() {
 
   var pillA = document.getElementById('theme-pill-a');
   var pillB = document.getElementById('theme-pill-b');
-  if (pillA) {
-    pillA.addEventListener('click', function() {
-      applyTheme(localStorage.getItem('tvs:theme-a') || 'dark');
-      renderThemeList(); renderThemeSlots(); updateThemeBtn();
-    });
+  function toggleThemePill() {
+    var curId = localStorage.getItem('tvs:active-theme') || 'dark';
+    var themeA = localStorage.getItem('tvs:theme-a') || 'dark';
+    var themeB = localStorage.getItem('tvs:theme-b') || 'light';
+    var next = (curId === themeA) ? themeB : themeA;
+    applyTheme(next);
+    renderThemeList(); renderThemeSlots(); updateThemeBtn();
   }
-  if (pillB) {
-    pillB.addEventListener('click', function() {
-      applyTheme(localStorage.getItem('tvs:theme-b') || 'light');
-      renderThemeList(); renderThemeSlots(); updateThemeBtn();
-    });
-  }
+  if (pillA) pillA.addEventListener('click', toggleThemePill);
+  if (pillB) pillB.addEventListener('click', toggleThemePill);
 
   var newBtn = document.getElementById('btn-new-theme');
   if (newBtn) {
