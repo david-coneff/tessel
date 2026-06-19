@@ -6993,10 +6993,12 @@ function dockPanel(panelId, zone) {
     });
   }
 
-  // Universal pill click handler: clicking anywhere in a pill toggles to the inactive option
+  // Universal pill click handler: clicking anywhere outside a label toggles to the inactive option
   document.addEventListener('click', function(e) {
     var pill = e.target.closest ? e.target.closest('.opts-pill-group') : null;
     if (!pill) return;
+    // If the click landed on (or inside) a label, native for= binding already handled it
+    if (e.target.closest('label')) return;
     var radios = pill.querySelectorAll('input[type="radio"]');
     if (!radios.length) return;
     var inactive = null;
