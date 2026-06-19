@@ -4263,13 +4263,14 @@ function updateThemeBtn() {
     }
   }
 
+  var activeSlot = localStorage.getItem('tvs:active-slot') || 'a';
   btnA.innerHTML = themeIcon(themeA);
   btnB.innerHTML = themeIcon(themeB);
-  btnA.classList.toggle('active', activeId === themeA);
-  btnB.classList.toggle('active', activeId === themeB);
+  btnA.classList.toggle('active', activeSlot === 'a');
+  btnB.classList.toggle('active', activeSlot === 'b');
   var slider = document.getElementById('theme-pill-slider');
   if (slider) {
-    var activeBtn = (activeId === themeA) ? btnA : (activeId === themeB) ? btnB : null;
+    var activeBtn = activeSlot === 'a' ? btnA : btnB;
     if (activeBtn) {
       slider.style.left  = activeBtn.offsetLeft + 'px';
       slider.style.width = activeBtn.offsetWidth + 'px';
@@ -4283,9 +4284,9 @@ function updateThemeBtn() {
 function renderThemeSlots() {
   var themeA = localStorage.getItem('tvs:theme-a') || 'dark';
   var themeB = localStorage.getItem('tvs:theme-b') || 'light';
-  var activeId = localStorage.getItem('tvs:active-theme') || 'dark';
+  var activeSlot = localStorage.getItem('tvs:active-slot') || 'a';
 
-  function fillSlot(slotId, nameId, swatchesId, themeId) {
+  function fillSlot(slotId, nameId, swatchesId, themeId, slotName) {
     var slot = document.getElementById(slotId);
     var nameEl = document.getElementById(nameId);
     var swatchesEl = document.getElementById(swatchesId);
@@ -4296,11 +4297,11 @@ function renderThemeSlots() {
       ? '<div class="theme-swatch" style="background:'+t.vars['--bg']+';width:14px;height:14px;" title="bg"></div>'
         + '<div class="theme-swatch" style="background:'+t.vars['--accent']+';width:14px;height:14px;" title="accent"></div>'
       : '';
-    slot.classList.toggle('active-slot', activeId === themeId);
+    slot.classList.toggle('active-slot', activeSlot === slotName);
   }
 
-  fillSlot('opts-slot-a', 'opts-slot-a-name', 'opts-slot-a-swatches', themeA);
-  fillSlot('opts-slot-b', 'opts-slot-b-name', 'opts-slot-b-swatches', themeB);
+  fillSlot('opts-slot-a', 'opts-slot-a-name', 'opts-slot-a-swatches', themeA, 'a');
+  fillSlot('opts-slot-b', 'opts-slot-b-name', 'opts-slot-b-swatches', themeB, 'b');
 
   var slotA = document.getElementById('opts-slot-a');
   var slotB = document.getElementById('opts-slot-b');
@@ -4342,6 +4343,7 @@ function renderThemeSlots() {
   function wireSlotClick(slot, getThemeId) {
     if (!slot) return;
     slot.onclick = function() {
+      localStorage.setItem('tvs:active-slot', slot.getAttribute('data-slot'));
       applyTheme(getThemeId());
       renderThemeSlots();
       updateThemeBtn();
@@ -4596,16 +4598,21 @@ function showNewThemeEditor() {
   var activeId = localStorage.getItem('tvs:active-theme') || 'dark';
   if (!localStorage.getItem('tvs:theme-a')) localStorage.setItem('tvs:theme-a', 'dark');
   if (!localStorage.getItem('tvs:theme-b')) localStorage.setItem('tvs:theme-b', 'light');
+  // Migrate: derive active-slot from active-theme if not yet stored
+  if (!localStorage.getItem('tvs:active-slot')) {
+    var themeA = localStorage.getItem('tvs:theme-a') || 'dark';
+    localStorage.setItem('tvs:active-slot', activeId === themeA ? 'a' : 'b');
+  }
   applyTheme(activeId);
 
   var pillA = document.getElementById('theme-pill-a');
   var pillB = document.getElementById('theme-pill-b');
   function toggleThemePill() {
-    var curId = localStorage.getItem('tvs:active-theme') || 'dark';
-    var themeA = localStorage.getItem('tvs:theme-a') || 'dark';
-    var themeB = localStorage.getItem('tvs:theme-b') || 'light';
-    var next = (curId === themeA) ? themeB : themeA;
-    applyTheme(next);
+    var curSlot = localStorage.getItem('tvs:active-slot') || 'a';
+    var nextSlot = curSlot === 'a' ? 'b' : 'a';
+    var nextTheme = localStorage.getItem('tvs:theme-' + nextSlot) || (nextSlot === 'a' ? 'dark' : 'light');
+    localStorage.setItem('tvs:active-slot', nextSlot);
+    applyTheme(nextTheme);
     renderThemeList(); renderThemeSlots(); updateThemeBtn();
   }
   if (pillA) pillA.addEventListener('click', toggleThemePill);
