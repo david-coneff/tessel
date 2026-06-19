@@ -3010,14 +3010,14 @@ function renderProps() {
 
     var fmtPresetRow = mkPropRow('Preset');
     var fmtSel = document.createElement('select'); fmtSel.className = 'prop-input';
+    var customOpt = document.createElement('option'); customOpt.value = '__custom__'; customOpt.textContent = 'Custom…';
+    if (!isPreset) customOpt.selected = true;
+    fmtSel.appendChild(customOpt);
     DATE_FMT_PRESETS.forEach(function(fmt) {
       var o = document.createElement('option'); o.value = fmt; o.textContent = fmt;
       if (fmt === curFmt) o.selected = true;
       fmtSel.appendChild(o);
     });
-    var customOpt = document.createElement('option'); customOpt.value = '__custom__'; customOpt.textContent = 'Custom…';
-    if (!isPreset) customOpt.selected = true;
-    fmtSel.appendChild(customOpt);
     fmtPresetRow.appendChild(fmtSel); body.appendChild(fmtPresetRow);
 
     var fmtPatRow = mkPropRow('Pattern');
