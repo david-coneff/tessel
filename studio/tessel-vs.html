@@ -27,6 +27,17 @@ body {
   height: 100vh; display: flex; flex-direction: column; overflow: hidden;
 }
 
+/* SCROLLBARS — dark theme */
+::-webkit-scrollbar { width: 7px; height: 7px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+::-webkit-scrollbar-corner { background: transparent; }
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+body.light ::-webkit-scrollbar-thumb { background: #c0c2c8; }
+body.light ::-webkit-scrollbar-thumb:hover { background: #a0a2a8; }
+body.light * { scrollbar-color: #c0c2c8 transparent; }
+
 /* TOOLBAR */
 #toolbar {
   background: var(--surface); border-bottom: 1px solid var(--border);
