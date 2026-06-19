@@ -3529,23 +3529,29 @@ var TesselCompiler = (function() {
       input = '<input type="password" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '"' + reqAttr + ' placeholder="' + e(label) + '" autocomplete="off">';
     } else if (ft === 'date') {
       var dfmt = (b.meta && b.meta.dateFormat) || 'YYYY-MM-DD';
+      var calIcon = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="1" y="3" width="14" height="12" rx="1.5"/><path d="M1 7h14M5 1v4M11 1v4"/></svg>';
       input = '<div class="tc-date-wrap">'
-            + '<input type="text" id="tcf-' + e(nid) + '" class="tc-field-input tc-date-text" data-note="' + e(nid) + '"' + reqAttr + ' data-date-format="' + e(dfmt) + '" placeholder="' + e(dfmt) + '" maxlength="' + dfmt.length + '" autocomplete="off" spellcheck="false">'
+            + '<input type="text" id="tcf-' + e(nid) + '" class="tc-field-input tc-date-text" data-note="' + e(nid) + '" data-field-type="date"' + reqAttr + ' data-date-format="' + e(dfmt) + '" placeholder="' + e(dfmt) + '" maxlength="' + dfmt.length + '" autocomplete="off" spellcheck="false">'
+            + '<input type="date" class="tc-date-hidden-picker" tabindex="-1" aria-hidden="true">'
             + '<span class="tc-date-shortcuts">'
             + '<button type="button" class="tc-date-now-btn tc-date-clear-btn" onclick="tcClearDate(this)">Clear</button>'
             + '<button type="button" class="tc-date-now-btn" onclick="tcSetNow(this,\'date\')">Today</button>'
             + '</span>'
+            + '<button type="button" class="tc-date-cal-btn" onclick="tcOpenPicker(this)" title="Open calendar">' + calIcon + '</button>'
             + '</div>'
             + '<div class="tc-date-format-hint">' + e(dfmt) + '</div>';
     } else if (ft === 'datetime') {
       var dtfmt = (b.meta && b.meta.dateFormat) || 'YYYY-MM-DD HH:mm';
+      var calIcon = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="1" y="3" width="14" height="12" rx="1.5"/><path d="M1 7h14M5 1v4M11 1v4"/></svg>';
       input = '<div class="tc-date-wrap">'
-            + '<input type="text" id="tcf-' + e(nid) + '" class="tc-field-input tc-date-text" data-note="' + e(nid) + '"' + reqAttr + ' data-date-format="' + e(dtfmt) + '" placeholder="' + e(dtfmt) + '" maxlength="' + dtfmt.length + '" autocomplete="off" spellcheck="false">'
+            + '<input type="text" id="tcf-' + e(nid) + '" class="tc-field-input tc-date-text" data-note="' + e(nid) + '" data-field-type="datetime"' + reqAttr + ' data-date-format="' + e(dtfmt) + '" placeholder="' + e(dtfmt) + '" maxlength="' + dtfmt.length + '" autocomplete="off" spellcheck="false">'
+            + '<input type="datetime-local" class="tc-date-hidden-picker" tabindex="-1" aria-hidden="true">'
             + '<span class="tc-date-shortcuts">'
             + '<button type="button" class="tc-date-now-btn tc-date-clear-btn" onclick="tcClearDate(this)">Clear</button>'
             + '<button type="button" class="tc-date-now-btn" onclick="tcSetNow(this,\'date-only\')">Today</button>'
             + '<button type="button" class="tc-date-now-btn tc-date-now-primary" onclick="tcSetNow(this,\'datetime\')">Right Now</button>'
             + '</span>'
+            + '<button type="button" class="tc-date-cal-btn" onclick="tcOpenPicker(this)" title="Open calendar">' + calIcon + '</button>'
             + '</div>'
             + '<div class="tc-date-format-hint">' + e(dtfmt) + '</div>';
     } else if (ft === 'number') {
@@ -3654,7 +3660,10 @@ var TesselCompiler = (function() {
     '.tc-date-format-hint{font-size:.75em;color:var(--muted);font-family:monospace;margin-top:1px}',
     '.tc-date-wrap{position:relative;display:flex;}',
     '.tc-date-wrap .tc-field-input{flex:1;}',
-    '.tc-date-shortcuts{position:absolute;bottom:5px;right:8px;display:flex;align-items:center;gap:8px;}',
+    '.tc-date-hidden-picker{position:absolute;right:0;top:0;width:32px;height:100%;opacity:0;pointer-events:none;border:none;padding:0;}',
+    '.tc-date-cal-btn{position:absolute;right:0;top:50%;transform:translateY(-50%);background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:3px 5px;color:var(--muted);line-height:1;display:flex;align-items:center;}',
+    '.tc-date-cal-btn:hover{border-color:var(--accent);color:var(--accent);}',
+    '.tc-date-shortcuts{position:absolute;bottom:5px;right:38px;display:flex;align-items:center;gap:8px;}',
     '.tc-date-now-btn{font-size:.7em;padding:2px 7px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:4px;cursor:pointer;line-height:1.4;white-space:nowrap;opacity:.75;}',
     '.tc-date-now-btn:hover{border-color:var(--accent);color:var(--accent);opacity:1;}',
     '.tc-date-now-primary{font-weight:600;}',
@@ -3751,18 +3760,86 @@ var TesselCompiler = (function() {
     '  if(!inp)return;',
     '  var fmt=inp.getAttribute("data-date-format")||"YYYY-MM-DD";',
     '  var now=new Date();',
+    '  var pad=function(n){return n<10?"0"+n:""+n;};',
     '  if(type==="date-only"){now=new Date(now.getFullYear(),now.getMonth(),now.getDate());}',
     '  inp.value=tcFmtDate(now,fmt);',
+    '  var isoDate=now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate());',
+    '  var hasTime=/HH|H|hh|h/.test(fmt);',
+    '  inp.setAttribute("data-iso-value",hasTime?isoDate+"T"+pad(now.getHours())+":"+pad(now.getMinutes()):isoDate);',
     '  inp.dispatchEvent(new Event("input",{bubbles:true}));',
     '}',
     'window.tcSetNow=tcSetNow;',
     'function tcClearDate(btn){',
     '  var inp=btn.closest(".tc-date-wrap").querySelector(".tc-field-input");',
     '  if(!inp)return;',
-    '  inp.value="";',
+    '  inp.value="";inp.removeAttribute("data-iso-value");',
     '  inp.dispatchEvent(new Event("input",{bubbles:true}));',
     '}',
     'window.tcClearDate=tcClearDate;',
+    // Parse typed text against format pattern → ISO string for export
+    'function tcToISO(text,fmt){',
+    '  if(!text||!text.trim())return"";',
+    '  var pad=function(n){return n<10?"0"+n:""+n;};',
+    '  var MS=["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];',
+    '  var tokens=[],regStr="^",i=0,fmtRe=/^(YYYY|YY|MMMM|MMM|MM|M|DD|D|HH|H|hh|h|mm|ss|A|a)/;',
+    '  while(i<fmt.length){',
+    '    var chunk=fmt.slice(i),tm=fmtRe.exec(chunk);',
+    '    if(tm){',
+    '      tokens.push(tm[1]);i+=tm[1].length;',
+    '      if(tm[1]==="YYYY")regStr+="(\\\\d{4})";',
+    '      else if(tm[1]==="YY")regStr+="(\\\\d{2})";',
+    '      else if(tm[1]==="MMMM"||tm[1]==="MMM")regStr+="([A-Za-z]+)";',
+    '      else if(tm[1]==="A"||tm[1]==="a")regStr+="(AM|PM|am|pm)";',
+    '      else regStr+="(\\\\d{1,2})";',
+    '    } else{regStr+=fmt[i].replace(/[.*+?^${}()|[\\]\\\\]/g,"\\\\$&");i++;}',
+    '  }',
+    '  var m=new RegExp(regStr,"i").exec(text.trim());',
+    '  if(!m)return"";',
+    '  var p={};tokens.forEach(function(t,idx){p[t]=m[idx+1];});',
+    '  var Y=parseInt(p.YYYY||(p.YY?(parseInt(p.YY,10)<50?2000:1900)+parseInt(p.YY,10):0),10);',
+    '  var Mo=0;',
+    '  if(p.MM||p.M)Mo=parseInt(p.MM||p.M,10)-1;',
+    '  else if(p.MMM||p.MMMM)Mo=MS.indexOf((p.MMM||p.MMMM).slice(0,3).toLowerCase());',
+    '  var D=parseInt(p.DD||p.D||1,10);',
+    '  var H=parseInt(p.HH||p.H||p.hh||p.h||0,10);',
+    '  var ap=p.A||p.a||"";',
+    '  if(ap.toLowerCase()==="pm"&&H<12)H+=12;else if(ap.toLowerCase()==="am"&&H===12)H=0;',
+    '  var mn=parseInt(p.mm||0,10),sc=parseInt(p.ss||0,10);',
+    '  if(!Y||Mo<0||Mo>11||D<1||D>31)return"";',
+    '  var hasTime=/HH|H|hh|h/.test(fmt);',
+    '  if(hasTime)return Y+"-"+pad(Mo+1)+"-"+pad(D)+"T"+pad(H)+":"+pad(mn)+(sc?":"+pad(sc):"");',
+    '  return Y+"-"+pad(Mo+1)+"-"+pad(D);',
+    '}',
+    // Blur: normalize and store ISO value for export
+    'document.addEventListener("blur",function(e){',
+    '  var el=e.target;if(!el.classList.contains("tc-date-text"))return;',
+    '  var iso=tcToISO(el.value.trim(),el.getAttribute("data-date-format")||"");',
+    '  if(iso)el.setAttribute("data-iso-value",iso);else el.removeAttribute("data-iso-value");',
+    '},true);',
+    // Calendar icon → show hidden native picker, then format result via pattern
+    'function tcOpenPicker(btn){',
+    '  var wrap=btn.closest(".tc-date-wrap");',
+    '  var inp=wrap.querySelector(".tc-field-input");',
+    '  var picker=wrap.querySelector(".tc-date-hidden-picker");',
+    '  if(!picker)return;',
+    '  var fmt=inp.getAttribute("data-date-format")||"YYYY-MM-DD";',
+    '  var iso=tcToISO(inp.value.trim(),fmt);',
+    '  if(iso)picker.value=iso;',
+    '  function onPickerChange(){',
+    '    picker.removeEventListener("change",onPickerChange);',
+    '    if(!picker.value)return;',
+    '    var d=new Date(picker.value+(picker.type==="date"?"T00:00":""));',
+    '    if(isNaN(d.getTime()))return;',
+    '    inp.value=tcFmtDate(d,fmt);',
+    '    inp.setAttribute("data-iso-value",picker.value);',
+    '    inp.dispatchEvent(new Event("input",{bubbles:true}));',
+    '  }',
+    '  picker.addEventListener("change",onPickerChange);',
+    '  picker.style.pointerEvents="auto";',
+    '  try{picker.showPicker();}catch(err){picker.click();}',
+    '  setTimeout(function(){picker.style.pointerEvents="none";},500);',
+    '}',
+    'window.tcOpenPicker=tcOpenPicker;',
     '})();',
   ].join('\n');
 
