@@ -312,10 +312,9 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 #outline-panel.pane-h #outline-content h3 .panel-tab-arrow,
 #props-panel.pane-h   #props-content h3   .panel-tab-arrow { display: none; }
 .pane-expand-all-btn {
-  position: absolute; top: 6px; right: 6px; z-index: 2;
   background: var(--surface); border: 1px solid var(--border); cursor: pointer; color: var(--muted);
   font-size: 10px; padding: 2px 5px; line-height: 1; border-radius: 3px;
-  letter-spacing: -1px;
+  letter-spacing: -1px; flex-shrink: 0;
 }
 .pane-expand-all-btn:hover { background: var(--surface2); border-color: var(--accent); color: var(--text); }
 .pane-h .pane-expand-all-btn { display: none; }
@@ -5106,17 +5105,18 @@ function buildTextPaneButtons() {
     }
   });
 }
-// Inject an expand/collapse-all button into the top-right corner of the pane body.
+// Inject an expand/collapse-all button into the pane header (always visible, non-scrolling).
 // Must be called after groups are in the DOM (post-initCollapsibleGroups / buildTextPaneButtons).
 function wireExpandAllBtn(bodyEl) {
   var groups = Array.from(bodyEl.querySelectorAll('.ctrl-group-collapsible'));
   if (groups.length < 2) return;
 
-  // Ensure the body is a positioned container for the absolute button
-  bodyEl.style.position = 'relative';
+  var pane = bodyEl.closest('.ctrl-pane');
+  var hdr = pane ? pane.querySelector('.ctrl-pane-header') : null;
+  if (!hdr) return;
 
   // Remove any existing button (e.g. on rebuild)
-  var existing = bodyEl.querySelector('.pane-expand-all-btn');
+  var existing = hdr.querySelector('.pane-expand-all-btn');
   if (existing) existing.remove();
 
   var btn = document.createElement('button');
@@ -5158,7 +5158,7 @@ function wireExpandAllBtn(bodyEl) {
     });
   });
 
-  bodyEl.appendChild(btn);
+  hdr.appendChild(btn);
 }
 
 function initCollapsibleGroups(bodyEl, lsPrefix) {
