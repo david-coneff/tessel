@@ -2949,7 +2949,7 @@ function renderProps() {
     var fmtPrevRow = mkPropRow('Preview');
     var fmtPrevEl = document.createElement('div');
     fmtPrevEl.className = 'prop-input';
-    fmtPrevEl.style.cssText = 'color:var(--text);background:var(--surface2);cursor:default;pointer-events:none;font-style:italic;';
+    fmtPrevEl.style.cssText = 'color:var(--text);background:var(--bg);cursor:default;pointer-events:none;border-color:var(--border);';
     fmtPrevRow.appendChild(fmtPrevEl); body.appendChild(fmtPrevRow);
 
     function updateFmtPreview() {
