@@ -894,7 +894,7 @@ body.no-transitions #props-panel { transition: none !important; }
 .opts-coll-btn.open .opts-coll-arrow { transform: rotate(90deg); }
 .opts-select {
   background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
-  color: var(--text); font-size: 11px; padding: 3px 6px; cursor: pointer;
+  color: var(--text); font-size: 12px; padding: 5px 6px; cursor: pointer;
   outline: none;
 }
 .opts-select:focus { border-color: var(--accent); }
@@ -953,7 +953,7 @@ kbd {
 .opts-num-step-btn {
   background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
   color: var(--muted); cursor: pointer; font-size: 14px; line-height: 1;
-  padding: 4px 7px; display: flex; align-items: center; justify-content: center;
+  padding: 5px 7px; display: flex; align-items: center; justify-content: center;
 }
 .opts-num-step-btn:hover { background: var(--surface2); border-color: var(--accent); color: var(--text); }
 .opts-coll-body { display: none; padding-left: 10px; }
@@ -1608,13 +1608,12 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
         </div>
         <div class="opts-toggle-row" id="opts-undo-window-row" style="margin-top:8px;">
           <span>Time window</span>
-          <select class="opts-select" id="opts-undo-time-window">
-            <option value="500">0.5 s</option>
-            <option value="1000" selected>1 s</option>
-            <option value="2000">2 s</option>
-            <option value="5000">5 s</option>
-            <option value="30000">30 s</option>
-          </select>
+          <div class="opts-undo-depth-wrap">
+            <button type="button" class="opts-num-step-btn" id="opts-undo-window-dec" title="Decrease">&#x2212;</button>
+            <input type="number" id="opts-undo-time-window-num" class="opts-num-input" min="100" max="60000" value="1000" style="width:68px;">
+            <span style="font-size:11px;color:var(--muted);margin-left:2px;">ms</span>
+            <button type="button" class="opts-num-step-btn" id="opts-undo-window-inc" title="Increase">&#x2B;</button>
+          </div>
         </div>
         <div class="opts-toggle-row" style="margin-top:8px;">
           <span>Max undo steps</span>
@@ -6943,7 +6942,9 @@ function dockPanel(panelId, zone) {
   var granPill    = document.getElementById('opts-undo-granularity-pill');
   var granSlider  = document.getElementById('opts-gran-slider');
   var granRadios  = granPill ? granPill.querySelectorAll('input[type="radio"]') : [];
-  var windowSel   = document.getElementById('opts-undo-time-window');
+  var windowNum   = document.getElementById('opts-undo-time-window-num');
+  var windowDec   = document.getElementById('opts-undo-window-dec');
+  var windowInc   = document.getElementById('opts-undo-window-inc');
   var windowRow   = document.getElementById('opts-undo-window-row');
 
   function getGranPillValue() {
@@ -6955,7 +6956,10 @@ function dockPanel(panelId, zone) {
   function syncWindowRowActive() {
     if (!windowRow) return;
     windowRow.style.opacity = getGranPillValue() === 'time' ? '' : '0.45';
-    windowSel.disabled = getGranPillValue() !== 'time';
+    var twDisabled = getGranPillValue() !== 'time';
+    if (windowNum) windowNum.disabled = twDisabled;
+    if (windowDec) windowDec.disabled = twDisabled;
+    if (windowInc) windowInc.disabled = twDisabled;
   }
   function syncGranSlider() {
     for (var i = 0; i < granRadios.length; i++) {
@@ -6973,9 +6977,7 @@ function dockPanel(panelId, zone) {
       granRadios[i].checked = (granRadios[i].value === cur);
     }
     var tw = getUndoTimeWindow();
-    for (var i = 0; i < windowSel.options.length; i++) {
-      if (parseInt(windowSel.options[i].value, 10) === tw) { windowSel.selectedIndex = i; break; }
-    }
+    if (windowNum) windowNum.value = tw;
     syncWindowRowActive();
     setTimeout(syncGranSlider, 0); // after layout
   })();
@@ -6987,8 +6989,24 @@ function dockPanel(panelId, zone) {
       syncGranSlider();
     });
   }
-  windowSel.addEventListener('change', function() {
-    try { localStorage.setItem('tvs:opts:undo-time-window', windowSel.value); } catch(e) {}
+  function applyTimeWindow(ms) {
+    ms = Math.max(100, Math.min(60000, ms));
+    if (windowNum) windowNum.value = ms;
+    try { localStorage.setItem('tvs:opts:undo-time-window', ms); } catch(e) {}
+  }
+  if (windowNum) windowNum.addEventListener('change', function() {
+    var v = parseInt(windowNum.value, 10);
+    if (isNaN(v) || v < 100) v = 100;
+    if (v > 60000) v = 60000;
+    applyTimeWindow(v);
+  });
+  if (windowDec) windowDec.addEventListener('click', function() {
+    var v = parseInt(windowNum.value, 10) || 1000;
+    applyTimeWindow(v <= 500 ? Math.max(100, v - 100) : v <= 5000 ? v - 500 : v - 1000);
+  });
+  if (windowInc) windowInc.addEventListener('click', function() {
+    var v = parseInt(windowNum.value, 10) || 1000;
+    applyTimeWindow(v < 500 ? v + 100 : v < 5000 ? v + 500 : Math.min(60000, v + 1000));
   });
 
   blockFmtBtn.addEventListener('click', function() {
