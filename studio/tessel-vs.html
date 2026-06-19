@@ -5631,10 +5631,12 @@ function dockPanel(panelId, zone) {
     var h = parseFloat(panel.style.height) || FLOAT_H;
     var x = parseFloat(panel.style.left)   || 0;
     var y = parseFloat(panel.style.top)    || 0;
-    // Keep at least 60px of panel visible on each axis
+    // Keep at least 60px of panel visible on each axis; never slide above toolbar
     var MARGIN = 60;
+    var tb = document.getElementById('toolbar');
+    var tbBottom = tb ? tb.getBoundingClientRect().bottom : 0;
     x = Math.max(MARGIN - w, Math.min(window.innerWidth  - MARGIN, x));
-    y = Math.max(0,           Math.min(window.innerHeight - MARGIN, y));
+    y = Math.max(tbBottom,   Math.min(window.innerHeight - MARGIN, y));
     panel.style.left = x + 'px';
     panel.style.top  = y + 'px';
   }
@@ -5755,8 +5757,10 @@ function dockPanel(panelId, zone) {
   document.addEventListener('mousemove', function(e) {
     if (fd) {
       var w=parseFloat(fd.style.width)||FLOAT_W, h=parseFloat(fd.style.height)||FLOAT_H;
+      var tb=document.getElementById('toolbar');
+      var tbBottom=tb?tb.getBoundingClientRect().bottom:0;
       fd.style.left=Math.max(0,Math.min(window.innerWidth-w,  fdPX+(e.clientX-fdSX)))+'px';
-      fd.style.top =Math.max(0,Math.min(window.innerHeight-h, fdPY+(e.clientY-fdSY)))+'px';
+      fd.style.top =Math.max(tbBottom,Math.min(window.innerHeight-h, fdPY+(e.clientY-fdSY)))+'px';
     }
     if (rd) {
       var dx=e.clientX-rdSX, dy=e.clientY-rdSY, dir=rdDir;
