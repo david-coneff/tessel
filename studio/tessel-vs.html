@@ -271,20 +271,28 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
   background: var(--accent); opacity: 1; box-shadow: 0 0 5px var(--accent);
 }
 /* Right-side overflow indicator for horizontal panes */
-.pane-h-overflow-ind {
-  display: none; position: absolute; top: 0; bottom: 0; right: 0;
+.pane-h-overflow-ind, .pane-h-back-ind {
+  display: none; position: absolute; top: 0; bottom: 0;
   width: 36px; pointer-events: auto; z-index: 6; cursor: pointer;
-  background: linear-gradient(to right, transparent, var(--surface) 70%);
-  align-items: center; justify-content: flex-end; padding-right: 5px;
+  align-items: center;
 }
-.pane-h-overflow-ind.show { display: flex; }
-.pane-h-overflow-ind::after {
-  content: '›'; font-size: 14px; line-height: 1;
-  color: var(--muted); border: 1px solid transparent;
-  border-radius: 5px; padding: 2px 4px;
+.pane-h-overflow-ind {
+  right: 0; justify-content: flex-end; padding-right: 5px;
+  background: linear-gradient(to right, transparent, var(--surface) 70%);
+}
+.pane-h-back-ind {
+  left: 0; justify-content: flex-start; padding-left: 5px;
+  background: linear-gradient(to left, transparent, var(--surface) 70%);
+}
+.pane-h-overflow-ind.show, .pane-h-back-ind.show { display: flex; }
+.pane-h-overflow-ind::after, .pane-h-back-ind::after {
+  font-size: 14px; line-height: 1; color: var(--muted);
+  border: 1px solid transparent; border-radius: 5px; padding: 2px 4px;
   transition: border-color .12s, color .12s, background .12s;
 }
-.pane-h-overflow-ind:hover::after {
+.pane-h-overflow-ind::after { content: '›'; }
+.pane-h-back-ind::after     { content: '‹'; }
+.pane-h-overflow-ind:hover::after, .pane-h-back-ind:hover::after {
   border-color: var(--border); color: var(--text); background: var(--surface2);
 }
 .ctrl-pane-collapse-btn {
@@ -5543,10 +5551,12 @@ function dockPanel(panelId, zone) {
   function loadRows(id) { try { var v = localStorage.getItem(lsKey(id)); return v ? Math.max(1, Math.min(MAX_ROWS, parseInt(v, 10))) : 1; } catch(e) { return 1; } }
 
   function updateIndicator(pane) {
-    var body = pane.querySelector('.ctrl-pane-body');
-    var ind  = pane.querySelector('.pane-h-overflow-ind');
-    if (!ind || !body) return;
-    ind.classList.toggle('show', body.scrollHeight > body.clientHeight + 2);
+    var body    = pane.querySelector('.ctrl-pane-body');
+    var indFwd  = pane.querySelector('.pane-h-overflow-ind');
+    var indBack = pane.querySelector('.pane-h-back-ind');
+    if (!body) return;
+    if (indFwd)  indFwd.classList.toggle('show',  body.scrollHeight > body.scrollTop + body.clientHeight + 2);
+    if (indBack) indBack.classList.toggle('show', body.scrollTop > 2);
   }
 
   function applyRows(pane, rows) {
@@ -5592,21 +5602,32 @@ function dockPanel(panelId, zone) {
     }
     var ind = pane.querySelector('.pane-h-overflow-ind');
     if (ind) ind.classList.remove('show');
+    var indB = pane.querySelector('.pane-h-back-ind');
+    if (indB) indB.classList.remove('show');
   }
 
   PANE_IDS.forEach(function(id) {
     var pane = document.getElementById(id);
     if (!pane) return;
 
-    // Right-side overflow indicator
+    // Left-side back indicator
+    var indBack = document.createElement('div');
+    indBack.className = 'pane-h-back-ind';
+    pane.appendChild(indBack);
+    indBack.addEventListener('click', function() {
+      var b = pane.querySelector('.ctrl-pane-body');
+      if (!b) return;
+      b.scrollTo({ top: Math.max(0, b.scrollTop - ROW_H), behavior: 'smooth' });
+    });
+
+    // Right-side forward indicator
     var ind = document.createElement('div');
     ind.className = 'pane-h-overflow-ind';
     pane.appendChild(ind);
     ind.addEventListener('click', function() {
       var b = pane.querySelector('.ctrl-pane-body');
       if (!b) return;
-      b.scrollTop += ROW_H;
-      updateIndicator(pane);
+      b.scrollTo({ top: b.scrollTop + ROW_H, behavior: 'smooth' });
     });
 
     // Resize handle
@@ -5626,7 +5647,8 @@ function dockPanel(panelId, zone) {
       if (!b || !pane.classList.contains('pane-h')) return;
       if (loadRows(id) <= 1) return;
       e.preventDefault();
-      b.scrollTop += (e.deltaY !== 0 ? e.deltaY : e.deltaX);
+      var delta = e.deltaY !== 0 ? e.deltaY : e.deltaX;
+      b.scrollBy({ top: delta, behavior: 'smooth' });
       updateIndicator(pane);
     }, { passive: false });
 
