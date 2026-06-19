@@ -1922,6 +1922,18 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
 function uid() { return Math.random().toString(36).slice(2, 8); }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function slugify(s) { return (s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,48)||'field'; }
+function formatDatePattern(date, pattern) {
+  var ML = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var MS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var Y = date.getFullYear(), Mo = date.getMonth(), D = date.getDate();
+  var H = date.getHours(), min = date.getMinutes(), sec = date.getSeconds();
+  var h = H % 12 || 12, ampm = H < 12 ? 'AM' : 'PM';
+  var pad = function(n) { return n < 10 ? '0'+n : ''+n; };
+  var tk = { 'YYYY':Y, 'YY':String(Y).slice(-2), 'MMMM':ML[Mo], 'MMM':MS[Mo],
+             'MM':pad(Mo+1), 'M':Mo+1, 'DD':pad(D), 'D':D,
+             'HH':pad(H), 'H':H, 'hh':pad(h), 'h':h, 'mm':pad(min), 'ss':pad(sec), 'A':ampm, 'a':ampm.toLowerCase() };
+  return pattern.replace(/YYYY|YY|MMMM|MMM|MM|M|DD|D|HH|H|hh|h|mm|ss|A|a/g, function(t) { return tk[t] !== undefined ? tk[t] : t; });
+}
 
 var blocks = [];
 var selectedBlockId = null;
@@ -2490,6 +2502,11 @@ function createFieldEl(b) {
     hint = document.createElement('div');
     hint.className = 'field-preview-hint';
     hint.textContent = 'Rich text area';
+  } else if (b.fieldType === 'date' || b.fieldType === 'datetime') {
+    var dfmtHint = b.meta.dateFormat || (b.fieldType === 'date' ? 'YYYY-MM-DD' : 'YYYY-MM-DD HH:mm');
+    hint = document.createElement('div');
+    hint.className = 'field-preview-hint';
+    hint.textContent = 'Format: ' + dfmtHint + '  →  ' + formatDatePattern(new Date(), dfmtHint);
   } else if (b.fieldType === 'attachment') {
     // Live consumer-facing attachment input — embedded directly in the card
     if (!b.meta.files) b.meta.files = [];
@@ -2893,6 +2910,63 @@ function renderProps() {
     var exprRow = mkPropRow('Expression');
     exprRow.appendChild(mkInput(b.meta.expr || '', function(v) { b.meta.expr = v||undefined; renderCanvas(); markUnsaved(); }));
     body.appendChild(exprRow);
+  }
+
+  // Date/datetime-specific: Format
+  if (b.fieldType === 'date' || b.fieldType === 'datetime') {
+    var DATE_FMT_PRESETS = b.fieldType === 'date'
+      ? ['YYYY-MM-DD', 'MM/DD/YYYY', 'DD/MM/YYYY', 'DD MMM YYYY', 'MMM DD, YYYY', 'MMMM DD, YYYY']
+      : ['YYYY-MM-DD HH:mm', 'YYYY-MM-DD HH:mm:ss', 'MM/DD/YYYY h:mm A', 'MM/DD/YYYY HH:mm', 'DD/MM/YYYY HH:mm', 'MMM DD, YYYY h:mm A', 'MMMM DD, YYYY h:mm A'];
+    var dfmtDefault = DATE_FMT_PRESETS[0];
+    var curFmt = b.meta.dateFormat || dfmtDefault;
+    var isPreset = DATE_FMT_PRESETS.indexOf(curFmt) !== -1;
+
+    var fmtTitle = document.createElement('div');
+    fmtTitle.className = 'prop-section-title'; fmtTitle.textContent = 'FORMAT';
+    body.appendChild(fmtTitle);
+
+    var fmtPresetRow = mkPropRow('Preset');
+    var fmtSel = document.createElement('select'); fmtSel.className = 'prop-input';
+    DATE_FMT_PRESETS.forEach(function(fmt) {
+      var o = document.createElement('option'); o.value = fmt; o.textContent = fmt;
+      if (fmt === curFmt) o.selected = true;
+      fmtSel.appendChild(o);
+    });
+    var customOpt = document.createElement('option'); customOpt.value = '__custom__'; customOpt.textContent = 'Custom…';
+    if (!isPreset) customOpt.selected = true;
+    fmtSel.appendChild(customOpt);
+    fmtPresetRow.appendChild(fmtSel); body.appendChild(fmtPresetRow);
+
+    var fmtPatRow = mkPropRow('Pattern');
+    var fmtInp = mkInput(curFmt, function(v) {
+      b.meta.dateFormat = v || dfmtDefault;
+      fmtSel.value = DATE_FMT_PRESETS.indexOf(b.meta.dateFormat) !== -1 ? b.meta.dateFormat : '__custom__';
+      updateFmtPreview(); renderCanvas(); markUnsaved();
+    });
+    if (isPreset) { fmtInp.readOnly = true; fmtInp.style.color = 'var(--muted)'; }
+    fmtPatRow.appendChild(fmtInp); body.appendChild(fmtPatRow);
+
+    var fmtPrevRow = mkPropRow('Preview');
+    var fmtPrevEl = document.createElement('div');
+    fmtPrevEl.className = 'prop-input';
+    fmtPrevEl.style.cssText = 'color:var(--muted);background:var(--surface2);cursor:default;pointer-events:none;';
+    fmtPrevRow.appendChild(fmtPrevEl); body.appendChild(fmtPrevRow);
+
+    function updateFmtPreview() {
+      fmtPrevEl.textContent = formatDatePattern(new Date(), b.meta.dateFormat || dfmtDefault);
+    }
+    updateFmtPreview();
+
+    fmtSel.addEventListener('change', function() {
+      if (fmtSel.value === '__custom__') {
+        fmtInp.readOnly = false; fmtInp.style.color = '';
+        fmtInp.focus();
+      } else {
+        b.meta.dateFormat = fmtSel.value;
+        fmtInp.value = fmtSel.value; fmtInp.readOnly = true; fmtInp.style.color = 'var(--muted)';
+        updateFmtPreview(); renderCanvas(); markUnsaved();
+      }
+    });
   }
 
   if (def.hasOptions) {
@@ -3348,9 +3422,13 @@ var TesselCompiler = (function() {
     } else if (ft === 'credential' || ft === 'totp') {
       input = '<input type="password" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '" placeholder="' + e(label) + '" autocomplete="off">';
     } else if (ft === 'date') {
-      input = '<input type="date" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '">';
+      var dfmt = (b.meta && b.meta.dateFormat) || 'YYYY-MM-DD';
+      input = '<input type="date" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '" data-date-format="' + e(dfmt) + '">'
+            + '<div class="tc-date-format-hint">' + e(dfmt) + '</div>';
     } else if (ft === 'datetime') {
-      input = '<input type="datetime-local" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '">';
+      var dtfmt = (b.meta && b.meta.dateFormat) || 'YYYY-MM-DD HH:mm';
+      input = '<input type="datetime-local" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '" data-date-format="' + e(dtfmt) + '">'
+            + '<div class="tc-date-format-hint">' + e(dtfmt) + '</div>';
     } else if (ft === 'number') {
       input = '<input type="number" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '" placeholder="' + e(label) + '">';
     } else if (ft === 'email') {
@@ -3449,6 +3527,7 @@ var TesselCompiler = (function() {
     '.tc-req{color:var(--red)}',
     '.tc-field-input{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:7px 10px;font-size:.9em;font-family:inherit;width:100%;box-sizing:border-box;transition:border-color .15s}',
     '.tc-field-input:focus{outline:none;border-color:var(--accent)}',
+    '.tc-date-format-hint{font-size:.75em;color:var(--muted);font-family:monospace;margin-top:1px}',
     '.tc-area{resize:vertical;min-height:80px}',
     '.tc-select{cursor:pointer}',
     '.tc-radio-group,.tc-check-group{display:flex;flex-direction:column;gap:6px;padding:4px 0}',
