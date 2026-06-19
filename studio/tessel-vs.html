@@ -4409,8 +4409,10 @@ function makeCtrlPane(cfg) {
   badge.addEventListener('click', function(e) {
     e.stopPropagation();
     if (pane.classList.contains('dock-float')) {
-      if (pane.classList.contains('off')) { pane.classList.remove('off'); badge.classList.add('active'); }
-      else { pane.classList.add('off'); badge.classList.remove('active'); }
+      if (pane.classList.contains('off')) {
+        pane.classList.remove('off'); badge.classList.add('active');
+        if (window._clampFloatPanel) window._clampFloatPanel(pane);
+      } else { pane.classList.add('off'); badge.classList.remove('active'); }
     } else {
       if (badge.classList.contains('active')) { hide(); }
       else { if (_lastActiveState === 'collapsed') collapse(); else open(); }
@@ -4951,8 +4953,10 @@ function makeSidePanel(cfg) {
   badge.addEventListener('click', function(e) {
     e.stopPropagation();
     if (panel.classList.contains('dock-float')) {
-      if (panel.classList.contains('off')) { panel.classList.remove('off'); badge.classList.add('active'); }
-      else { panel.classList.add('off'); badge.classList.remove('active'); }
+      if (panel.classList.contains('off')) {
+        panel.classList.remove('off'); badge.classList.add('active');
+        if (window._clampFloatPanel) window._clampFloatPanel(panel);
+      } else { panel.classList.add('off'); badge.classList.remove('active'); }
     } else {
       if (badge.classList.contains('active')) { hide(); }
       else { if (_lastActiveState === 'collapsed') collapse(); else open(); }
@@ -5027,6 +5031,22 @@ function dockPanel(panelId, zone) {
 
   function loadState(id) { try { return JSON.parse(localStorage.getItem('tvs:float:'+id))||null; } catch(e) { return null; } }
   function saveState(id,x,y,w,h) { try { localStorage.setItem('tvs:float:'+id, JSON.stringify({x:x,y:y,w:w,h:h})); } catch(e) {} }
+
+  function clampFloatPanel(panel) {
+    if (!panel || !panel.classList.contains('dock-float')) return;
+    var w = parseFloat(panel.style.width)  || FLOAT_W;
+    var h = parseFloat(panel.style.height) || FLOAT_H;
+    var x = parseFloat(panel.style.left)   || 0;
+    var y = parseFloat(panel.style.top)    || 0;
+    // Keep at least 60px of panel visible on each axis
+    var MARGIN = 60;
+    x = Math.max(MARGIN - w, Math.min(window.innerWidth  - MARGIN, x));
+    y = Math.max(0,           Math.min(window.innerHeight - MARGIN, y));
+    panel.style.left = x + 'px';
+    panel.style.top  = y + 'px';
+  }
+
+  window._clampFloatPanel = clampFloatPanel;
 
   function curZoneOf(panel) {
     if (panel.classList.contains('dock-left'))   return 'left';
@@ -5159,6 +5179,16 @@ function dockPanel(panelId, zone) {
   document.addEventListener('mouseup', function() {
     if (fd) { saveState(fd.id,parseFloat(fd.style.left)||0,parseFloat(fd.style.top)||0,parseFloat(fd.style.width)||FLOAT_W,parseFloat(fd.style.height)||FLOAT_H); fd=null; }
     if (rd) { saveState(rd.id,parseFloat(rd.style.left)||0,parseFloat(rd.style.top)||0,parseFloat(rd.style.width)||FLOAT_W,parseFloat(rd.style.height)||FLOAT_H); rd=null; rdDir=''; }
+  });
+
+  // Clamp all floating panels on window resize
+  window.addEventListener('resize', function() {
+    PANE_IDS.forEach(function(panelId) {
+      var panel = document.getElementById(panelId);
+      if (panel && panel.classList.contains('dock-float') && !panel.classList.contains('off')) {
+        clampFloatPanel(panel);
+      }
+    });
   });
 
   // Restore floating panels on load
