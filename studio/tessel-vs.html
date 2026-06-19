@@ -960,6 +960,8 @@ kbd {
 .opts-theme-slot:hover { background: var(--surface2); }
 .opts-theme-slot:not(.active-slot):hover .opts-theme-slot-card { border-color: var(--accent); border-style: dashed; }
 .opts-theme-slot.drag-over { border-color: var(--accent); background: rgba(91,138,240,.08); border-style: solid; }
+/* Dragging from theme list: only the inner card gets a dashed border, no outer slot border */
+.opts-theme-slot.drag-over-list .opts-theme-slot-card { border-color: var(--accent); border-style: dashed; }
 /* Source slot disappears while dragged — user "has it in hand" */
 .opts-theme-slot.dragging-source { pointer-events: none; background: transparent !important; }
 .opts-theme-slot.dragging-source .opts-theme-slot-card { opacity: 0; }
@@ -4213,6 +4215,7 @@ function getAllThemes() {
 }
 
 var _draggedThemeId = null; // tracks what theme is currently being dragged
+var _dragFromList = false;  // true when drag originated from theme list (not a slot)
 
 function getThemeById(id) {
   var all = getAllThemes();
@@ -4285,6 +4288,20 @@ function updateThemeBtn() {
   }
 }
 
+function restoreSlotCard(slot) {
+  if (!slot) return;
+  var slotName = slot.getAttribute('data-slot');
+  var themeId = localStorage.getItem('tvs:theme-' + slotName) || (slotName === 'a' ? 'dark' : 'light');
+  var t = getThemeById(themeId);
+  var nameEl = document.getElementById('opts-slot-' + slotName + '-name');
+  var swEl = document.getElementById('opts-slot-' + slotName + '-swatches');
+  if (nameEl) nameEl.textContent = t ? t.name : '—';
+  if (swEl) swEl.innerHTML = t
+    ? '<div class="theme-swatch" style="background:'+t.vars['--bg']+';width:14px;height:14px;" title="bg"></div>'
+      + '<div class="theme-swatch" style="background:'+t.vars['--accent']+';width:14px;height:14px;" title="accent"></div>'
+    : '';
+}
+
 function renderThemeSlots() {
   var themeA = localStorage.getItem('tvs:theme-a') || 'dark';
   var themeB = localStorage.getItem('tvs:theme-b') || 'light';
@@ -4319,6 +4336,7 @@ function renderThemeSlots() {
   function setupSlotDrag(slot, themeVal) {
     slot.draggable = true;
     slot.ondragstart = function(e) {
+      _dragFromList = false;
       _draggedThemeId = themeVal;
       e.dataTransfer.setData('text/plain', themeVal);
       // Defer hiding until after browser captures drag image
@@ -4339,7 +4357,10 @@ function renderThemeSlots() {
   function resetSlotDragClasses(instant) {
     [slotA, slotB].forEach(function(s) {
       if (!s) return;
-      s.classList.remove('drag-over', 'drop-target');
+      s.classList.remove('drag-over', 'drop-target', 'drag-over-list');
+      var sc = s.querySelector('.opts-theme-slot-card');
+      if (sc) sc.removeAttribute('data-preview-id');
+      restoreSlotCard(s);
       var card = s.querySelector('.opts-theme-slot-card');
       if (card) {
         if (instant) card.style.transition = 'none';
@@ -4365,8 +4386,30 @@ function renderThemeSlots() {
       var targetName = slot.getAttribute('data-slot');
       var curA = localStorage.getItem('tvs:theme-a') || 'dark';
       var curB = localStorage.getItem('tvs:theme-b') || 'light';
-      var isSwap = (targetName === 'a' && _draggedThemeId === curB) ||
-                   (targetName === 'b' && _draggedThemeId === curA);
+      var isSwap = !_dragFromList && (
+        (targetName === 'a' && _draggedThemeId === curB) ||
+        (targetName === 'b' && _draggedThemeId === curA)
+      );
+      if (_dragFromList) {
+        // Dragging from theme list: dashed card border + live theme preview in card
+        if (!slot.classList.contains('drag-over-list')) {
+          slot.classList.remove('drag-over', 'drop-target', 'drag-over-list');
+          slot.classList.add('drag-over-list');
+        }
+        // Preview dragged theme in the card content (idempotent via data attr guard)
+        var card = slot.querySelector('.opts-theme-slot-card');
+        if (card && card.getAttribute('data-preview-id') !== _draggedThemeId) {
+          card.setAttribute('data-preview-id', _draggedThemeId);
+          var pt = getThemeById(_draggedThemeId);
+          var nameEl = document.getElementById('opts-slot-' + targetName + '-name');
+          var swEl = document.getElementById('opts-slot-' + targetName + '-swatches');
+          if (nameEl && pt) nameEl.textContent = pt.name;
+          if (swEl && pt) swEl.innerHTML =
+            '<div class="theme-swatch" style="background:'+pt.vars['--bg']+';width:14px;height:14px;" title="bg"></div>'
+            + '<div class="theme-swatch" style="background:'+pt.vars['--accent']+';width:14px;height:14px;" title="accent"></div>';
+        }
+        return;
+      }
       // Only update when state changes — avoids restarting transitions on every event
       var wantClass = isSwap ? 'drop-target' : 'drag-over';
       if (!slot.classList.contains(wantClass)) {
@@ -4387,12 +4430,19 @@ function renderThemeSlots() {
     slot.ondragleave = function(e) {
       var rel = e.relatedTarget;
       if (rel && (rel === slot || slot.contains(rel))) return;
-      slot.classList.remove('drag-over', 'drop-target');
+      slot.classList.remove('drag-over', 'drop-target', 'drag-over-list');
       var card = slot.querySelector('.opts-theme-slot-card');
-      if (card) card.style.transform = '';
+      if (card) {
+        card.style.transform = '';
+        card.removeAttribute('data-preview-id');
+      }
+      restoreSlotCard(slot);
     };
     slot.ondrop = function(e) {
       e.preventDefault();
+      slot.classList.remove('drag-over-list');
+      var dropCard = slot.querySelector('.opts-theme-slot-card');
+      if (dropCard) dropCard.removeAttribute('data-preview-id');
       resetSlotDragClasses(true); // instant — no snap animation on drop
       var droppedId = e.dataTransfer.getData('text/plain');
       if (!droppedId) return;
@@ -4470,7 +4520,11 @@ function renderThemeList() {
     card.addEventListener('dragstart', function(e) {
       var tid = card.getAttribute('data-theme-id');
       _draggedThemeId = tid;
+      _dragFromList = true;
       e.dataTransfer.setData('text/plain', tid);
+    });
+    card.addEventListener('dragend', function() {
+      _dragFromList = false;
     });
   });
   container.querySelectorAll('[data-theme-dup]').forEach(function(btn) {
