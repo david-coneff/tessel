@@ -961,8 +961,9 @@ kbd {
 .opts-theme-slot:hover .opts-theme-slot-card { border-color: var(--accent); border-style: dashed; }
 .opts-theme-slot.drag-over { border-color: var(--accent); background: rgba(91,138,240,.08); border-style: solid; }
 /* Source slot disappears while dragged — user "has it in hand" */
-.opts-theme-slot.dragging-source { pointer-events: none; }
+.opts-theme-slot.dragging-source { pointer-events: none; background: transparent !important; }
 .opts-theme-slot.dragging-source .opts-theme-slot-card { opacity: 0; }
+.opts-theme-slot.drop-target { z-index: 2; }
 /* Drop target: the slot border stays put; inner card slides to preview the swap */
 .opts-theme-slot.drop-target { background: rgba(91,138,240,.08); }
 .opts-theme-slot.drop-target::before {
