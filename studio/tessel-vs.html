@@ -248,6 +248,22 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 .dock-float .pane-width-handle,
 .collapsed  .pane-width-handle,
 .off        .pane-width-handle { display: none; }
+/* Horizontal pane row-snap resize handle */
+.ctrl-pane.pane-h { position: relative; }
+.pane-h-resize-handle {
+  display: none; position: absolute; bottom: 0; left: 0; right: 0;
+  height: 5px; cursor: row-resize; z-index: 10; opacity: 0;
+}
+.ctrl-pane.pane-h:not(.collapsed):not(.off) .pane-h-resize-handle { display: block; }
+.pane-h-resize-handle:hover,
+.pane-h-resize-handle.dragging { opacity: 1; background: var(--accent); }
+/* Row snap ghost indicator shown during drag */
+#pane-h-row-ghost {
+  position: fixed; left: 0; right: 0; height: 2px; display: none;
+  background: var(--accent); opacity: 0.8; pointer-events: none; z-index: 9999;
+  box-shadow: 0 0 5px var(--accent);
+}
+#pane-h-row-ghost.show { display: block; }
 .ctrl-pane-collapse-btn {
   background: none; border: 1px solid transparent; cursor: pointer; color: var(--muted);
   font-size: 16px; padding: 2px 5px; line-height: 1; border-radius: 5px; flex-shrink: 0;
@@ -5422,6 +5438,121 @@ function dockPanel(panelId, zone) {
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
         saveW(id, pane.offsetWidth);
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  });
+})();
+
+// ── Horizontal pane row-snap resize ─────────────────────────────────────────
+(function() {
+  var ROW_H   = 44;   // matches .ctrl-pane.pane-h height
+  var MAX_ROWS = 4;
+  var PANE_IDS = ['format-pane', 'text-pane', 'form-pane'];
+  var LS_PREFIX = 'tvs:pane-rows:';
+
+  var ghost = document.createElement('div');
+  ghost.id = 'pane-h-row-ghost';
+  document.body.appendChild(ghost);
+
+  function lsKey(id) { return LS_PREFIX + id; }
+  function saveRows(id, n) { try { localStorage.setItem(lsKey(id), n); } catch(e) {} }
+  function loadRows(id) { try { var v = localStorage.getItem(lsKey(id)); return v ? Math.max(1, Math.min(MAX_ROWS, parseInt(v, 10))) : 1; } catch(e) { return 1; } }
+
+  function applyRows(pane, rows) {
+    var h = rows * ROW_H;
+    pane.style.height = h + 'px';
+    pane.style.maxHeight = h + 'px';
+    var content = pane.querySelector('.ctrl-pane-content');
+    var header  = pane.querySelector('.ctrl-pane-header');
+    var body    = pane.querySelector('.ctrl-pane-body');
+    if (content) content.style.height = h + 'px';
+    if (header)  header.style.height  = h + 'px';
+    if (body) {
+      body.style.height = h + 'px';
+      if (rows > 1) {
+        body.style.flexWrap     = 'wrap';
+        body.style.overflowX    = 'hidden';
+        body.style.alignContent = 'flex-start';
+      } else {
+        body.style.flexWrap     = '';
+        body.style.overflowX    = '';
+        body.style.alignContent = '';
+      }
+    }
+  }
+
+  function clearPaneHStyles(pane) {
+    pane.style.height = '';
+    pane.style.maxHeight = '';
+    var content = pane.querySelector('.ctrl-pane-content');
+    var header  = pane.querySelector('.ctrl-pane-header');
+    var body    = pane.querySelector('.ctrl-pane-body');
+    if (content) content.style.height = '';
+    if (header)  header.style.height  = '';
+    if (body) {
+      body.style.height      = '';
+      body.style.flexWrap    = '';
+      body.style.overflowX   = '';
+      body.style.alignContent = '';
+    }
+  }
+
+  PANE_IDS.forEach(function(id) {
+    var pane = document.getElementById(id);
+    if (!pane) return;
+
+    var handle = document.createElement('div');
+    handle.className = 'pane-h-resize-handle';
+    pane.appendChild(handle);
+
+    // React to dock mode changes (pane-h added/removed by dockPanel/floatPanel)
+    var observer = new MutationObserver(function() {
+      var isPaneH = pane.classList.contains('pane-h');
+      var isActive = isPaneH && !pane.classList.contains('collapsed') && !pane.classList.contains('off');
+      if (isActive) {
+        var rows = loadRows(id);
+        if (rows > 1) applyRows(pane, rows);
+      } else if (!isPaneH) {
+        clearPaneHStyles(pane);
+      }
+    });
+    observer.observe(pane, { attributes: true, attributeFilter: ['class'] });
+
+    // Apply on initial load if already in horizontal mode
+    if (pane.classList.contains('pane-h')) {
+      var rows = loadRows(id);
+      if (rows > 1) applyRows(pane, rows);
+    }
+
+    handle.addEventListener('mousedown', function(e) {
+      if (!pane.classList.contains('pane-h')) return;
+      e.preventDefault();
+      var paneRect = pane.getBoundingClientRect();
+      var curRows = loadRows(id);
+      handle.classList.add('dragging');
+      document.body.style.cursor = 'row-resize';
+      document.body.style.userSelect = 'none';
+      ghost.classList.add('show');
+      ghost.style.top = (paneRect.top + curRows * ROW_H - 1) + 'px';
+
+      function onMove(e) {
+        var relY = e.clientY - paneRect.top;
+        var snap = Math.max(1, Math.min(MAX_ROWS, Math.round(relY / ROW_H)));
+        ghost.style.top = (paneRect.top + snap * ROW_H - 1) + 'px';
+      }
+      function onUp(e) {
+        handle.classList.remove('dragging');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        ghost.classList.remove('show');
+        var relY = e.clientY - paneRect.top;
+        var snap = Math.max(1, Math.min(MAX_ROWS, Math.round(relY / ROW_H)));
+        applyRows(pane, snap);
+        saveRows(id, snap);
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onUp);
       }
