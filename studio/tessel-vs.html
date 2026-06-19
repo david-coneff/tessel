@@ -6997,8 +6997,9 @@ function dockPanel(panelId, zone) {
   document.addEventListener('click', function(e) {
     var pill = e.target.closest ? e.target.closest('.opts-pill-group') : null;
     if (!pill) return;
-    // If the click landed on (or inside) a label, native for= binding already handled it
+    // If the click was on a label or the radio input itself, native for= binding handled it
     if (e.target.closest('label')) return;
+    if (e.target.tagName === 'INPUT') return;
     var radios = pill.querySelectorAll('input[type="radio"]');
     if (!radios.length) return;
     var inactive = null;
