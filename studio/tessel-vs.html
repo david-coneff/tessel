@@ -4609,6 +4609,7 @@ function renderThemeSlots() {
       if (card) {
         if (instant) card.style.transition = 'none';
         card.style.transform = '';
+        card.style.opacity = '';
         if (instant) { void card.offsetWidth; card.style.transition = ''; }
       }
     });
@@ -4660,14 +4661,22 @@ function renderThemeSlots() {
       if (!slot.classList.contains(wantClass)) {
         slot.classList.remove('drag-over', 'drop-target');
         slot.classList.add(wantClass);
-        // Slide this slot's card toward the source slot to preview the swap
         var card = slot.querySelector('.opts-theme-slot-card');
         if (card) {
+          card.style.transform = '';
           if (isSwap) {
-            var sourceSlot = (targetName === 'b') ? slotA : slotB;
-            if (sourceSlot) card.style.transform = 'translateX(' + (sourceSlot.offsetLeft - slot.offsetLeft) + 'px)';
+            // Preview incoming card content dimmed in the drop zone
+            var pt = getThemeById(_draggedThemeId);
+            var nameEl2 = document.getElementById('opts-slot-' + targetName + '-name');
+            var swEl2 = document.getElementById('opts-slot-' + targetName + '-swatches');
+            if (nameEl2 && pt) nameEl2.textContent = pt.name;
+            if (swEl2 && pt) swEl2.innerHTML =
+              '<div class="theme-swatch" style="background:'+pt.vars['--bg']+';width:14px;height:14px;" title="bg"></div>'
+              + '<div class="theme-swatch" style="background:'+pt.vars['--accent']+';width:14px;height:14px;" title="accent"></div>';
+            card.setAttribute('data-preview-id', _draggedThemeId);
+            card.style.opacity = '0.35';
           } else {
-            card.style.transform = '';
+            card.style.opacity = '';
           }
         }
       }
@@ -4679,6 +4688,7 @@ function renderThemeSlots() {
       var card = slot.querySelector('.opts-theme-slot-card');
       if (card) {
         card.style.transform = '';
+        card.style.opacity = '';
         card.removeAttribute('data-preview-id');
       }
       restoreSlotCard(slot);
