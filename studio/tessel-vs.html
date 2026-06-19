@@ -993,9 +993,12 @@ kbd {
   flex-shrink: 0; user-select: none; line-height: 1;
 }
 .theme-drag-handle:active { cursor: grabbing; }
-.theme-card.drop-before { box-shadow: 0 -2px 0 0 var(--accent); }
-.theme-card.drop-after  { box-shadow: 0  2px 0 0 var(--accent); }
-.theme-card.reorder-dragging { opacity: 0.4; }
+.theme-card.reorder-dragging { visibility: hidden; }
+.theme-list-placeholder {
+  border: 1.5px dashed var(--accent); border-radius: 7px;
+  background: rgba(91,138,240,.06); pointer-events: none;
+  flex-shrink: 0;
+}
 .theme-card-swatches { display: flex; gap: 3px; flex-shrink: 0; }
 .theme-swatch { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(128,128,128,0.3); flex-shrink: 0; }
 .theme-card-name { flex: 1; font-size: 12px; font-weight: 600; }
@@ -4567,10 +4570,28 @@ function renderThemeList() {
     });
   });
 
-  // Handle drag — initiates reorder mode
+  // Handle drag — initiates reorder mode with live placeholder
+  var _placeholder = null; // the dashed placeholder div that follows the cursor
+
+  function removePlaceholder() {
+    if (_placeholder && _placeholder.parentNode) _placeholder.parentNode.removeChild(_placeholder);
+    _placeholder = null;
+  }
+
+  function getInsertionPoint(e) {
+    // Returns { ref: Element, before: bool } describing where to insert placeholder.
+    // Excludes the placeholder itself and the dragging card from the scan.
+    var cards = container.querySelectorAll('.theme-card[data-theme-id]:not(.reorder-dragging)');
+    for (var i = 0; i < cards.length; i++) {
+      var rect = cards[i].getBoundingClientRect();
+      if (e.clientY < rect.top + rect.height / 2) return { ref: cards[i], before: true };
+      if (e.clientY < rect.bottom) return { ref: cards[i], before: false };
+    }
+    return { ref: null, before: false }; // append at end
+  }
+
   container.querySelectorAll('.theme-drag-handle[data-handle-for]').forEach(function(handle) {
     handle.addEventListener('mousedown', function(e) {
-      // prevent card's own dragstart from firing; handle has its own draggable=true
       e.stopPropagation();
     });
     handle.addEventListener('dragstart', function(e) {
@@ -4580,51 +4601,62 @@ function renderThemeList() {
       _draggedThemeId = tid;
       e.dataTransfer.setData('text/plain', tid);
       e.dataTransfer.effectAllowed = 'move';
-      var card = container.querySelector('.theme-card[data-theme-id="'+tid+'"]');
-      if (card) card.classList.add('reorder-dragging');
+      var sourceCard = container.querySelector('.theme-card[data-theme-id="'+tid+'"]');
+      // Create placeholder sized to match the source card
+      _placeholder = document.createElement('div');
+      _placeholder.className = 'theme-list-placeholder';
+      _placeholder.style.height = (sourceCard ? sourceCard.offsetHeight : 36) + 'px';
+      setTimeout(function() {
+        // Defer so browser captures drag image before we hide the card
+        if (sourceCard) sourceCard.classList.add('reorder-dragging');
+        if (sourceCard && sourceCard.parentNode) {
+          sourceCard.parentNode.insertBefore(_placeholder, sourceCard.nextSibling);
+        }
+      }, 0);
     });
     handle.addEventListener('dragend', function() {
       _dragMode = 'slot';
+      removePlaceholder();
       container.querySelectorAll('.theme-card').forEach(function(c) {
-        c.classList.remove('reorder-dragging', 'drop-before', 'drop-after');
+        c.classList.remove('reorder-dragging');
       });
     });
   });
 
-  // List container — accept reorder drops
+  // List container — accept reorder drops, moving placeholder live
   container.ondragover = function(e) {
     if (_dragMode !== 'reorder') return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    var cards = container.querySelectorAll('.theme-card[data-theme-id]');
-    var target = null, before = true;
-    for (var i = 0; i < cards.length; i++) {
-      var rect = cards[i].getBoundingClientRect();
-      if (e.clientY < rect.bottom) { target = cards[i]; before = e.clientY < rect.top + rect.height / 2; break; }
+    if (!_placeholder) return;
+    var ins = getInsertionPoint(e);
+    if (ins.ref) {
+      container.insertBefore(_placeholder, ins.before ? ins.ref : ins.ref.nextSibling);
+    } else {
+      container.appendChild(_placeholder);
     }
-    cards.forEach(function(c) { c.classList.remove('drop-before', 'drop-after'); });
-    if (target) target.classList.add(before ? 'drop-before' : 'drop-after');
   };
   container.ondragleave = function(e) {
     if (_dragMode !== 'reorder') return;
     var rel = e.relatedTarget;
     if (rel && container.contains(rel)) return;
-    container.querySelectorAll('.theme-card').forEach(function(c) {
-      c.classList.remove('drop-before', 'drop-after');
-    });
+    removePlaceholder();
   };
   container.ondrop = function(e) {
     if (_dragMode !== 'reorder') return;
     e.preventDefault();
     var draggedId = e.dataTransfer.getData('text/plain');
-    var cards = container.querySelectorAll('.theme-card[data-theme-id]');
-    var targetId = null, insertBefore = true;
-    for (var i = 0; i < cards.length; i++) {
-      if (cards[i].classList.contains('drop-before')) { targetId = cards[i].getAttribute('data-theme-id'); insertBefore = true; break; }
-      if (cards[i].classList.contains('drop-after'))  { targetId = cards[i].getAttribute('data-theme-id'); insertBefore = false; break; }
+    // Determine insertion position from placeholder's current DOM position
+    var insertBeforeEl = _placeholder ? _placeholder.nextElementSibling : null;
+    var targetId = insertBeforeEl ? insertBeforeEl.getAttribute('data-theme-id') : null;
+    var insertBefore = !!targetId;
+    // If placeholder is last, insert after the element before it
+    if (!insertBefore && _placeholder && _placeholder.previousElementSibling) {
+      targetId = _placeholder.previousElementSibling.getAttribute('data-theme-id');
     }
-    cards.forEach(function(c) { c.classList.remove('reorder-dragging', 'drop-before', 'drop-after'); });
-    if (!draggedId || !targetId || draggedId === targetId) return;
+    removePlaceholder();
+    container.querySelectorAll('.theme-card').forEach(function(c) { c.classList.remove('reorder-dragging'); });
+    if (!draggedId || !targetId || draggedId === targetId) { _dragMode = 'slot'; return; }
     var all = getAllThemes();
     var ids = all.map(function(t) { return t.id; });
     ids.splice(ids.indexOf(draggedId), 1);
