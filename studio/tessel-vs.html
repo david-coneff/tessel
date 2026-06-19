@@ -3072,6 +3072,10 @@ function renderProps() {
         fmtInp.focus();
       }
     });
+
+    body.appendChild(mkCheckRow('Require valid date', b.meta.requireValidDate, function(v) {
+      b.meta.requireValidDate = v || undefined; markUnsaved();
+    }));
   }
 
   if (def.hasOptions) {
@@ -3509,6 +3513,8 @@ var TesselCompiler = (function() {
     var nid = b.meta && b.meta.id ? b.meta.id : slug(label);
     var req = b.meta && b.meta.required;
     var reqAttr = req ? ' data-required="1"' : '';
+    var requireIso = b.meta && b.meta.requireValidDate;
+    var requireIsoAttr = requireIso ? ' data-require-iso="1"' : '';
     var labelHtml = '<label class="tc-field-label" for="tcf-' + e(nid) + '">' + e(label) + (req ? ' <span class="tc-req">*</span>' : '') + '</label>';
 
     var input = '';
@@ -3531,7 +3537,7 @@ var TesselCompiler = (function() {
       var dfmt = (b.meta && b.meta.dateFormat) || 'YYYY-MM-DD';
       var calIcon = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="1" y="3" width="14" height="12" rx="1.5"/><path d="M1 7h14M5 1v4M11 1v4"/></svg>';
       input = '<div class="tc-date-wrap">'
-            + '<input type="text" id="tcf-' + e(nid) + '" class="tc-field-input tc-date-text" data-note="' + e(nid) + '" data-field-type="date"' + reqAttr + ' data-date-format="' + e(dfmt) + '" placeholder="' + e(dfmt) + '" maxlength="' + dfmt.length + '" autocomplete="off" spellcheck="false">'
+            + '<input type="text" id="tcf-' + e(nid) + '" class="tc-field-input tc-date-text" data-note="' + e(nid) + '" data-field-type="date"' + reqAttr + requireIsoAttr + ' data-date-format="' + e(dfmt) + '" placeholder="' + e(dfmt) + '" maxlength="' + dfmt.length + '" autocomplete="off" spellcheck="false">'
             + '<input type="date" class="tc-date-hidden-picker" tabindex="-1" aria-hidden="true">'
             + '<span class="tc-date-shortcuts">'
             + '<button type="button" class="tc-date-now-btn tc-date-clear-btn" onclick="tcClearDate(this)">Clear</button>'
@@ -3544,7 +3550,7 @@ var TesselCompiler = (function() {
       var dtfmt = (b.meta && b.meta.dateFormat) || 'YYYY-MM-DD HH:mm';
       var calIcon = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="1" y="3" width="14" height="12" rx="1.5"/><path d="M1 7h14M5 1v4M11 1v4"/></svg>';
       input = '<div class="tc-date-wrap">'
-            + '<input type="text" id="tcf-' + e(nid) + '" class="tc-field-input tc-date-text" data-note="' + e(nid) + '" data-field-type="datetime"' + reqAttr + ' data-date-format="' + e(dtfmt) + '" placeholder="' + e(dtfmt) + '" maxlength="' + dtfmt.length + '" autocomplete="off" spellcheck="false">'
+            + '<input type="text" id="tcf-' + e(nid) + '" class="tc-field-input tc-date-text" data-note="' + e(nid) + '" data-field-type="datetime"' + reqAttr + requireIsoAttr + ' data-date-format="' + e(dtfmt) + '" placeholder="' + e(dtfmt) + '" maxlength="' + dtfmt.length + '" autocomplete="off" spellcheck="false">'
             + '<input type="datetime-local" class="tc-date-hidden-picker" tabindex="-1" aria-hidden="true">'
             + '<span class="tc-date-shortcuts">'
             + '<button type="button" class="tc-date-now-btn tc-date-clear-btn" onclick="tcClearDate(this)">Clear</button>'
@@ -3729,16 +3735,22 @@ var TesselCompiler = (function() {
     '  if(el.dataset.required)validateField(el);',
     '});',
     'function validateField(el){',
-    '  var empty=false;',
+    '  var empty=false,malformed=false;',
     '  if(el.type==="checkbox"){empty=!el.checked;}',
     '  else if(el.type==="radio"){',
     '    var grp=document.querySelectorAll("input[type=radio][name=\\""+el.name+"\\"]");',
     '    empty=!Array.prototype.some.call(grp,function(r){return r.checked;});',
-    '  } else{empty=!el.value.trim();}',
-    '  el.classList.toggle("tc-invalid",empty);',
-    '  el.classList.toggle("tc-valid",!empty);',
+    '  } else{',
+    '    empty=!el.value.trim();',
+    '    if(!empty&&el.dataset.requireIso){',
+    '      malformed=!el.getAttribute("data-iso-value");',
+    '    }',
+    '  }',
+    '  var invalid=empty||malformed;',
+    '  el.classList.toggle("tc-invalid",invalid);',
+    '  el.classList.toggle("tc-valid",!invalid);',
     '  var field=el.closest(".tc-field");',
-    '  if(field){field.classList.toggle("tc-field-valid",!empty);field.classList.toggle("tc-field-invalid",empty);}',
+    '  if(field){field.classList.toggle("tc-field-valid",!invalid);field.classList.toggle("tc-field-invalid",invalid);}',
     '}',
     'function validateAll(){',
     '  document.querySelectorAll("[data-required]").forEach(validateField);',
@@ -3815,6 +3827,7 @@ var TesselCompiler = (function() {
     '  var el=e.target;if(!el.classList.contains("tc-date-text"))return;',
     '  var iso=tcToISO(el.value.trim(),el.getAttribute("data-date-format")||"");',
     '  if(iso)el.setAttribute("data-iso-value",iso);else el.removeAttribute("data-iso-value");',
+    '  if(el.dataset.requireIso||el.dataset.required)validateField(el);',
     '},true);',
     // Calendar icon → show hidden native picker, then format result via pattern
     'function tcOpenPicker(btn){',
