@@ -679,6 +679,13 @@ select.prop-input { cursor: pointer; }
 .opts-dock-btns { flex-wrap: wrap; }
 .opt-del { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 14px; padding: 0 3px; }
 .opt-del:hover { color: var(--red); }
+.datefmt-preset-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+.datefmt-preset-row input { flex: 1; font-size: 12px; font-family: monospace; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 4px 7px; }
+.datefmt-preset-row input:focus { outline: none; border-color: var(--accent); }
+.datefmt-add-btn { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 11px; padding: 4px 9px; background: none; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; color: var(--muted); }
+.datefmt-add-btn:hover { border-color: var(--accent); color: var(--text); }
+.datefmt-reset-btn { float: right; font-size: 10px; padding: 3px 7px; background: none; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; color: var(--muted); }
+.datefmt-reset-btn:hover { border-color: var(--red); color: var(--red); }
 .opt-add { font-size: 11px; color: var(--accent); cursor: pointer; background: none;
   border: none; padding: 2px 0; text-align: left; }
 .opt-add:hover { text-decoration: underline; }
@@ -1459,6 +1466,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
       <button class="opts-nav-btn" data-opts-section="prefs-io">Preferences</button>
       <button class="opts-nav-btn" data-opts-section="shortcuts">Shortcuts</button>
       <button class="opts-nav-btn" data-opts-section="themes">Themes</button>
+      <button class="opts-nav-btn" data-opts-section="date-formats">Date Formats</button>
     </nav>
     <div id="opts-content">
 
@@ -1754,6 +1762,14 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
         <div id="theme-editor-container" style="display:none;"></div>
       </div>
 
+      <!-- DATE FORMATS -->
+      <div class="opts-section" id="opts-section-date-formats">
+        <p class="opts-helper-text">Customize the preset patterns available in the date and date-time format dropdowns. Changes take effect the next time a date field is selected.</p>
+        <div id="opts-datefmt-date-wrap"></div>
+        <div class="opts-divider"></div>
+        <div id="opts-datefmt-datetime-wrap"></div>
+      </div>
+
     </div>
   </div>
   <div id="options-dialog-resize" title="Resize"></div>
@@ -1922,6 +1938,75 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
 function uid() { return Math.random().toString(36).slice(2, 8); }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function slugify(s) { return (s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,48)||'field'; }
+var DATE_FMT_DEFAULTS = {
+  date:     ['YYYY-MM-DD', 'MM/DD/YYYY', 'DD/MM/YYYY', 'DD MMM YYYY', 'MMM DD, YYYY', 'MMMM DD, YYYY'],
+  datetime: ['YYYY-MM-DD HH:mm', 'YYYY-MM-DD HH:mm:ss', 'MM/DD/YYYY h:mm A', 'MM/DD/YYYY HH:mm', 'DD/MM/YYYY HH:mm', 'MMM DD, YYYY h:mm A', 'MMMM DD, YYYY h:mm A']
+};
+function getDateFmtPresets(type) {
+  try {
+    var raw = localStorage.getItem('tvs:dateFormatPresets:' + type);
+    if (raw) { var arr = JSON.parse(raw); if (Array.isArray(arr) && arr.length) return arr; }
+  } catch(e) {}
+  return DATE_FMT_DEFAULTS[type].slice();
+}
+function saveDateFmtPresets(type, arr) {
+  try { localStorage.setItem('tvs:dateFormatPresets:' + type, JSON.stringify(arr)); } catch(e) {}
+}
+function buildDateFmtSection() {
+  function buildGroup(containerId, type, label) {
+    var wrap = document.getElementById(containerId);
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    var hdr = document.createElement('div');
+    hdr.style.cssText = 'display:flex;align-items:center;margin-bottom:8px;';
+    var lbl = document.createElement('div'); lbl.className = 'opts-section-label'; lbl.style.margin = '0'; lbl.textContent = label + ' Presets';
+    var rst = document.createElement('button'); rst.className = 'datefmt-reset-btn'; rst.textContent = 'Reset defaults';
+    rst.addEventListener('click', function() {
+      saveDateFmtPresets(type, DATE_FMT_DEFAULTS[type].slice());
+      buildGroup(containerId, type, label);
+    });
+    hdr.appendChild(lbl); hdr.appendChild(rst); wrap.appendChild(hdr);
+
+    var list = document.createElement('div');
+    wrap.appendChild(list);
+
+    function rebuildList() {
+      var presets = getDateFmtPresets(type);
+      list.innerHTML = '';
+      presets.forEach(function(pat, idx) {
+        var row = document.createElement('div'); row.className = 'datefmt-preset-row';
+        var inp = document.createElement('input'); inp.type = 'text'; inp.value = pat;
+        inp.addEventListener('change', function() {
+          var cur = getDateFmtPresets(type);
+          cur[idx] = inp.value.trim() || cur[idx];
+          saveDateFmtPresets(type, cur);
+          rebuildList();
+        });
+        var del = document.createElement('button'); del.className = 'opt-del'; del.innerHTML = '&times;'; del.title = 'Remove';
+        del.addEventListener('click', function() {
+          var cur = getDateFmtPresets(type);
+          cur.splice(idx, 1);
+          saveDateFmtPresets(type, cur);
+          rebuildList();
+        });
+        row.appendChild(inp); row.appendChild(del); list.appendChild(row);
+      });
+    }
+    rebuildList();
+
+    var addBtn = document.createElement('button'); addBtn.className = 'datefmt-add-btn'; addBtn.textContent = '+ Add preset';
+    addBtn.addEventListener('click', function() {
+      var cur = getDateFmtPresets(type);
+      cur.push(''); saveDateFmtPresets(type, cur);
+      rebuildList();
+      var rows = list.querySelectorAll('.datefmt-preset-row');
+      if (rows.length) rows[rows.length - 1].querySelector('input').focus();
+    });
+    wrap.appendChild(addBtn);
+  }
+  buildGroup('opts-datefmt-date-wrap', 'date', 'Date');
+  buildGroup('opts-datefmt-datetime-wrap', 'datetime', 'Date-Time');
+}
 function formatDatePattern(date, pattern) {
   var ML = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   var MS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -2914,9 +2999,7 @@ function renderProps() {
 
   // Date/datetime-specific: Format
   if (b.fieldType === 'date' || b.fieldType === 'datetime') {
-    var DATE_FMT_PRESETS = b.fieldType === 'date'
-      ? ['YYYY-MM-DD', 'MM/DD/YYYY', 'DD/MM/YYYY', 'DD MMM YYYY', 'MMM DD, YYYY', 'MMMM DD, YYYY']
-      : ['YYYY-MM-DD HH:mm', 'YYYY-MM-DD HH:mm:ss', 'MM/DD/YYYY h:mm A', 'MM/DD/YYYY HH:mm', 'DD/MM/YYYY HH:mm', 'MMM DD, YYYY h:mm A', 'MMMM DD, YYYY h:mm A'];
+    var DATE_FMT_PRESETS = getDateFmtPresets(b.fieldType);
     var dfmtDefault = DATE_FMT_PRESETS[0];
     var curFmt = b.meta.dateFormat || dfmtDefault;
     var isPreset = DATE_FMT_PRESETS.indexOf(curFmt) !== -1;
@@ -6298,6 +6381,11 @@ function dockPanel(panelId, zone) {
       if (btn.dataset.optsSection === 'menu-items' && !dialog._mibBuilt) {
         buildMenuItemsBrowser();
         dialog._mibBuilt = true;
+      }
+      // Build date format presets editor lazily on first visit
+      if (btn.dataset.optsSection === 'date-formats' && !dialog._dfBuilt) {
+        buildDateFmtSection();
+        dialog._dfBuilt = true;
       }
     });
   });
