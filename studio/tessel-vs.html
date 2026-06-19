@@ -3531,7 +3531,10 @@ var TesselCompiler = (function() {
       var dfmt = (b.meta && b.meta.dateFormat) || 'YYYY-MM-DD';
       input = '<div class="tc-date-wrap">'
             + '<input type="date" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '"' + reqAttr + ' data-date-format="' + e(dfmt) + '">'
+            + '<span class="tc-date-shortcuts">'
+            + '<button type="button" class="tc-date-now-btn tc-date-clear-btn" onclick="tcClearDate(this)">Clear</button>'
             + '<button type="button" class="tc-date-now-btn" onclick="tcSetNow(this,\'date\')">Today</button>'
+            + '</span>'
             + '</div>'
             + '<div class="tc-date-format-hint">' + e(dfmt) + '</div>';
     } else if (ft === 'datetime') {
@@ -3539,6 +3542,7 @@ var TesselCompiler = (function() {
       input = '<div class="tc-date-wrap">'
             + '<input type="datetime-local" id="tcf-' + e(nid) + '" class="tc-field-input" data-note="' + e(nid) + '"' + reqAttr + ' data-date-format="' + e(dtfmt) + '">'
             + '<span class="tc-date-shortcuts">'
+            + '<button type="button" class="tc-date-now-btn tc-date-clear-btn" onclick="tcClearDate(this)">Clear</button>'
             + '<button type="button" class="tc-date-now-btn" onclick="tcSetNow(this,\'date-only\')">Today</button>'
             + '<button type="button" class="tc-date-now-btn tc-date-now-primary" onclick="tcSetNow(this,\'datetime\')">Right Now</button>'
             + '</span>'
@@ -3655,6 +3659,7 @@ var TesselCompiler = (function() {
     '.tc-date-now-btn:hover{border-color:var(--accent);color:var(--accent);opacity:1;}',
     '.tc-date-now-primary{font-weight:600;}',
     '.tc-date-now-primary:hover{border-color:var(--accent);color:var(--accent);opacity:1;background:rgba(137,180,250,.1);}',
+    '.tc-date-clear-btn:hover{border-color:var(--red);color:var(--red);opacity:1;}',
     'input[type="date"],input[type="datetime-local"]{color-scheme:dark}',
     'body.light input[type="date"],body.light input[type="datetime-local"]{color-scheme:light}',
     'input[type="date"]::-webkit-calendar-picker-indicator,input[type="datetime-local"]::-webkit-calendar-picker-indicator{padding:3px 4px;border-radius:4px;cursor:pointer;box-shadow:0 0 0 1px var(--border);transition:background .12s,box-shadow .12s}',
@@ -3750,6 +3755,13 @@ var TesselCompiler = (function() {
     '  inp.dispatchEvent(new Event("input",{bubbles:true}));',
     '}',
     'window.tcSetNow=tcSetNow;',
+    'function tcClearDate(btn){',
+    '  var inp=btn.closest(".tc-date-wrap").querySelector(".tc-field-input");',
+    '  if(!inp)return;',
+    '  inp.value="";',
+    '  inp.dispatchEvent(new Event("input",{bubbles:true}));',
+    '}',
+    'window.tcClearDate=tcClearDate;',
     '})();',
   ].join('\n');
 
