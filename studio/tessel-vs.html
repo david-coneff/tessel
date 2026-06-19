@@ -988,6 +988,14 @@ kbd {
   margin-bottom: 6px; background: var(--surface2); cursor: grab;
 }
 .theme-card:active { cursor: grabbing; }
+.theme-drag-handle {
+  cursor: grab; color: var(--muted); font-size: 15px; padding: 0 4px 0 0;
+  flex-shrink: 0; user-select: none; line-height: 1;
+}
+.theme-drag-handle:active { cursor: grabbing; }
+.theme-card.drop-before { box-shadow: 0 -2px 0 0 var(--accent); }
+.theme-card.drop-after  { box-shadow: 0  2px 0 0 var(--accent); }
+.theme-card.reorder-dragging { opacity: 0.4; }
 .theme-card-swatches { display: flex; gap: 3px; flex-shrink: 0; }
 .theme-swatch { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(128,128,128,0.3); flex-shrink: 0; }
 .theme-card-name { flex: 1; font-size: 12px; font-weight: 600; }
@@ -4210,12 +4218,29 @@ function saveCustomThemes(arr) {
   localStorage.setItem('tvs:custom-themes', JSON.stringify(arr));
 }
 
+function getThemeOrder() {
+  try { return JSON.parse(localStorage.getItem('tvs:theme-order') || 'null'); } catch(e) { return null; }
+}
+function saveThemeOrder(ids) {
+  localStorage.setItem('tvs:theme-order', JSON.stringify(ids));
+}
 function getAllThemes() {
-  return THEMES.concat(getCustomThemes());
+  var all = THEMES.concat(getCustomThemes());
+  var order = getThemeOrder();
+  if (!order) return all;
+  var map = {};
+  for (var i = 0; i < all.length; i++) map[all[i].id] = all[i];
+  var result = [];
+  for (var j = 0; j < order.length; j++) {
+    if (map[order[j]]) { result.push(map[order[j]]); delete map[order[j]]; }
+  }
+  for (var k = 0; k < all.length; k++) { if (map[all[k].id]) result.push(all[k]); }
+  return result;
 }
 
 var _draggedThemeId = null; // tracks what theme is currently being dragged
 var _dragFromList = false;  // true when drag originated from theme list (not a slot)
+var _dragMode = 'slot';     // 'slot' = dragging to A/B slot; 'reorder' = reordering theme list
 
 function getThemeById(id) {
   var all = getAllThemes();
@@ -4382,6 +4407,7 @@ function renderThemeSlots() {
       updateThemeBtn();
     };
     slot.ondragover = function(e) {
+      if (_dragMode === 'reorder') return; // reorder drag doesn't target slots
       e.preventDefault();
       var targetName = slot.getAttribute('data-slot');
       var curA = localStorage.getItem('tvs:theme-a') || 'dark';
@@ -4496,6 +4522,7 @@ function renderThemeList() {
       actions += '<button class="theme-card-btn danger" data-theme-del="'+t.id+'">Delete</button>';
     }
     html += '<div class="theme-card" draggable="true" data-theme-id="'+t.id+'"'+isActive+'>';
+    html += '<span class="theme-drag-handle" draggable="true" data-handle-for="'+t.id+'">⠿</span>';
     html += '<div class="theme-card-swatches">';
     html += '<div class="theme-swatch" style="background:'+t.vars['--bg']+';" title="bg"></div>';
     html += '<div class="theme-swatch" style="background:'+t.vars['--accent']+';" title="accent"></div>';
@@ -4525,8 +4552,78 @@ function renderThemeList() {
     });
     card.addEventListener('dragend', function() {
       _dragFromList = false;
+      _dragMode = 'slot';
     });
   });
+
+  // Handle drag — initiates reorder mode
+  container.querySelectorAll('.theme-drag-handle[data-handle-for]').forEach(function(handle) {
+    handle.addEventListener('mousedown', function(e) {
+      // prevent card's own dragstart from firing; handle has its own draggable=true
+      e.stopPropagation();
+    });
+    handle.addEventListener('dragstart', function(e) {
+      var tid = handle.getAttribute('data-handle-for');
+      _dragMode = 'reorder';
+      _dragFromList = false;
+      _draggedThemeId = tid;
+      e.dataTransfer.setData('text/plain', tid);
+      e.dataTransfer.effectAllowed = 'move';
+      var card = container.querySelector('.theme-card[data-theme-id="'+tid+'"]');
+      if (card) card.classList.add('reorder-dragging');
+    });
+    handle.addEventListener('dragend', function() {
+      _dragMode = 'slot';
+      container.querySelectorAll('.theme-card').forEach(function(c) {
+        c.classList.remove('reorder-dragging', 'drop-before', 'drop-after');
+      });
+    });
+  });
+
+  // List container — accept reorder drops
+  container.ondragover = function(e) {
+    if (_dragMode !== 'reorder') return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    var cards = container.querySelectorAll('.theme-card[data-theme-id]');
+    var target = null, before = true;
+    for (var i = 0; i < cards.length; i++) {
+      var rect = cards[i].getBoundingClientRect();
+      if (e.clientY < rect.bottom) { target = cards[i]; before = e.clientY < rect.top + rect.height / 2; break; }
+    }
+    cards.forEach(function(c) { c.classList.remove('drop-before', 'drop-after'); });
+    if (target) target.classList.add(before ? 'drop-before' : 'drop-after');
+  };
+  container.ondragleave = function(e) {
+    if (_dragMode !== 'reorder') return;
+    var rel = e.relatedTarget;
+    if (rel && container.contains(rel)) return;
+    container.querySelectorAll('.theme-card').forEach(function(c) {
+      c.classList.remove('drop-before', 'drop-after');
+    });
+  };
+  container.ondrop = function(e) {
+    if (_dragMode !== 'reorder') return;
+    e.preventDefault();
+    var draggedId = e.dataTransfer.getData('text/plain');
+    var cards = container.querySelectorAll('.theme-card[data-theme-id]');
+    var targetId = null, insertBefore = true;
+    for (var i = 0; i < cards.length; i++) {
+      if (cards[i].classList.contains('drop-before')) { targetId = cards[i].getAttribute('data-theme-id'); insertBefore = true; break; }
+      if (cards[i].classList.contains('drop-after'))  { targetId = cards[i].getAttribute('data-theme-id'); insertBefore = false; break; }
+    }
+    cards.forEach(function(c) { c.classList.remove('reorder-dragging', 'drop-before', 'drop-after'); });
+    if (!draggedId || !targetId || draggedId === targetId) return;
+    var all = getAllThemes();
+    var ids = all.map(function(t) { return t.id; });
+    ids.splice(ids.indexOf(draggedId), 1);
+    var tIdx = ids.indexOf(targetId);
+    ids.splice(insertBefore ? tIdx : tIdx + 1, 0, draggedId);
+    saveThemeOrder(ids);
+    _dragMode = 'slot';
+    renderThemeList();
+  };
+
   container.querySelectorAll('[data-theme-dup]').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var src = getThemeById(this.getAttribute('data-theme-dup'));
