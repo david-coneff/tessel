@@ -1021,7 +1021,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
 
   <!-- Preview -->
   <div class="tb-sep"></div>
-  <button id="btn-preview" class="primary" title="Preview compiled document">Preview</button>
+  <button id="btn-preview" title="Preview compiled document">Preview</button>
 
   <!-- Logo + theme pushed to right -->
   <div class="spacer"></div>
@@ -3875,6 +3875,7 @@ function showPreview() {
     var html = getCompiledHtml();
     document.getElementById('preview-frame').srcdoc = html;
     document.getElementById('preview-modal').classList.add('show');
+    document.getElementById('btn-preview').classList.add('active');
   } catch(ex) { setStatus('Preview error: ' + ex.message); }
 }
 
@@ -3916,6 +3917,7 @@ setupDropdown('btn-file-dd', 'dm-file');
 // Each pane has 3 states: open | collapsed (tab strip) | off (hidden)
 // cfg: { paneId, badgeId, lsKey }
 var _sidePanelArrowSync = {};
+var _sidePanelOpenFn   = {};
 function makeCtrlPane(cfg) {
   var pane        = document.getElementById(cfg.paneId);
   var badge       = document.getElementById(cfg.badgeId);
@@ -3938,6 +3940,7 @@ function makeCtrlPane(cfg) {
     tabArrow.innerHTML = ch;
   }
   _sidePanelArrowSync[cfg.paneId] = syncArrow;
+  _sidePanelOpenFn[cfg.paneId]   = function() { open(); };
 
   function open() {
     pane.classList.remove('collapsed', 'off');
@@ -4427,9 +4430,11 @@ function convertFocusedBlock(newType, level) {
 }
 
 document.getElementById('btn-preview').addEventListener('click', showPreview);
-document.getElementById('preview-close').addEventListener('click', function() {
+function closePreview() {
   document.getElementById('preview-modal').classList.remove('show');
-});
+  document.getElementById('btn-preview').classList.remove('active');
+}
+document.getElementById('preview-close').addEventListener('click', closePreview);
 
 document.addEventListener('keydown', function(e) {
   if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') { e.preventDefault(); exportMd(); }
@@ -4441,7 +4446,7 @@ document.addEventListener('keydown', function(e) {
   if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z') { e.preventDefault(); redo(); }
   if (e.key === 'Escape') {
     closeAllDropdowns();
-    document.getElementById('preview-modal').classList.remove('show');
+    closePreview();
   }
 });
 
@@ -4478,6 +4483,7 @@ function makeSidePanel(cfg) {
     setArrows(isOpen);
   }
   _sidePanelArrowSync[cfg.panelId] = syncArrow;
+  _sidePanelOpenFn[cfg.panelId]   = function() { open(); };
 
   function open() {
     panel.classList.remove('collapsed', 'off');
@@ -4561,7 +4567,13 @@ function dockPanel(panelId, zone) {
   zoneEl.appendChild(panel);
   panel.classList.remove('dock-left', 'dock-right', 'dock-top', 'dock-bottom', 'dock-float', 'pane-h');
   panel.classList.add('dock-' + zone);
-  if (zone === 'top' || zone === 'bottom') panel.classList.add('pane-h');
+  if (zone === 'top' || zone === 'bottom') {
+    panel.classList.add('pane-h');
+    // Collapsed in horizontal mode is invisible — auto-open if pane is on
+    if (panel.classList.contains('collapsed') && !panel.classList.contains('off')) {
+      if (_sidePanelOpenFn[panelId]) _sidePanelOpenFn[panelId]();
+    }
+  }
   if (_sidePanelArrowSync[panelId]) _sidePanelArrowSync[panelId]();
 
   // Sync Options dialog dock buttons
@@ -4782,7 +4794,12 @@ function dockPanel(panelId, zone) {
         if (panel) {
           panel.classList.remove('dock-left', 'dock-right', 'dock-top', 'dock-bottom', 'pane-h');
           panel.classList.add('dock-' + zone);
-          if (zone === 'top' || zone === 'bottom') panel.classList.add('pane-h');
+          if (zone === 'top' || zone === 'bottom') {
+            panel.classList.add('pane-h');
+            if (panel.classList.contains('collapsed') && !panel.classList.contains('off')) {
+              if (_sidePanelOpenFn[id]) _sidePanelOpenFn[id]();
+            }
+          }
           if (_sidePanelArrowSync[id]) _sidePanelArrowSync[id]();
         }
       }
