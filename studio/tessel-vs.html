@@ -6993,27 +6993,19 @@ function dockPanel(panelId, zone) {
     });
   }
 
-  // Universal pill click handler: clicking anywhere in a pill selects the nearest option
+  // Universal pill click handler: clicking anywhere in a pill toggles to the inactive option
   document.addEventListener('click', function(e) {
     var pill = e.target.closest ? e.target.closest('.opts-pill-group') : null;
     if (!pill) return;
-    var labels = pill.querySelectorAll('label');
-    if (!labels.length) return;
-    var x = e.clientX;
-    var best = null, bestDist = Infinity;
-    for (var _pi = 0; _pi < labels.length; _pi++) {
-      var r = labels[_pi].getBoundingClientRect();
-      var center = (r.left + r.right) / 2;
-      var dist = Math.abs(x - center);
-      if (dist < bestDist) { bestDist = dist; best = labels[_pi]; }
+    var radios = pill.querySelectorAll('input[type="radio"]');
+    if (!radios.length) return;
+    var inactive = null;
+    for (var _pi = 0; _pi < radios.length; _pi++) {
+      if (!radios[_pi].checked) { inactive = radios[_pi]; break; }
     }
-    if (best) {
-      var forId = best.getAttribute('for');
-      var radio = forId ? document.getElementById(forId) : null;
-      if (radio && !radio.checked) {
-        radio.checked = true;
-        radio.dispatchEvent(new Event('change', { bubbles: true }));
-      }
+    if (inactive) {
+      inactive.checked = true;
+      inactive.dispatchEvent(new Event('change', { bubbles: true }));
     }
   });
   var windowPreset = document.getElementById('opts-undo-window-preset');
