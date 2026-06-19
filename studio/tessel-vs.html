@@ -962,7 +962,8 @@ kbd {
 /* Source slot disappears while dragged — user "has it in hand" */
 .opts-theme-slot.dragging-source { opacity: 0; pointer-events: none; }
 /* Drop target: the slot border stays put; inner card slides to preview the swap */
-.opts-theme-slot.drop-target { border: 2px dashed var(--accent); background: rgba(91,138,240,.08); }
+.opts-theme-slot.drop-target { background: rgba(91,138,240,.08); }
+.opts-theme-slot.drop-target .opts-theme-slot-card { border-color: var(--accent); border-style: dashed; }
 .opts-theme-slot.active-slot { border-color: var(--accent); border-style: solid; }
 .opts-theme-slot-label {
   font-size: 15px; font-weight: 800; color: var(--text); line-height: 1;
