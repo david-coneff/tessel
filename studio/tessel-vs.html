@@ -4493,15 +4493,14 @@ function renderThemeSlots() {
       renderThemeSlots();
       renderThemeList();
       updateThemeBtn();
-      // Suppress hover border on both slots until mouse actually moves — browser
-      // keeps :hover on the slot under the cursor even after the drop completes.
+      // The slot NOT under the mouse can get a stale :hover after drop due to DOM
+      // re-render. Suppress it on just the other slot until the mouse actually moves.
       var sA = document.getElementById('opts-slot-a');
       var sB = document.getElementById('opts-slot-b');
-      if (sA) sA.classList.add('no-hover');
-      if (sB) sB.classList.add('no-hover');
+      var otherSlot = (targetName === 'a') ? sB : sA;
+      if (otherSlot) otherSlot.classList.add('no-hover');
       function clearNoHover() {
-        if (sA) sA.classList.remove('no-hover');
-        if (sB) sB.classList.remove('no-hover');
+        if (otherSlot) otherSlot.classList.remove('no-hover');
         document.removeEventListener('mousemove', clearNoHover);
       }
       document.addEventListener('mousemove', clearNoHover);
