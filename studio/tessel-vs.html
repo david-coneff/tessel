@@ -1556,6 +1556,16 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
  *   auto-built from each document's front-matter title; in exported HTML the
  *   badge becomes a collapsible sidebar nav with relative-path links between
  *   sibling pages, all titles sourced from front-matter not filesystem names
+ * - Multi-column / multiple blocks per line: allow blocks to be placed side by
+ *   side on the same row rather than strictly stacking vertically; authored via a
+ *   row container block type that holds a set of child blocks laid out in a CSS
+ *   grid or flexbox row; each child block retains its own independent properties,
+ *   selection, and formatting; column widths are settable per child (fixed px,
+ *   fractional fr units, or auto); row containers participate in multi-block
+ *   selection, branch dimming, and section completion like any other block;
+ *   in compiled HTML output the row renders as a responsive grid that collapses
+ *   to single-column at narrow viewport widths; the block insertion UI gains an
+ *   "add column" affordance when the cursor is inside a row container
  * - Text alignment controls: horizontal (left/center/right/justify) and vertical
  *   (top/center/bottom) alignment per block; both axes are set simultaneously via
  *   a 3×3 grid widget in the right pane — nine clickable cells representing every
