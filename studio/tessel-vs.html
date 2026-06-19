@@ -273,12 +273,20 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 /* Right-side overflow indicator for horizontal panes */
 .pane-h-overflow-ind {
   display: none; position: absolute; top: 0; bottom: 0; right: 0;
-  width: 36px; pointer-events: none; z-index: 6;
+  width: 36px; pointer-events: auto; z-index: 6; cursor: pointer;
   background: linear-gradient(to right, transparent, var(--surface) 70%);
-  align-items: center; justify-content: flex-end; padding-right: 6px;
+  align-items: center; justify-content: flex-end; padding-right: 5px;
 }
 .pane-h-overflow-ind.show { display: flex; }
-.pane-h-overflow-ind::after { content: '›'; color: var(--muted); font-size: 16px; line-height: 1; }
+.pane-h-overflow-ind::after {
+  content: '›'; font-size: 14px; line-height: 1;
+  color: var(--muted); border: 1px solid transparent;
+  border-radius: 5px; padding: 2px 4px;
+  transition: border-color .12s, color .12s, background .12s;
+}
+.pane-h-overflow-ind:hover::after {
+  border-color: var(--border); color: var(--text); background: var(--surface2);
+}
 .ctrl-pane-collapse-btn {
   background: none; border: 1px solid transparent; cursor: pointer; color: var(--muted);
   font-size: 16px; padding: 2px 5px; line-height: 1; border-radius: 5px; flex-shrink: 0;
@@ -5587,6 +5595,12 @@ function dockPanel(panelId, zone) {
     var ind = document.createElement('div');
     ind.className = 'pane-h-overflow-ind';
     pane.appendChild(ind);
+    ind.addEventListener('click', function() {
+      var b = pane.querySelector('.ctrl-pane-body');
+      if (!b) return;
+      b.scrollTop += ROW_H;
+      updateIndicator(pane);
+    });
 
     // Resize handle
     var handle = document.createElement('div');
