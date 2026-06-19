@@ -1556,6 +1556,16 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
  *   auto-built from each document's front-matter title; in exported HTML the
  *   badge becomes a collapsible sidebar nav with relative-path links between
  *   sibling pages, all titles sourced from front-matter not filesystem names
+ * - Filename suggestion toggle: a preference controlling whether the save dialog
+ *   pre-populates the filename automatically from the state variable compositor
+ *   (deriving the name from front-matter title, date, document ID, or other
+ *   metadata fields via a template e.g. "{{title}}-{{date}}") or leaves the
+ *   filename blank and requires the user to name the file manually every time;
+ *   when auto-suggestion is on, the compositor result is editable before confirm
+ *   so it serves as a smart default rather than a forced name; the compositor
+ *   template itself is configurable per file type (the .md draft may want a
+ *   different naming convention than the .zip package or exported .html);
+ *   lives in Options > Preferences > Export
  * - Customizable default save path: a preference setting for the directory that
  *   silent-download saves target, overriding the browser's default download folder;
  *   in the browser context this is advisory only (browsers restrict programmatic
