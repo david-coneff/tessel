@@ -1840,7 +1840,11 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
       </div>
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
         <label style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:56px;">Date/time</label>
-        <input type="datetime-local" id="datefmt-help-dt" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;padding:5px 7px;outline:none;">
+        <div style="flex:1;display:flex;align-items:center;gap:4px;position:relative;">
+          <div id="datefmt-help-dt-display" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;padding:5px 7px;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+          <input type="datetime-local" id="datefmt-help-dt" style="position:absolute;right:0;top:0;width:32px;height:100%;opacity:0;pointer-events:none;border:none;padding:0;">
+          <button type="button" id="datefmt-help-cal-btn" title="Pick date &amp; time" style="display:flex;align-items:center;flex-shrink:0;height:28px;padding:0 6px;background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);opacity:.7;line-height:1;"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="1" y="3" width="14" height="12" rx="1.5"/><path d="M1 7h14M5 1v4M11 1v4"/></svg></button>
+        </div>
       </div>
       <div style="display:flex;align-items:center;gap:6px;">
         <label style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:56px;">Preview</label>
@@ -7666,9 +7670,11 @@ function dockPanel(panelId, zone) {
   var helpClose   = document.getElementById('datefmt-help-close');
   var helpBtn     = document.getElementById('opts-datefmt-help-btn');
   var helpPattern = document.getElementById('datefmt-help-pattern');
-  var helpDt      = document.getElementById('datefmt-help-dt');
-  var helpPreview = document.getElementById('datefmt-help-preview');
-  var helpTbody   = document.getElementById('datefmt-help-tbody');
+  var helpDt        = document.getElementById('datefmt-help-dt');
+  var helpDtDisplay = document.getElementById('datefmt-help-dt-display');
+  var helpCalBtn    = document.getElementById('datefmt-help-cal-btn');
+  var helpPreview   = document.getElementById('datefmt-help-preview');
+  var helpTbody     = document.getElementById('datefmt-help-tbody');
   if (!helpDialog) return;
 
   // Token reference table data
@@ -7712,20 +7718,29 @@ function dockPanel(panelId, zone) {
     helpTbody.appendChild(tr);
   });
 
-  // Set default datetime to now
+  // Current selected date (tracks what the hidden picker holds)
+  var _helpDate = new Date();
+
   function padZ(n) { return n < 10 ? '0' + n : '' + n; }
   function nowLocalISO() {
     var n = new Date();
     return n.getFullYear() + '-' + padZ(n.getMonth()+1) + '-' + padZ(n.getDate()) + 'T' + padZ(n.getHours()) + ':' + padZ(n.getMinutes());
   }
-  helpDt.value = nowLocalISO();
+
+  function syncDisplay(date) {
+    if (!date || isNaN(date.getTime())) { helpDtDisplay.textContent = ''; return; }
+    var pat = (helpPattern.value || '').trim();
+    // Show in a neutral readable form in the display box
+    var displayFmt = 'YYYY-MM-DD HH:mm';
+    helpDtDisplay.textContent = (typeof formatDatePattern === 'function')
+      ? formatDatePattern(date, displayFmt) : nowLocalISO().replace('T', ' ');
+  }
 
   function updatePreview() {
     var pat = (helpPattern.value || '').trim();
     if (!pat) { helpPreview.textContent = ''; return; }
-    var dtVal = helpDt.value;
-    var date = dtVal ? new Date(dtVal) : new Date();
-    if (isNaN(date.getTime())) { helpPreview.textContent = '(invalid date)'; return; }
+    var date = _helpDate;
+    if (!date || isNaN(date.getTime())) { helpPreview.textContent = ''; return; }
     if (typeof formatDatePattern === 'function') {
       helpPreview.textContent = formatDatePattern(date, pat);
     } else {
@@ -7733,13 +7748,32 @@ function dockPanel(panelId, zone) {
     }
   }
 
-  helpPattern.addEventListener('input', updatePreview);
-  helpDt.addEventListener('input', updatePreview);
+  // Calendar button — same pattern as produced forms
+  if (helpCalBtn) {
+    helpCalBtn.addEventListener('mouseenter', function() { helpCalBtn.style.opacity = '1'; helpCalBtn.style.borderColor = 'var(--accent)'; helpCalBtn.style.color = 'var(--accent)'; });
+    helpCalBtn.addEventListener('mouseleave', function() { helpCalBtn.style.opacity = '.7'; helpCalBtn.style.borderColor = 'var(--border)'; helpCalBtn.style.color = 'var(--text)'; });
+    helpCalBtn.addEventListener('click', function() {
+      helpDt.value = nowLocalISO();
+      try { helpDt.showPicker(); } catch(e) { helpDt.click(); }
+    });
+  }
+  if (helpDt) {
+    helpDt.addEventListener('change', function() {
+      if (!helpDt.value) return;
+      _helpDate = new Date(helpDt.value);
+      syncDisplay(_helpDate);
+      updatePreview();
+    });
+  }
+
+  helpPattern.addEventListener('input', function() { syncDisplay(_helpDate); updatePreview(); });
 
   // Open
   function openHelp() {
     helpDialog.style.display = '';
+    _helpDate = new Date();
     helpDt.value = nowLocalISO();
+    syncDisplay(_helpDate);
     updatePreview();
   }
 
