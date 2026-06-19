@@ -941,17 +941,22 @@ kbd {
 }
 .opts-theme-slot {
   flex: 1; border: 2px dashed var(--border); border-radius: 10px;
-  padding: 14px 12px; display: flex; flex-direction: column; align-items: center;
-  gap: 6px; cursor: grab; min-height: 80px; justify-content: center;
+  padding: 14px 12px; display: flex; align-items: center; justify-content: center;
+  min-height: 80px; cursor: grab;
   transition: border-color .15s, background .15s;
-  position: relative;
+  position: relative; overflow: hidden;
+}
+.opts-theme-slot-card {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  transition: transform .22s cubic-bezier(.4,0,.2,1);
+  width: 100%; pointer-events: none;
 }
 .opts-theme-slot:active { cursor: grabbing; }
 .opts-theme-slot:hover { border-color: var(--accent); background: var(--surface2); }
 .opts-theme-slot.drag-over { border-color: var(--accent); background: rgba(91,138,240,.08); border-style: solid; }
 /* Source slot disappears while dragged — user "has it in hand" */
 .opts-theme-slot.dragging-source { opacity: 0; pointer-events: none; }
-/* Drop target: dashed accent border confirms the user can release here */
+/* Drop target: the slot border stays put; inner card slides to preview the swap */
 .opts-theme-slot.drop-target { border: 2px dashed var(--accent); background: rgba(91,138,240,.08); }
 .opts-theme-slot.active-slot { border-color: var(--accent); border-style: solid; }
 .opts-theme-slot-label {
@@ -1694,14 +1699,18 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
         <p class="opts-helper-text">Drag a theme onto a slot to assign it. Click a slot to activate that theme.</p>
         <div id="opts-theme-slots">
           <div class="opts-theme-slot" id="opts-slot-a" data-slot="a">
-            <div class="opts-theme-slot-label">A</div>
-            <div class="opts-theme-slot-name" id="opts-slot-a-name">—</div>
-            <div class="opts-theme-slot-swatches" id="opts-slot-a-swatches"></div>
+            <div class="opts-theme-slot-card">
+              <div class="opts-theme-slot-label">A</div>
+              <div class="opts-theme-slot-name" id="opts-slot-a-name">—</div>
+              <div class="opts-theme-slot-swatches" id="opts-slot-a-swatches"></div>
+            </div>
           </div>
           <div class="opts-theme-slot" id="opts-slot-b" data-slot="b">
-            <div class="opts-theme-slot-label">B</div>
-            <div class="opts-theme-slot-name" id="opts-slot-b-name">—</div>
-            <div class="opts-theme-slot-swatches" id="opts-slot-b-swatches"></div>
+            <div class="opts-theme-slot-card">
+              <div class="opts-theme-slot-label">B</div>
+              <div class="opts-theme-slot-name" id="opts-slot-b-name">—</div>
+              <div class="opts-theme-slot-swatches" id="opts-slot-b-swatches"></div>
+            </div>
           </div>
         </div>
         <div class="opts-section-label" style="margin-top:14px;">ALL THEMES</div>
@@ -4293,14 +4302,19 @@ function renderThemeSlots() {
     };
     slot.ondragend = function() {
       slot.classList.remove('dragging-source');
+      resetSlotDragClasses();
     };
   }
   if (slotA) setupSlotDrag(slotA, themeA);
   if (slotB) setupSlotDrag(slotB, themeB);
 
   function resetSlotDragClasses() {
-    if (slotA) slotA.classList.remove('drag-over', 'drop-target');
-    if (slotB) slotB.classList.remove('drag-over', 'drop-target');
+    [slotA, slotB].forEach(function(s) {
+      if (!s) return;
+      s.classList.remove('drag-over', 'drop-target');
+      var card = s.querySelector('.opts-theme-slot-card');
+      if (card) card.style.transform = '';
+    });
   }
 
   function wireSlotClick(slot, getThemeId) {
@@ -4322,12 +4336,24 @@ function renderThemeSlots() {
       if (!slot.classList.contains(wantClass)) {
         slot.classList.remove('drag-over', 'drop-target');
         slot.classList.add(wantClass);
+        // Slide this slot's card toward the source slot to preview the swap
+        var card = slot.querySelector('.opts-theme-slot-card');
+        if (card) {
+          if (isSwap) {
+            var sourceSlot = (targetName === 'b') ? slotA : slotB;
+            if (sourceSlot) card.style.transform = 'translateX(' + (sourceSlot.offsetLeft - slot.offsetLeft) + 'px)';
+          } else {
+            card.style.transform = '';
+          }
+        }
       }
     };
     slot.ondragleave = function(e) {
       var rel = e.relatedTarget;
       if (rel && (rel === slot || slot.contains(rel))) return;
       slot.classList.remove('drag-over', 'drop-target');
+      var card = slot.querySelector('.opts-theme-slot-card');
+      if (card) card.style.transform = '';
     };
     slot.ondrop = function(e) {
       e.preventDefault();
