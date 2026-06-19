@@ -4583,11 +4583,14 @@ function renderThemeList() {
   }
 
   function getInsertionPoint(e) {
-    // Uses offsetTop/offsetHeight — unaffected by in-flight CSS transforms —
-    // so the insertion point is stable while cards are animating.
-    var containerTop = container.getBoundingClientRect().top - container.scrollTop;
-    var mouseY = e.clientY - containerTop;
+    // offsetTop is transform-unaffected (stable during FLIP animation) but is relative
+    // to offsetParent, not the viewport. Convert mouse Y to the same space by subtracting
+    // offsetParent's getBoundingClientRect().top.
     var cards = container.querySelectorAll('.theme-card[data-theme-id]:not(.reorder-dragging)');
+    if (!cards.length) return { ref: null, before: false };
+    var offsetParent = cards[0].offsetParent;
+    var parentTop = offsetParent ? offsetParent.getBoundingClientRect().top : 0;
+    var mouseY = e.clientY - parentTop;
     for (var i = 0; i < cards.length; i++) {
       var top = cards[i].offsetTop, h = cards[i].offsetHeight;
       if (mouseY < top + h / 2) return { ref: cards[i], before: true };
