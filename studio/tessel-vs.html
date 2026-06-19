@@ -1591,6 +1591,26 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
         <div class="opts-divider"></div>
         <div class="opts-section-label">Undo History</div>
         <div class="opts-toggle-row" style="margin-bottom:10px;">
+          <span>Granularity Type</span>
+          <div class="opts-pill-group" id="opts-undo-granularity-pill">
+            <div class="opts-pill-slider" id="opts-gran-slider"></div>
+            <input type="radio" name="undo-gran" id="opts-gran-action" value="action">
+            <label for="opts-gran-action">Per Action</label>
+            <input type="radio" name="undo-gran" id="opts-gran-time" value="time">
+            <label for="opts-gran-time">By Time Window</label>
+          </div>
+        </div>
+        <div class="opts-toggle-row" id="opts-undo-window-row" style="margin-top:8px;">
+          <span>Time window</span>
+          <select class="opts-select" id="opts-undo-time-window">
+            <option value="500">0.5 s</option>
+            <option value="1000" selected>1 s</option>
+            <option value="2000">2 s</option>
+            <option value="5000">5 s</option>
+            <option value="30000">30 s</option>
+          </select>
+        </div>
+        <div class="opts-toggle-row" style="margin-top:8px;">
           <span>Max undo steps</span>
           <div class="opts-undo-depth-wrap">
             <input type="number" id="opts-undo-depth-num" class="opts-num-input" min="1" max="10000" value="100">
@@ -1611,26 +1631,6 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
         <div class="opts-toggle-row" style="margin-top:8px;">
           <span>Save undo history with document</span>
           <button class="opts-toggle" id="opts-persist-undo" title="Persist undo history"></button>
-        </div>
-        <div class="opts-toggle-row" style="margin-top:8px;">
-          <span>Granularity Type</span>
-          <div class="opts-pill-group" id="opts-undo-granularity-pill">
-            <div class="opts-pill-slider" id="opts-gran-slider"></div>
-            <input type="radio" name="undo-gran" id="opts-gran-action" value="action">
-            <label for="opts-gran-action">Per Action</label>
-            <input type="radio" name="undo-gran" id="opts-gran-time" value="time">
-            <label for="opts-gran-time">By Time Window</label>
-          </div>
-        </div>
-        <div class="opts-toggle-row" id="opts-undo-window-row" style="margin-top:8px;">
-          <span>Time window</span>
-          <select class="opts-select" id="opts-undo-time-window">
-            <option value="500">0.5 s</option>
-            <option value="1000" selected>1 s</option>
-            <option value="2000">2 s</option>
-            <option value="5000">5 s</option>
-            <option value="30000">30 s</option>
-          </select>
         </div>
         <div class="opts-divider"></div>
         <div class="opts-section-label">Formatting Scope</div>
@@ -6933,6 +6933,11 @@ function dockPanel(panelId, zone) {
     }
     return 'action';
   }
+  function syncWindowRowActive() {
+    if (!windowRow) return;
+    windowRow.style.opacity = getGranPillValue() === 'time' ? '' : '0.45';
+    windowSel.disabled = getGranPillValue() !== 'time';
+  }
   function syncGranSlider() {
     for (var i = 0; i < granRadios.length; i++) {
       if (granRadios[i].checked) {
@@ -6943,9 +6948,6 @@ function dockPanel(panelId, zone) {
       }
     }
   }
-  function syncUndoWindowRow() {
-    windowRow.style.display = getGranPillValue() === 'time' ? '' : 'none';
-  }
   (function() {
     var cur = getUndoGranularity();
     for (var i = 0; i < granRadios.length; i++) {
@@ -6955,14 +6957,14 @@ function dockPanel(panelId, zone) {
     for (var i = 0; i < windowSel.options.length; i++) {
       if (parseInt(windowSel.options[i].value, 10) === tw) { windowSel.selectedIndex = i; break; }
     }
-    syncUndoWindowRow();
+    syncWindowRowActive();
     setTimeout(syncGranSlider, 0); // after layout
   })();
   for (var _gi = 0; _gi < granRadios.length; _gi++) {
     granRadios[_gi].addEventListener('change', function() {
       try { localStorage.setItem('tvs:opts:undo-granularity', getGranPillValue()); } catch(e) {}
       clearTimeout(_undoDebounceTimer);
-      syncUndoWindowRow();
+      syncWindowRowActive();
       syncGranSlider();
     });
   }
