@@ -1698,13 +1698,29 @@ function getUndoTimeWindow() {
 }
 
 var _undoDebounceTimer = null;
-// Called by text-input events. In 'action' mode pushes immediately; in 'time' mode debounces.
+var _undoPendingSnapshot = null;
+// Called BEFORE the mutation so blocks still holds the pre-change state.
+// Action mode: push immediately. Time mode: snapshot now, push after the quiet window.
 function inputPushUndo() {
   if (getUndoGranularity() === 'action') {
     pushUndo();
   } else {
+    if (_undoDebounceTimer === null) {
+      // First keystroke of this burst — capture pre-burst state now
+      _undoPendingSnapshot = JSON.stringify(blocks);
+    }
     clearTimeout(_undoDebounceTimer);
-    _undoDebounceTimer = setTimeout(pushUndo, getUndoTimeWindow());
+    _undoDebounceTimer = setTimeout(function() {
+      _undoDebounceTimer = null;
+      if (_undoPendingSnapshot !== null) {
+        undoStack.push(_undoPendingSnapshot);
+        _undoPendingSnapshot = null;
+        var depth = getUndoDepth();
+        while (undoStack.length > depth) undoStack.shift();
+        redoStack = [];
+        updateUndoButtons();
+      }
+    }, getUndoTimeWindow());
   }
 }
 
@@ -2010,7 +2026,7 @@ function createHeadingEl(b) {
   el.textContent = b.text || '';
   el.dataset.placeholder = 'Heading ' + b.level;
 
-  el.addEventListener('input', function() { b.text = el.textContent; markUnsaved(); updateOutline(); inputPushUndo(); });
+  el.addEventListener('input', function() { inputPushUndo(); b.text = el.textContent; markUnsaved(); updateOutline(); });
   el.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -2049,7 +2065,7 @@ function createParaEl(b) {
   el.dataset.placeholder = 'Type something…';
   el.innerHTML = b.text || '';
 
-  el.addEventListener('input', function() { b.text = el.innerHTML; markUnsaved(); inputPushUndo(); });
+  el.addEventListener('input', function() { inputPushUndo(); b.text = el.innerHTML; markUnsaved(); });
   el.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -2101,7 +2117,7 @@ function createListEl(b) {
     li.className = 'block-list-item';
     li.contentEditable = 'true';
     li.innerHTML = html || '';
-    li.addEventListener('input', function() { syncItems(); markUnsaved(); inputPushUndo(); });
+    li.addEventListener('input', function() { inputPushUndo(); syncItems(); markUnsaved(); });
     li.addEventListener('focus', function() { lastFocusedTextBlockId = b.id; updateToolbarState(b); });
     li.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') {
@@ -2326,7 +2342,7 @@ function createSectionEl(b) {
   titleEl.className = 'section-title-edit';
   titleEl.contentEditable = 'true';
   titleEl.textContent = b.title || 'Section';
-  titleEl.addEventListener('input', function() { b.title = titleEl.textContent; markUnsaved(); inputPushUndo(); });
+  titleEl.addEventListener('input', function() { inputPushUndo(); b.title = titleEl.textContent; markUnsaved(); });
   titleEl.addEventListener('focus', function() { lastFocusedTextBlockId = b.id; updateToolbarState(b); });
   titleEl.addEventListener('click', function(e) { e.stopPropagation(); });
   titleEl.addEventListener('keydown', function(e) {
@@ -2407,7 +2423,7 @@ function createCodeEl(b) {
   langEl.contentEditable = 'true';
   langEl.textContent = b.lang || 'text';
   langEl.title = 'Click to edit language';
-  langEl.addEventListener('input', function() { b.lang = langEl.textContent.trim(); markUnsaved(); inputPushUndo(); });
+  langEl.addEventListener('input', function() { inputPushUndo(); b.lang = langEl.textContent.trim(); markUnsaved(); });
 
   var delBtn = document.createElement('button');
   delBtn.className = 'code-del-btn';
@@ -2423,7 +2439,7 @@ function createCodeEl(b) {
   codeEl.value = b.code || '';
   codeEl.placeholder = 'Enter code here…';
   codeEl.spellcheck = false;
-  codeEl.addEventListener('input', function() { b.code = codeEl.value; markUnsaved(); inputPushUndo(); });
+  codeEl.addEventListener('input', function() { inputPushUndo(); b.code = codeEl.value; markUnsaved(); });
   codeEl.addEventListener('focus', function() { lastFocusedTextBlockId = b.id; updateToolbarState(b); });
   codeEl.addEventListener('keydown', function(e) {
     if (e.key === 'Tab') {
