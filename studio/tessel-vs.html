@@ -1556,6 +1556,18 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
  *   auto-built from each document's front-matter title; in exported HTML the
  *   badge becomes a collapsible sidebar nav with relative-path links between
  *   sibling pages, all titles sourced from front-matter not filesystem names
+ * - Section completion state: when all required inputs within a section or major
+ *   partition are satisfied with at least the minimum valid input (one checkbox
+ *   checked from a set, a radio option selected, a text field passing its type
+ *   validation — e.g. valid IP address, non-empty required text, date in range),
+ *   the section header gains a green dashed border and a ✓ badge in its upper-right
+ *   corner; this is the positive complement to branch dimming and uses the same
+ *   design language — dashed border + corner badge — so the two states form a
+ *   coherent visual vocabulary: green/✓ = satisfied and complete, grey/⊘ = ruled
+ *   out by a prior decision; together they give the user a spatial map of process
+ *   progress without requiring them to scroll to verify; completion state is
+ *   recomputed live as inputs change and reverts if a previously valid field is
+ *   cleared or invalidated
  * - Conditional branch dimming: when a form user makes a decision that renders
  *   a branch of the walkbook inapplicable, the transition is immediate and overt
  *   at the point of decision — the affected blocks animate-collapse to their
