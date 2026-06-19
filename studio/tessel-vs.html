@@ -943,13 +943,19 @@ kbd {
 .opts-font-item-del:hover { background: var(--red); color: #fff; }
 .opts-undo-depth-wrap { display: flex; gap: 4px; align-items: center; }
 .opts-num-input {
-  width: 60px; background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 4px; color: var(--text); font-size: 11px; padding: 3px 6px;
-  outline: none; -moz-appearance: textfield;
+  width: 58px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 4px; color: var(--text); font-size: 12px; padding: 5px 6px;
+  outline: none; -moz-appearance: textfield; text-align: center;
 }
 .opts-num-input::-webkit-inner-spin-button,
-.opts-num-input::-webkit-outer-spin-button { opacity: 1; }
+.opts-num-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .opts-num-input:focus { border-color: var(--accent); }
+.opts-num-step-btn {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--muted); cursor: pointer; font-size: 14px; line-height: 1;
+  padding: 4px 7px; display: flex; align-items: center; justify-content: center;
+}
+.opts-num-step-btn:hover { background: var(--surface2); border-color: var(--accent); color: var(--text); }
 .opts-coll-body { display: none; padding-left: 10px; }
 .opts-coll-body.open { display: block; }
 .opts-coll-sub > .opts-coll-btn { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 4px 6px; }
@@ -1613,7 +1619,9 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
         <div class="opts-toggle-row" style="margin-top:8px;">
           <span>Max undo steps</span>
           <div class="opts-undo-depth-wrap">
+            <button type="button" class="opts-num-step-btn" id="opts-undo-depth-dec" title="Decrease">&#x2212;</button>
             <input type="number" id="opts-undo-depth-num" class="opts-num-input" min="1" max="10000" value="100">
+            <button type="button" class="opts-num-step-btn" id="opts-undo-depth-inc" title="Increase">&#x2B;</button>
             <select id="opts-undo-depth-preset" class="opts-select" title="Quick presets">
               <option value="">Presets…</option>
               <option value="10">10</option>
@@ -6866,6 +6874,8 @@ function dockPanel(panelId, zone) {
   var freqSel      = document.getElementById('opts-autosave-freq');
   var depthNum     = document.getElementById('opts-undo-depth-num');
   var depthPreset  = document.getElementById('opts-undo-depth-preset');
+  var depthDec     = document.getElementById('opts-undo-depth-dec');
+  var depthInc     = document.getElementById('opts-undo-depth-inc');
   var persistBtn   = document.getElementById('opts-persist-undo');
   var blockFmtBtn  = document.getElementById('opts-block-fmt');
 
@@ -6891,6 +6901,15 @@ function dockPanel(panelId, zone) {
   freqSel.addEventListener('change', function() {
     try { localStorage.setItem('tvs:opts:autosave-freq', freqSel.value); } catch(e) {}
     restartAutoSave();
+  });
+
+  if (depthDec) depthDec.addEventListener('click', function() {
+    var v = Math.max(1, (parseInt(depthNum.value, 10) || 100) - 10);
+    depthNum.value = v; depthPreset.value = ''; applyUndoDepth(v);
+  });
+  if (depthInc) depthInc.addEventListener('click', function() {
+    var v = Math.min(10000, (parseInt(depthNum.value, 10) || 100) + 10);
+    depthNum.value = v; depthPreset.value = ''; applyUndoDepth(v);
   });
 
   // Number input: apply on blur or Enter; clamp to [1, 10000]
