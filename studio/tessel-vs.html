@@ -3945,6 +3945,7 @@ function makeCtrlPane(cfg) {
     tabArrow.innerHTML = ch;
     badge.classList.add('active');
     lss(cfg.lsKey, 'open');
+    _lastActiveState = 'open';
   }
   function collapse() {
     pane.classList.remove('off');
@@ -3954,6 +3955,7 @@ function makeCtrlPane(cfg) {
     tabArrow.innerHTML = ch;
     badge.classList.add('active');
     lss(cfg.lsKey, 'collapsed');
+    _lastActiveState = 'collapsed';
   }
   function hide() {
     pane.classList.remove('collapsed');
@@ -3973,13 +3975,15 @@ function makeCtrlPane(cfg) {
       if (pane.classList.contains('off')) { pane.classList.remove('off'); badge.classList.add('active'); }
       else { pane.classList.add('off'); badge.classList.remove('active'); }
     } else {
-      if (badge.classList.contains('active')) { hide(); } else { open(); }
+      if (badge.classList.contains('active')) { hide(); }
+      else { if (_lastActiveState === 'collapsed') collapse(); else open(); }
     }
   });
 
+  var _lastActiveState = 'open';
   var state = ls(cfg.lsKey);
   if (state === 'off')            { hide(); }
-  else if (state === 'collapsed') { collapse(); }
+  else if (state === 'collapsed') { _lastActiveState = 'collapsed'; collapse(); }
   else                            { open(); }
 }
 
@@ -4480,6 +4484,7 @@ function makeSidePanel(cfg) {
     setArrows(true);
     badge.classList.add('active');
     lss(cfg.lsKey, 'open');
+    _lastActiveState = 'open';
   }
   function collapse() {
     panel.classList.remove('off');
@@ -4487,6 +4492,7 @@ function makeSidePanel(cfg) {
     setArrows(false);
     badge.classList.add('active'); // badge stays on when collapsed
     lss(cfg.lsKey, 'collapsed');
+    _lastActiveState = 'collapsed';
   }
   function hide() {
     panel.classList.remove('collapsed');
@@ -4502,21 +4508,23 @@ function makeSidePanel(cfg) {
   tab.addEventListener('click', toggleOpenCollapse);
   if (arrow) arrow.addEventListener('click', function(e) { e.stopPropagation(); toggleOpenCollapse(); });
 
-  // Badge: off→on opens; on→off hides completely (float mode: simple show/hide)
+  // Badge: off→on restores last active state; on→off hides completely
   badge.addEventListener('click', function(e) {
     e.stopPropagation();
     if (panel.classList.contains('dock-float')) {
       if (panel.classList.contains('off')) { panel.classList.remove('off'); badge.classList.add('active'); }
       else { panel.classList.add('off'); badge.classList.remove('active'); }
     } else {
-      if (badge.classList.contains('active')) { hide(); } else { open(); }
+      if (badge.classList.contains('active')) { hide(); }
+      else { if (_lastActiveState === 'collapsed') collapse(); else open(); }
     }
   });
 
+  var _lastActiveState = 'open';
   // Restore
   var state = ls(cfg.lsKey);
   if (state === 'off')            { hide(); }
-  else if (state === 'collapsed') { collapse(); }
+  else if (state === 'collapsed') { _lastActiveState = 'collapsed'; collapse(); }
   else                            { open(); }
 }
 
