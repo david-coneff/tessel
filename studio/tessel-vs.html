@@ -4459,8 +4459,6 @@ function makeSidePanel(cfg) {
     if (arrow) arrow.innerHTML = arrowDir(true);
     badge.classList.add('active');
     lss(cfg.lsKey, 'open');
-    // Move to innermost position in dock zone (last child = innermost)
-    if (panel.parentElement) panel.parentElement.appendChild(panel);
   }
   function collapse() {
     panel.classList.remove('off');
