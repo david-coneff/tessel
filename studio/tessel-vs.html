@@ -3026,6 +3026,17 @@ function renderProps() {
       fmtSel.value = DATE_FMT_PRESETS.indexOf(b.meta.dateFormat) !== -1 ? b.meta.dateFormat : '__custom__';
       updateFmtPreview(); renderCanvas(); markUnsaved();
     });
+    function lockFmtInp() {
+      fmtInp.readOnly = true; fmtInp.tabIndex = -1;
+      fmtInp.style.pointerEvents = 'none'; fmtInp.style.color = 'var(--muted)';
+      fmtInp.style.cursor = 'default';
+    }
+    function unlockFmtInp() {
+      fmtInp.readOnly = false; fmtInp.tabIndex = 0;
+      fmtInp.style.pointerEvents = ''; fmtInp.style.color = '';
+      fmtInp.style.cursor = '';
+    }
+    if (isPreset) lockFmtInp(); else unlockFmtInp();
     fmtPatRow.appendChild(fmtInp); body.appendChild(fmtPatRow);
 
     var fmtPrevRow = mkPropRow('Preview');
@@ -3043,8 +3054,10 @@ function renderProps() {
       if (fmtSel.value !== '__custom__') {
         b.meta.dateFormat = fmtSel.value;
         fmtInp.value = fmtSel.value;
+        lockFmtInp();
         updateFmtPreview(); renderCanvas(); markUnsaved();
       } else {
+        unlockFmtInp();
         fmtInp.focus();
       }
     });
