@@ -4396,6 +4396,10 @@ function renderThemeSlots() {
       } else {
         localStorage.setItem(targetName === 'a' ? 'tvs:theme-a' : 'tvs:theme-b', droppedId);
       }
+      // Apply whichever theme is now in the active slot
+      var activeSlot = localStorage.getItem('tvs:active-slot') || 'a';
+      var activeTheme = localStorage.getItem('tvs:theme-' + activeSlot) || 'dark';
+      applyTheme(activeTheme);
       renderThemeSlots();
       renderThemeList();
       updateThemeBtn();
