@@ -4312,18 +4312,22 @@ function renderThemeSlots() {
     };
     slot.ondragend = function() {
       slot.classList.remove('dragging-source');
-      resetSlotDragClasses();
+      resetSlotDragClasses(true);
     };
   }
   if (slotA) setupSlotDrag(slotA, themeA);
   if (slotB) setupSlotDrag(slotB, themeB);
 
-  function resetSlotDragClasses() {
+  function resetSlotDragClasses(instant) {
     [slotA, slotB].forEach(function(s) {
       if (!s) return;
       s.classList.remove('drag-over', 'drop-target');
       var card = s.querySelector('.opts-theme-slot-card');
-      if (card) card.style.transform = '';
+      if (card) {
+        if (instant) card.style.transition = 'none';
+        card.style.transform = '';
+        if (instant) { void card.offsetWidth; card.style.transition = ''; }
+      }
     });
   }
 
@@ -4367,7 +4371,7 @@ function renderThemeSlots() {
     };
     slot.ondrop = function(e) {
       e.preventDefault();
-      resetSlotDragClasses();
+      resetSlotDragClasses(true); // instant — no snap animation on drop
       var droppedId = e.dataTransfer.getData('text/plain');
       if (!droppedId) return;
       var targetName = slot.getAttribute('data-slot');
