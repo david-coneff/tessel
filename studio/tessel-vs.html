@@ -4267,19 +4267,20 @@ function updateThemeBtn() {
   }
 
   var activeSlot = localStorage.getItem('tvs:active-slot') || 'a';
+  var previewing = !!localStorage.getItem('tvs:previewing');
   btnA.innerHTML = themeIcon(themeA);
   btnB.innerHTML = themeIcon(themeB);
-  btnA.classList.toggle('active', activeSlot === 'a');
-  btnB.classList.toggle('active', activeSlot === 'b');
+  btnA.classList.toggle('active', !previewing && activeSlot === 'a');
+  btnB.classList.toggle('active', !previewing && activeSlot === 'b');
   var slider = document.getElementById('theme-pill-slider');
   if (slider) {
-    var activeBtn = activeSlot === 'a' ? btnA : btnB;
-    if (activeBtn) {
+    if (previewing) {
+      slider.style.opacity = '0';
+    } else {
+      var activeBtn = activeSlot === 'a' ? btnA : btnB;
       slider.style.left  = activeBtn.offsetLeft + 'px';
       slider.style.width = activeBtn.offsetWidth + 'px';
       slider.style.opacity = '1';
-    } else {
-      slider.style.opacity = '0';
     }
   }
 }
@@ -4288,6 +4289,7 @@ function renderThemeSlots() {
   var themeA = localStorage.getItem('tvs:theme-a') || 'dark';
   var themeB = localStorage.getItem('tvs:theme-b') || 'light';
   var activeSlot = localStorage.getItem('tvs:active-slot') || 'a';
+  var previewing = !!localStorage.getItem('tvs:previewing');
 
   function fillSlot(slotId, nameId, swatchesId, themeId, slotName) {
     var slot = document.getElementById(slotId);
@@ -4300,7 +4302,7 @@ function renderThemeSlots() {
       ? '<div class="theme-swatch" style="background:'+t.vars['--bg']+';width:14px;height:14px;" title="bg"></div>'
         + '<div class="theme-swatch" style="background:'+t.vars['--accent']+';width:14px;height:14px;" title="accent"></div>'
       : '';
-    slot.classList.toggle('active-slot', activeSlot === slotName);
+    slot.classList.toggle('active-slot', !previewing && activeSlot === slotName);
   }
 
   fillSlot('opts-slot-a', 'opts-slot-a-name', 'opts-slot-a-swatches', themeA, 'a');
@@ -4346,6 +4348,7 @@ function renderThemeSlots() {
   function wireSlotClick(slot, getThemeId) {
     if (!slot) return;
     slot.onclick = function() {
+      localStorage.removeItem('tvs:previewing');
       localStorage.setItem('tvs:active-slot', slot.getAttribute('data-slot'));
       applyTheme(getThemeId());
       renderThemeSlots();
@@ -4400,6 +4403,7 @@ function renderThemeSlots() {
         localStorage.setItem(targetName === 'a' ? 'tvs:theme-a' : 'tvs:theme-b', droppedId);
       }
       // Apply whichever theme is now in the active slot
+      localStorage.removeItem('tvs:previewing');
       var activeSlot = localStorage.getItem('tvs:active-slot') || 'a';
       var activeTheme = localStorage.getItem('tvs:theme-' + activeSlot) || 'dark';
       applyTheme(activeTheme);
@@ -4447,8 +4451,9 @@ function renderThemeList() {
   // wire buttons
   container.querySelectorAll('[data-theme-preview]').forEach(function(btn) {
     btn.addEventListener('click', function() {
+      localStorage.setItem('tvs:previewing', '1');
       applyTheme(this.getAttribute('data-theme-preview'));
-      renderThemeList(); renderThemeSlots();
+      renderThemeList(); renderThemeSlots(); updateThemeBtn();
     });
   });
   container.querySelectorAll('.theme-card[data-theme-id]').forEach(function(card) {
@@ -4615,6 +4620,7 @@ function showNewThemeEditor() {
   var pillA = document.getElementById('theme-pill-a');
   var pillB = document.getElementById('theme-pill-b');
   function toggleThemePill() {
+    localStorage.removeItem('tvs:previewing');
     var curSlot = localStorage.getItem('tvs:active-slot') || 'a';
     var nextSlot = curSlot === 'a' ? 'b' : 'a';
     var nextTheme = localStorage.getItem('tvs:theme-' + nextSlot) || (nextSlot === 'a' ? 'dark' : 'light');
