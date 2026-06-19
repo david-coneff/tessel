@@ -1800,7 +1800,10 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
         <div class="opts-section-label">Default Timezone</div>
         <div id="opts-datefmt-tz-wrap"></div>
         <div class="opts-divider"></div>
-        <p class="opts-helper-text">Customize the preset patterns available in the date and date-time format dropdowns. Changes take effect the next time a date field is selected.</p>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <p class="opts-helper-text" style="margin:0;flex:1;">Customize the preset patterns available in the date and date-time format dropdowns. Changes take effect the next time a date field is selected.</p>
+          <button type="button" id="opts-datefmt-help-btn" class="opts-num-step-btn" style="flex-shrink:0;font-size:11px;padding:4px 9px;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;" title="Pattern reference &amp; tester">?</button>
+        </div>
         <div id="opts-datefmt-date-wrap"></div>
         <div class="opts-divider"></div>
         <div id="opts-datefmt-datetime-wrap"></div>
@@ -1809,6 +1812,42 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
     </div>
   </div>
   <div id="options-dialog-resize" title="Resize"></div>
+</div>
+
+<!-- DATE PATTERN HELP FLOATER -->
+<div id="datefmt-help-dialog" style="display:none;position:fixed;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.32);min-width:420px;max-width:540px;width:480px;top:80px;left:50%;transform:translateX(-50%);font-size:12px;color:var(--text);">
+  <div id="datefmt-help-header" style="display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);cursor:move;user-select:none;">
+    <span style="flex:1;font-weight:600;font-size:13px;">Date Pattern Reference</span>
+    <button id="datefmt-help-close" type="button" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:14px;line-height:1;padding:2px 6px;" title="Close">&times;</button>
+  </div>
+  <div style="padding:14px;max-height:70vh;overflow-y:auto;">
+    <p style="margin:0 0 10px;color:var(--muted);font-size:11px;line-height:1.5;">Patterns are built by combining tokens. Any non-token characters (spaces, slashes, commas) are passed through literally.</p>
+    <table id="datefmt-help-table" style="width:100%;border-collapse:collapse;margin-bottom:14px;">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border);">
+          <th style="text-align:left;padding:4px 8px;font-size:11px;color:var(--muted);font-weight:600;">Token</th>
+          <th style="text-align:left;padding:4px 8px;font-size:11px;color:var(--muted);font-weight:600;">Output</th>
+          <th style="text-align:left;padding:4px 8px;font-size:11px;color:var(--muted);font-weight:600;">Example</th>
+        </tr>
+      </thead>
+      <tbody id="datefmt-help-tbody"></tbody>
+    </table>
+    <div style="border-top:1px solid var(--border);padding-top:12px;">
+      <div style="font-weight:600;margin-bottom:8px;font-size:12px;">Live Tester</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+        <label style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:56px;">Pattern</label>
+        <input type="text" id="datefmt-help-pattern" placeholder="e.g. MMMM DD, YYYY h:mm A" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;padding:5px 7px;outline:none;font-family:monospace;">
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+        <label style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:56px;">Date/time</label>
+        <input type="datetime-local" id="datefmt-help-dt" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;padding:5px 7px;outline:none;">
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:56px;">Preview</label>
+        <div id="datefmt-help-preview" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:5px 7px;font-family:monospace;font-size:13px;min-height:28px;color:var(--text);"></div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- STATUS BAR -->
@@ -7618,6 +7657,115 @@ function dockPanel(panelId, zone) {
   });
 
   restorePaneOrder();
+})();
+
+// ── Date Pattern Help Floater ─────────────────────────────────────────────
+(function() {
+  var helpDialog = document.getElementById('datefmt-help-dialog');
+  var helpHeader  = document.getElementById('datefmt-help-header');
+  var helpClose   = document.getElementById('datefmt-help-close');
+  var helpBtn     = document.getElementById('opts-datefmt-help-btn');
+  var helpPattern = document.getElementById('datefmt-help-pattern');
+  var helpDt      = document.getElementById('datefmt-help-dt');
+  var helpPreview = document.getElementById('datefmt-help-preview');
+  var helpTbody   = document.getElementById('datefmt-help-tbody');
+  if (!helpDialog) return;
+
+  // Token reference table data
+  var TOKEN_ROWS = [
+    ['YYYY', 'Full year (4 digits)', '2025'],
+    ['YY',   'Short year (2 digits)', '25'],
+    ['MMMM', 'Full month name', 'January'],
+    ['MMM',  'Abbreviated month', 'Jan'],
+    ['MM',   'Month number, zero-padded', '01'],
+    ['M',    'Month number, no padding', '1'],
+    ['DD',   'Day of month, zero-padded', '05'],
+    ['D',    'Day of month, no padding', '5'],
+    ['HH',   '24-hour hour, zero-padded', '14'],
+    ['H',    '24-hour hour, no padding', '14'],
+    ['hh',   '12-hour hour, zero-padded', '02'],
+    ['h',    '12-hour hour, no padding', '2'],
+    ['mm',   'Minutes, zero-padded', '30'],
+    ['ss',   'Seconds, zero-padded', '07'],
+    ['A',    'AM / PM (uppercase)', 'PM'],
+    ['a',    'am / pm (lowercase)', 'pm']
+  ];
+
+  // Build table
+  var refDate = new Date(2025, 0, 5, 14, 30, 7); // Jan 5 2025 14:30:07
+  TOKEN_ROWS.forEach(function(row) {
+    var tr = document.createElement('tr');
+    tr.style.borderBottom = '1px solid var(--border)';
+    [row[0], row[1], row[2]].forEach(function(cell, ci) {
+      var td = document.createElement('td');
+      td.style.cssText = 'padding:4px 8px;vertical-align:top;';
+      if (ci === 0) {
+        td.style.fontFamily = 'monospace';
+        td.style.fontWeight = '600';
+        td.style.color = 'var(--accent)';
+        td.style.whiteSpace = 'nowrap';
+      }
+      if (ci === 2) { td.style.fontFamily = 'monospace'; td.style.color = 'var(--muted)'; }
+      td.textContent = cell;
+      tr.appendChild(td);
+    });
+    helpTbody.appendChild(tr);
+  });
+
+  // Set default datetime to now
+  function padZ(n) { return n < 10 ? '0' + n : '' + n; }
+  function nowLocalISO() {
+    var n = new Date();
+    return n.getFullYear() + '-' + padZ(n.getMonth()+1) + '-' + padZ(n.getDate()) + 'T' + padZ(n.getHours()) + ':' + padZ(n.getMinutes());
+  }
+  helpDt.value = nowLocalISO();
+
+  function updatePreview() {
+    var pat = (helpPattern.value || '').trim();
+    if (!pat) { helpPreview.textContent = ''; return; }
+    var dtVal = helpDt.value;
+    var date = dtVal ? new Date(dtVal) : new Date();
+    if (isNaN(date.getTime())) { helpPreview.textContent = '(invalid date)'; return; }
+    if (typeof formatDatePattern === 'function') {
+      helpPreview.textContent = formatDatePattern(date, pat);
+    } else {
+      helpPreview.textContent = '(formatter not available)';
+    }
+  }
+
+  helpPattern.addEventListener('input', updatePreview);
+  helpDt.addEventListener('input', updatePreview);
+
+  // Open
+  function openHelp() {
+    helpDialog.style.display = '';
+    helpDt.value = nowLocalISO();
+    updatePreview();
+  }
+
+  if (helpBtn) helpBtn.addEventListener('click', openHelp);
+  if (helpClose) helpClose.addEventListener('click', function() { helpDialog.style.display = 'none'; });
+
+  // Drag to move
+  var _dx = 0, _dy = 0, _dragging = false;
+  helpHeader.addEventListener('mousedown', function(e) {
+    if (e.target === helpClose) return;
+    _dragging = true;
+    var rect = helpDialog.getBoundingClientRect();
+    // Switch from transform-centering to fixed coords on first drag
+    helpDialog.style.left = rect.left + 'px';
+    helpDialog.style.top  = rect.top  + 'px';
+    helpDialog.style.transform = 'none';
+    _dx = e.clientX - rect.left;
+    _dy = e.clientY - rect.top;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!_dragging) return;
+    helpDialog.style.left = (e.clientX - _dx) + 'px';
+    helpDialog.style.top  = (e.clientY - _dy) + 'px';
+  });
+  document.addEventListener('mouseup', function() { _dragging = false; });
 })();
 
 })();
