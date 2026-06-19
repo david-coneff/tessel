@@ -860,6 +860,17 @@ kbd {
 .attachment-item-del:hover { background: var(--red); color: #fff; }
 
 /* ── Pane drag-to-reorder ──────────────────────────────────────────────────── */
+.pane-grip {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; flex-shrink: 0; color: var(--muted);
+  font-size: 12px; opacity: 0.5; user-select: none;
+}
+/* Hidden in expanded headers — the title bar itself is the drag anchor */
+.ctrl-pane-header .pane-grip { display: none; }
+/* Visible in collapsed tab strips — the grip is the visual affordance there */
+.ctrl-pane-tab .pane-grip,
+#outline-tab .pane-grip,
+#props-tab .pane-grip { display: inline-flex; }
 /* Make the header/title bar the drag handle — whole row is grabbable */
 .ctrl-pane-header, .ctrl-pane-tab,
 #outline-content h3, #outline-tab,
@@ -1060,6 +1071,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
       </div>
     </div>
     <div class="ctrl-pane-tab" title="Toggle Format panel">
+      <span class="pane-grip" data-pane-grip="format-pane" title="Drag to reorder">&#8942;</span>
       <span class="panel-tab-title">Format</span>
       <button class="panel-tab-arrow">&#8249;</button>
     </div>
@@ -1077,6 +1089,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
       </div>
     </div>
     <div class="ctrl-pane-tab" title="Toggle Text panel">
+      <span class="pane-grip" data-pane-grip="text-pane" title="Drag to reorder">&#8942;</span>
       <span class="panel-tab-title">Text</span>
       <button class="panel-tab-arrow">&#8249;</button>
     </div>
@@ -1127,6 +1140,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
       </div>
     </div>
     <div class="ctrl-pane-tab" title="Toggle Form panel">
+      <span class="pane-grip" data-pane-grip="form-pane" title="Drag to reorder">&#8942;</span>
       <span class="panel-tab-title">Form</span>
       <button class="panel-tab-arrow">&#8249;</button>
     </div>
@@ -1138,6 +1152,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
       <div id="outline-list"><div style="padding:10px;font-size:11px;color:var(--muted)">No headings yet</div></div>
     </div>
     <div id="outline-tab" title="Toggle Outline">
+      <span class="pane-grip" data-pane-grip="outline-panel" title="Drag to reorder">&#8942;</span>
       <span class="panel-tab-title">Outline</span>
       <button class="panel-tab-arrow" id="btn-outline-collapse">&#8249;</button>
     </div>
@@ -1170,6 +1185,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
 
   <div id="props-panel">
     <div id="props-tab" title="Toggle Properties">
+      <span class="pane-grip" data-pane-grip="props-panel" title="Drag to reorder">&#8942;</span>
       <button class="panel-tab-arrow" id="btn-props-collapse">&#8250;</button>
       <span class="panel-tab-title">Properties</span>
     </div>
