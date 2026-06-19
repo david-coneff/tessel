@@ -4583,13 +4583,15 @@ function renderThemeList() {
   }
 
   function getInsertionPoint(e) {
-    // Returns { ref: Element, before: bool } describing where to insert placeholder.
-    // Excludes the placeholder itself and the dragging card from the scan.
+    // Uses offsetTop/offsetHeight — unaffected by in-flight CSS transforms —
+    // so the insertion point is stable while cards are animating.
+    var containerTop = container.getBoundingClientRect().top - container.scrollTop;
+    var mouseY = e.clientY - containerTop;
     var cards = container.querySelectorAll('.theme-card[data-theme-id]:not(.reorder-dragging)');
     for (var i = 0; i < cards.length; i++) {
-      var rect = cards[i].getBoundingClientRect();
-      if (e.clientY < rect.top + rect.height / 2) return { ref: cards[i], before: true };
-      if (e.clientY < rect.bottom) return { ref: cards[i], before: false };
+      var top = cards[i].offsetTop, h = cards[i].offsetHeight;
+      if (mouseY < top + h / 2) return { ref: cards[i], before: true };
+      if (mouseY < top + h)     return { ref: cards[i], before: false };
     }
     return { ref: null, before: false }; // append at end
   }
@@ -4648,17 +4650,17 @@ function renderThemeList() {
       container.querySelectorAll('.theme-card[data-theme-id]:not(.reorder-dragging)')
     );
     var beforeTops = {};
-    cards.forEach(function(c) { beforeTops[c.getAttribute('data-theme-id')] = c.getBoundingClientRect().top; });
+    cards.forEach(function(c) { beforeTops[c.getAttribute('data-theme-id')] = c.offsetTop; });
     // Move placeholder
     if (ins.ref) {
       container.insertBefore(_placeholder, ins.before ? ins.ref : ins.ref.nextSibling);
     } else {
       container.appendChild(_placeholder);
     }
-    // FLIP: animate each card from its old position to its new position
+    // FLIP: animate each card from its old natural position to its new natural position
     cards.forEach(function(c) {
       var id = c.getAttribute('data-theme-id');
-      var delta = beforeTops[id] - c.getBoundingClientRect().top;
+      var delta = beforeTops[id] - c.offsetTop;
       if (Math.abs(delta) < 1) return;
       c.style.transition = 'none';
       c.style.transform = 'translateY(' + delta + 'px)';
