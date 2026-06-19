@@ -1191,7 +1191,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
       <span class="panel-tab-title">Properties</span>
     </div>
     <div id="props-content">
-      <h3><button class="panel-tab-arrow" id="btn-props-collapse" style="margin-right:auto">&#8250;</button>Properties</h3>
+      <h3>Properties<button class="panel-tab-arrow" id="btn-props-collapse" style="margin-left:auto">&#8250;</button></h3>
       <div id="props-body">
         <div id="props-empty">Select a field block to edit its properties</div>
       </div>
@@ -4463,10 +4463,12 @@ function makeSidePanel(cfg) {
     lss(cfg.lsKey, 'off');
   }
 
-  // Tab strip toggles open ↔ collapsed (never hides completely)
-  tab.addEventListener('click', function() {
+  // Tab strip and content arrow both toggle open ↔ collapsed
+  function toggleOpenCollapse() {
     if (panel.classList.contains('collapsed')) { open(); } else { collapse(); }
-  });
+  }
+  tab.addEventListener('click', toggleOpenCollapse);
+  if (arrow) arrow.addEventListener('click', function(e) { e.stopPropagation(); toggleOpenCollapse(); });
 
   // Badge: off→on opens; on→off hides completely (float mode: simple show/hide)
   badge.addEventListener('click', function(e) {
