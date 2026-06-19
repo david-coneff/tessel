@@ -213,10 +213,10 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
   user-select: none; pointer-events: none;
 }
 .ctrl-pane-collapse-btn {
-  background: none; border: none; cursor: pointer; color: var(--muted);
-  font-size: 14px; padding: 2px 4px; line-height: 1; border-radius: 3px; flex-shrink: 0;
+  background: none; border: 1px solid transparent; cursor: pointer; color: var(--muted);
+  font-size: 16px; padding: 2px 5px; line-height: 1; border-radius: 5px; flex-shrink: 0;
 }
-.ctrl-pane-collapse-btn:hover { background: var(--surface2); color: var(--text); }
+.ctrl-pane-collapse-btn:hover { background: var(--surface2); border-color: var(--border); color: var(--text); }
 .pane-h .ctrl-pane-collapse-btn { display: none; }
 #outline-panel.pane-h #outline-content h3 .panel-tab-arrow,
 #props-panel.pane-h   #props-content h3   .panel-tab-arrow { display: none; }
@@ -294,9 +294,10 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
   user-select: none; pointer-events: none;
 }
 .panel-tab-arrow {
-  background: none; border: none; cursor: pointer; color: var(--muted);
-  font-size: 12px; padding: 2px; line-height: 1; flex-shrink: 0;
+  background: none; border: 1px solid transparent; cursor: pointer; color: var(--muted);
+  font-size: 16px; padding: 2px 5px; line-height: 1; border-radius: 5px; flex-shrink: 0;
 }
+.panel-tab-arrow:hover { background: var(--surface2); border-color: var(--border); color: var(--text); }
 
 /* CANVAS AREA */
 #canvas-wrap {
@@ -566,11 +567,11 @@ select.prop-input { cursor: pointer; }
 .dock-float #outline-content h3 { cursor: grab; user-select: none; }
 .dock-float #props-content h3   { cursor: grab; user-select: none; }
 .ctrl-pane-float-btn {
-  background: none; border: none; cursor: pointer;
-  color: var(--muted); padding: 1px 5px; font-size: 11px; line-height: 1;
-  border-radius: 3px; flex-shrink: 0;
+  background: none; border: 1px solid transparent; cursor: pointer;
+  color: var(--muted); padding: 2px 5px; font-size: 14px; line-height: 1;
+  border-radius: 5px; flex-shrink: 0;
 }
-.ctrl-pane-float-btn:hover { background: var(--surface2); color: var(--text); }
+.ctrl-pane-float-btn:hover { background: var(--surface2); border-color: var(--border); color: var(--text); }
 .pane-resize-handle { position: absolute; z-index: 10; pointer-events: none; }
 .dock-float .pane-resize-handle { pointer-events: all; }
 .pane-resize-handle-n  { top: -3px;    left: 12px; right: 12px; height: 6px;  cursor: n-resize; }
