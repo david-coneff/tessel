@@ -7769,16 +7769,40 @@ function dockPanel(panelId, zone) {
   helpPattern.addEventListener('input', function() { syncDisplay(_helpDate); updatePreview(); });
 
   // Open
+  var HELP_OPEN_KEY = 'tvs:datefmtHelpOpen';
+  var HELP_POS_KEY  = 'tvs:datefmtHelpPos';
+
   function openHelp() {
     helpDialog.style.display = '';
     _helpDate = new Date();
     helpDt.value = nowLocalISO();
     syncDisplay(_helpDate);
     updatePreview();
+    try { localStorage.setItem(HELP_OPEN_KEY, '1'); } catch(e) {}
   }
 
+  function closeHelp() {
+    helpDialog.style.display = 'none';
+    try { localStorage.removeItem(HELP_OPEN_KEY); } catch(e) {}
+  }
+
+  // Restore open state on load
+  (function() {
+    try {
+      if (localStorage.getItem(HELP_OPEN_KEY) === '1') {
+        var pos = JSON.parse(localStorage.getItem(HELP_POS_KEY) || 'null');
+        if (pos) {
+          helpDialog.style.left      = pos.left;
+          helpDialog.style.top       = pos.top;
+          helpDialog.style.transform = 'none';
+        }
+        openHelp();
+      }
+    } catch(e) {}
+  })();
+
   if (helpBtn) helpBtn.addEventListener('click', openHelp);
-  if (helpClose) helpClose.addEventListener('click', function() { helpDialog.style.display = 'none'; });
+  if (helpClose) helpClose.addEventListener('click', closeHelp);
 
   // Drag to move
   var _dx = 0, _dy = 0, _dragging = false;
@@ -7799,7 +7823,12 @@ function dockPanel(panelId, zone) {
     helpDialog.style.left = (e.clientX - _dx) + 'px';
     helpDialog.style.top  = (e.clientY - _dy) + 'px';
   });
-  document.addEventListener('mouseup', function() { _dragging = false; });
+  document.addEventListener('mouseup', function() {
+    if (_dragging) {
+      try { localStorage.setItem(HELP_POS_KEY, JSON.stringify({left: helpDialog.style.left, top: helpDialog.style.top})); } catch(e) {}
+    }
+    _dragging = false;
+  });
 })();
 
 })();
