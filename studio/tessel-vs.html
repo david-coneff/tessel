@@ -898,6 +898,7 @@ body.no-transitions #props-panel { transition: none !important; }
   outline: none;
 }
 .opts-select:focus { border-color: var(--accent); }
+.opts-preset-select { width: 90px; }
 .opts-pill-group {
   display: inline-flex; border: 1px solid var(--border); border-radius: 20px;
   overflow: hidden; background: var(--surface2); position: relative;
@@ -1613,6 +1614,15 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
             <input type="number" id="opts-undo-time-window-num" class="opts-num-input" min="100" max="60000" value="1000" style="width:68px;">
             <span style="font-size:11px;color:var(--muted);margin-left:2px;">ms</span>
             <button type="button" class="opts-num-step-btn" id="opts-undo-window-inc" title="Increase">&#x2B;</button>
+            <select id="opts-undo-window-preset" class="opts-select opts-preset-select" title="Quick presets">
+              <option value="">Presets…</option>
+              <option value="500">0.5 s</option>
+              <option value="1000">1 s</option>
+              <option value="2000">2 s</option>
+              <option value="5000">5 s</option>
+              <option value="10000">10 s</option>
+              <option value="30000">30 s</option>
+            </select>
           </div>
         </div>
         <div class="opts-toggle-row" style="margin-top:8px;">
@@ -1621,7 +1631,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
             <button type="button" class="opts-num-step-btn" id="opts-undo-depth-dec" title="Decrease">&#x2212;</button>
             <input type="number" id="opts-undo-depth-num" class="opts-num-input" min="1" max="10000" value="100">
             <button type="button" class="opts-num-step-btn" id="opts-undo-depth-inc" title="Increase">&#x2B;</button>
-            <select id="opts-undo-depth-preset" class="opts-select" title="Quick presets">
+            <select id="opts-undo-depth-preset" class="opts-select opts-preset-select" title="Quick presets">
               <option value="">Presets…</option>
               <option value="10">10</option>
               <option value="25">25</option>
@@ -6953,14 +6963,7 @@ function dockPanel(panelId, zone) {
     }
     return 'action';
   }
-  function syncWindowRowActive() {
-    if (!windowRow) return;
-    windowRow.style.opacity = getGranPillValue() === 'time' ? '' : '0.45';
-    var twDisabled = getGranPillValue() !== 'time';
-    if (windowNum) windowNum.disabled = twDisabled;
-    if (windowDec) windowDec.disabled = twDisabled;
-    if (windowInc) windowInc.disabled = twDisabled;
-  }
+  function syncWindowRowActive() {}
   function syncGranSlider() {
     for (var i = 0; i < granRadios.length; i++) {
       if (granRadios[i].checked) {
@@ -7013,11 +7016,18 @@ function dockPanel(panelId, zone) {
       }
     }
   });
+  var windowPreset = document.getElementById('opts-undo-window-preset');
   function applyTimeWindow(ms) {
     ms = Math.max(100, Math.min(60000, ms));
     if (windowNum) windowNum.value = ms;
+    if (windowPreset) windowPreset.value = '';
     try { localStorage.setItem('tvs:opts:undo-time-window', ms); } catch(e) {}
   }
+  if (windowPreset) windowPreset.addEventListener('change', function() {
+    var v = parseInt(windowPreset.value, 10);
+    if (!isNaN(v) && v > 0) { windowNum.value = v; applyTimeWindow(v); }
+    windowPreset.value = '';
+  });
   if (windowNum) windowNum.addEventListener('change', function() {
     var v = parseInt(windowNum.value, 10);
     if (isNaN(v) || v < 100) v = 100;
