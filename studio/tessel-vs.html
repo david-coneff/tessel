@@ -6989,6 +6989,30 @@ function dockPanel(panelId, zone) {
       syncGranSlider();
     });
   }
+
+  // Universal pill click handler: clicking anywhere in a pill selects the nearest option
+  document.addEventListener('click', function(e) {
+    var pill = e.target.closest ? e.target.closest('.opts-pill-group') : null;
+    if (!pill) return;
+    var labels = pill.querySelectorAll('label');
+    if (!labels.length) return;
+    var x = e.clientX;
+    var best = null, bestDist = Infinity;
+    for (var _pi = 0; _pi < labels.length; _pi++) {
+      var r = labels[_pi].getBoundingClientRect();
+      var center = (r.left + r.right) / 2;
+      var dist = Math.abs(x - center);
+      if (dist < bestDist) { bestDist = dist; best = labels[_pi]; }
+    }
+    if (best) {
+      var forId = best.getAttribute('for');
+      var radio = forId ? document.getElementById(forId) : null;
+      if (radio && !radio.checked) {
+        radio.checked = true;
+        radio.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+  });
   function applyTimeWindow(ms) {
     ms = Math.max(100, Math.min(60000, ms));
     if (windowNum) windowNum.value = ms;
