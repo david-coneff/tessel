@@ -1556,6 +1556,25 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
  *   auto-built from each document's front-matter title; in exported HTML the
  *   badge becomes a collapsible sidebar nav with relative-path links between
  *   sibling pages, all titles sourced from front-matter not filesystem names
+ * - Multi-block selection in the canvas editor: shift+click selects a contiguous
+ *   range of blocks, ctrl/cmd+click toggles individual blocks into or out of the
+ *   selection set; selected blocks each show a distinct selection ring distinct from
+ *   the single active-block highlight; the right pane reflects the union of all
+ *   selected blocks — controls that apply to at least one block in the selection are
+ *   shown normally and apply only to the eligible subset when fired; controls that
+ *   apply to none of the selected block types are dimmed (not hidden) so the pane
+ *   layout stays stable and the user understands what would be available on a
+ *   different selection; controls with mixed values across the selection show an
+ *   indeterminate state (dimmed or "—") and writing a new value snaps all eligible
+ *   blocks to that value simultaneously; properties that cleanly apply across block
+ *   types include indentation, alignment, width, styling class/theme variant,
+ *   visibility, and conditional branch membership; inline text formatting (bold,
+ *   italic, etc.) applies only to the eligible text/paragraph blocks in the set and
+ *   no-ops silently on incompatible types; destructive type changes are not available
+ *   in multi-select; the Delete key or toolbar delete action in multi-select triggers
+ *   a mass delete of all selected blocks with a single undo entry covering the full
+ *   set — this is a first-class workflow for quickly clearing large sections of
+ *   content without clicking block by block
  * - Section completion state: when all required inputs within a section or major
  *   partition are satisfied with at least the minimum valid input (one checkbox
  *   checked from a set, a radio option selected, a text field passing its type
