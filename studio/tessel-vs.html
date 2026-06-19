@@ -1157,6 +1157,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
     <div id="outline-tab" title="Toggle Outline">
       <span class="pane-grip" data-pane-grip="outline-panel" title="Drag to reorder">&#8942;</span>
       <span class="panel-tab-title">Outline</span>
+      <button class="panel-tab-arrow">&#8249;</button>
     </div>
   </div>
 
@@ -1189,6 +1190,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
     <div id="props-tab" title="Toggle Properties">
       <span class="pane-grip" data-pane-grip="props-panel" title="Drag to reorder">&#8942;</span>
       <span class="panel-tab-title">Properties</span>
+      <button class="panel-tab-arrow">&#8250;</button>
     </div>
     <div id="props-content">
       <h3>Properties<button class="panel-tab-arrow" id="btn-props-collapse" style="margin-left:auto">&#8250;</button></h3>
@@ -4448,10 +4450,11 @@ updateUndoButtons();
 var _sidePanelArrowSync = {};
 function makeSidePanel(cfg) {
   // cfg: { panelId, tabId, arrowId, badgeId, lsKey }
-  var panel = document.getElementById(cfg.panelId);
-  var tab   = document.getElementById(cfg.tabId);
-  var arrow = document.getElementById(cfg.arrowId);
-  var badge = document.getElementById(cfg.badgeId);
+  var panel    = document.getElementById(cfg.panelId);
+  var tab      = document.getElementById(cfg.tabId);
+  var arrow    = document.getElementById(cfg.arrowId);
+  var badge    = document.getElementById(cfg.badgeId);
+  var tabArrow = tab ? tab.querySelector('.panel-tab-arrow') : null;
 
   function ls(v)  { try { return localStorage.getItem(v); } catch(e) { return null; } }
   function lss(k,v){ try { localStorage.setItem(k, v); } catch(e) {} }
@@ -4461,23 +4464,27 @@ function makeSidePanel(cfg) {
     if (onRight) return isOpen ? '&#8250;' : '&#8249;';
     return isOpen ? '&#8249;' : '&#8250;';
   }
+  function setArrows(isOpen) {
+    var ch = arrowDir(isOpen);
+    if (arrow)    arrow.innerHTML    = ch;
+    if (tabArrow) tabArrow.innerHTML = ch;
+  }
   function syncArrow() {
-    if (!arrow) return;
     var isOpen = !panel.classList.contains('collapsed') && !panel.classList.contains('off');
-    arrow.innerHTML = arrowDir(isOpen);
+    setArrows(isOpen);
   }
   _sidePanelArrowSync[cfg.panelId] = syncArrow;
 
   function open() {
     panel.classList.remove('collapsed', 'off');
-    if (arrow) arrow.innerHTML = arrowDir(true);
+    setArrows(true);
     badge.classList.add('active');
     lss(cfg.lsKey, 'open');
   }
   function collapse() {
     panel.classList.remove('off');
     panel.classList.add('collapsed');
-    if (arrow) arrow.innerHTML = arrowDir(false);
+    setArrows(false);
     badge.classList.add('active'); // badge stays on when collapsed
     lss(cfg.lsKey, 'collapsed');
   }
@@ -4768,6 +4775,7 @@ function dockPanel(panelId, zone) {
           panel.classList.remove('dock-left', 'dock-right', 'dock-top', 'dock-bottom', 'pane-h');
           panel.classList.add('dock-' + zone);
           if (zone === 'top' || zone === 'bottom') panel.classList.add('pane-h');
+          if (_sidePanelArrowSync[id]) _sidePanelArrowSync[id]();
         }
       }
     });
