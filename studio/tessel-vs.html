@@ -211,7 +211,7 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 .ctrl-pane {
   display: flex; flex-direction: row; position: relative;
   background: var(--surface); flex-shrink: 0;
-  transition: width .2s ease; width: 192px;
+  transition: width .2s ease; width: 192px; user-select: none;
 }
 .ctrl-pane.collapsed { width: 28px; }
 .ctrl-pane.off { width: 0; overflow: hidden; }
@@ -325,7 +325,7 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 #outline-panel {
   display: flex; flex-direction: row; position: relative;
   background: var(--surface); flex-shrink: 0;
-  transition: width .2s ease; width: 148px;
+  transition: width .2s ease; width: 148px; user-select: none;
 }
 #outline-panel.collapsed { width: 28px; }
 #outline-panel.collapsed #outline-tab { display: flex; }
@@ -546,7 +546,7 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 #props-panel {
   display: flex; flex-direction: row; position: relative;
   background: var(--surface); flex-shrink: 0;
-  transition: width .2s ease; width: 260px;
+  transition: width .2s ease; width: 260px; user-select: none;
 }
 #props-panel.collapsed { width: 28px; }
 #props-panel.collapsed #props-tab { display: flex; }
@@ -576,6 +576,7 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 .prop-input {
   width: 100%; background: var(--bg); border: 1px solid var(--border);
   color: var(--text); border-radius: 4px; padding: 5px 8px; font-size: 11px;
+  user-select: text;
 }
 .prop-input:focus { outline: none; border-color: var(--accent); }
 select.prop-input { cursor: pointer; }
