@@ -995,9 +995,13 @@ kbd {
 .theme-drag-handle:active { cursor: grabbing; }
 .theme-card.reorder-dragging { visibility: hidden; }
 .theme-list-placeholder {
-  border: 1.5px dashed var(--accent); border-radius: 7px;
-  background: rgba(91,138,240,.06); pointer-events: none;
-  flex-shrink: 0;
+  border: 1.5px dashed var(--accent); border-radius: 9px;
+  padding: 4px; background: rgba(91,138,240,.05);
+  pointer-events: none; flex-shrink: 0; box-sizing: border-box;
+}
+.theme-list-placeholder .theme-card {
+  opacity: 0.45; pointer-events: none; outline: none !important;
+  margin: 0;
 }
 .theme-card-swatches { display: flex; gap: 3px; flex-shrink: 0; }
 .theme-swatch { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(128,128,128,0.3); flex-shrink: 0; }
@@ -4602,10 +4606,14 @@ function renderThemeList() {
       e.dataTransfer.setData('text/plain', tid);
       e.dataTransfer.effectAllowed = 'move';
       var sourceCard = container.querySelector('.theme-card[data-theme-id="'+tid+'"]');
-      // Create placeholder sized to match the source card
+      // Create placeholder with a dimmed clone of the source card inside
       _placeholder = document.createElement('div');
       _placeholder.className = 'theme-list-placeholder';
-      _placeholder.style.height = (sourceCard ? sourceCard.offsetHeight : 36) + 'px';
+      if (sourceCard) {
+        var clone = sourceCard.cloneNode(true);
+        clone.removeAttribute('draggable');
+        _placeholder.appendChild(clone);
+      }
       setTimeout(function() {
         // Defer so browser captures drag image before we hide the card
         if (sourceCard) sourceCard.classList.add('reorder-dragging');
