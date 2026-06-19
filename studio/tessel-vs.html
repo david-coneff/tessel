@@ -936,14 +936,12 @@ kbd {
 .opts-theme-slot:active { cursor: grabbing; }
 .opts-theme-slot:hover { border-color: var(--accent); background: var(--surface2); }
 .opts-theme-slot.drag-over { border-color: var(--accent); background: rgba(91,138,240,.08); border-style: solid; }
-/* Swap preview: slot slides partway toward where it'll end up after the swap */
-.opts-theme-slot.swap-to-left {
-  transform: translateX(-44%);
-  border-color: var(--accent); border-style: solid; background: rgba(91,138,240,.1);
-}
-.opts-theme-slot.swap-to-right {
-  transform: translateX(44%);
-  border-color: var(--accent); border-style: solid; background: rgba(91,138,240,.1);
+/* Source slot slides away to show where it will land after the swap */
+.opts-theme-slot.swap-to-left  { transform: translateX(-70%); opacity: 0.5; }
+.opts-theme-slot.swap-to-right { transform: translateX(70%);  opacity: 0.5; }
+/* Drop target: dashed accent border confirms the user can release here */
+.opts-theme-slot.drop-target {
+  border: 2px dashed var(--accent); background: rgba(91,138,240,.08);
 }
 .opts-theme-slot.active-slot { border-color: var(--accent); border-style: solid; }
 .opts-theme-slot-label {
@@ -4266,7 +4264,12 @@ function renderThemeSlots() {
   if (slotA) { slotA.draggable = true; slotA.ondragstart = function(e) { _draggedThemeId = themeA; e.dataTransfer.setData('text/plain', themeA); }; }
   if (slotB) { slotB.draggable = true; slotB.ondragstart = function(e) { _draggedThemeId = themeB; e.dataTransfer.setData('text/plain', themeB); }; }
 
-  function wireSlotClick(slot, getThemeId) {
+  function clearSlotDragClasses() {
+    if (slotA) slotA.classList.remove('drag-over', 'swap-to-left', 'swap-to-right', 'drop-target');
+    if (slotB) slotB.classList.remove('drag-over', 'swap-to-left', 'swap-to-right', 'drop-target');
+  }
+
+  function wireSlotClick(slot, otherSlot, getThemeId) {
     if (!slot) return;
     slot.onclick = function() {
       applyTheme(getThemeId());
@@ -4278,18 +4281,22 @@ function renderThemeSlots() {
       var targetSlot = slot.getAttribute('data-slot');
       var isSwap = (targetSlot === 'a' && _draggedThemeId === (localStorage.getItem('tvs:theme-b') || 'light')) ||
                    (targetSlot === 'b' && _draggedThemeId === (localStorage.getItem('tvs:theme-a') || 'dark'));
-      slot.classList.remove('drag-over', 'swap-to-left', 'swap-to-right');
+      clearSlotDragClasses();
       if (isSwap) {
-        // Slot slides toward the other slot's position: B goes left, A goes right
-        slot.classList.add(targetSlot === 'b' ? 'swap-to-left' : 'swap-to-right');
+        // Target stays put with dashed drop-zone border; source slot slides away
+        slot.classList.add('drop-target');
+        if (otherSlot) otherSlot.classList.add(targetSlot === 'b' ? 'swap-to-right' : 'swap-to-left');
       } else {
         slot.classList.add('drag-over');
       }
     };
-    slot.ondragleave = function() { slot.classList.remove('drag-over', 'swap-to-left', 'swap-to-right'); };
+    slot.ondragleave = function(e) {
+      // Only clear if leaving the slot entirely (not entering a child element)
+      if (!slot.contains(e.relatedTarget)) clearSlotDragClasses();
+    };
     slot.ondrop = function(e) {
       e.preventDefault();
-      slot.classList.remove('drag-over', 'swap-to-left', 'swap-to-right');
+      clearSlotDragClasses();
       var droppedId = e.dataTransfer.getData('text/plain');
       if (!droppedId) return;
       var targetSlot = slot.getAttribute('data-slot'); // 'a' or 'b'
@@ -4311,8 +4318,8 @@ function renderThemeSlots() {
     };
   }
 
-  wireSlotClick(slotA, function() { return localStorage.getItem('tvs:theme-a') || 'dark'; });
-  wireSlotClick(slotB, function() { return localStorage.getItem('tvs:theme-b') || 'light'; });
+  wireSlotClick(slotA, slotB, function() { return localStorage.getItem('tvs:theme-a') || 'dark'; });
+  wireSlotClick(slotB, slotA, function() { return localStorage.getItem('tvs:theme-b') || 'light'; });
 }
 
 function renderThemeList() {
