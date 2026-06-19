@@ -56,22 +56,27 @@ button.tb-icon { padding: 4px 7px; font-size: 13px; }
   cursor: pointer; color: var(--muted); line-height: 1; border-radius: 0;
   display: flex; align-items: center; gap: 3px;
 }
-.theme-pill-btn:hover { background: var(--surface2); color: var(--text); }
-.theme-pill-btn.active { background: var(--accent); color: var(--accent-text); }
+.theme-pill-btn:hover { background: none; color: var(--text); }
+.theme-pill-btn.active { color: var(--accent-text); }
 button.danger:hover { border-color: var(--red); color: var(--red); }
 #theme-pill {
   display: flex; border: 1px solid var(--border); border-radius: 20px;
   overflow: hidden; background: var(--surface2); flex-shrink: 0;
+  position: relative;
+}
+#theme-pill-slider {
+  position: absolute; top: 2px; bottom: 2px; border-radius: 16px;
+  background: var(--accent); pointer-events: none; z-index: 0;
+  transition: left .18s cubic-bezier(.4,0,.2,1), width .18s cubic-bezier(.4,0,.2,1);
 }
 .theme-pill-btn {
   padding: 3px 8px; font-size: 13px; background: none; border: none;
   cursor: pointer; color: var(--muted); line-height: 1; border-radius: 0;
   display: flex; align-items: center; justify-content: center; min-width: 28px;
+  position: relative; z-index: 1;
 }
-.theme-pill-btn:hover { background: var(--surface2); color: var(--text); }
-.theme-pill-btn.active {
-  background: var(--accent); color: var(--accent-text);
-}
+.theme-pill-btn:hover { background: none; color: var(--text); }
+.theme-pill-btn.active { color: var(--accent-text); }
 
 /* dropdown wrapper */
 .dropdown { position: relative; display: inline-block; }
@@ -938,19 +943,16 @@ kbd {
   flex: 1; border: 2px dashed var(--border); border-radius: 10px;
   padding: 14px 12px; display: flex; flex-direction: column; align-items: center;
   gap: 6px; cursor: grab; min-height: 80px; justify-content: center;
-  transition: border-color .15s, background .15s, transform .22s ease;
+  transition: border-color .15s, background .15s;
   position: relative;
 }
 .opts-theme-slot:active { cursor: grabbing; }
 .opts-theme-slot:hover { border-color: var(--accent); background: var(--surface2); }
 .opts-theme-slot.drag-over { border-color: var(--accent); background: rgba(91,138,240,.08); border-style: solid; }
-/* Source slot slides fully to the other slot's position once drop-target is shown */
-.opts-theme-slot.swap-to-left  { transform: translateX(calc(-100% - 12px)); opacity: 0.5; }
-.opts-theme-slot.swap-to-right { transform: translateX(calc( 100% + 12px)); opacity: 0.5; }
+/* Source slot disappears while dragged — user "has it in hand" */
+.opts-theme-slot.dragging-source { opacity: 0; pointer-events: none; }
 /* Drop target: dashed accent border confirms the user can release here */
-.opts-theme-slot.drop-target {
-  border: 2px dashed var(--accent); background: rgba(91,138,240,.08);
-}
+.opts-theme-slot.drop-target { border: 2px dashed var(--accent); background: rgba(91,138,240,.08); }
 .opts-theme-slot.active-slot { border-color: var(--accent); border-style: solid; }
 .opts-theme-slot-label {
   font-size: 18px; font-weight: 800; color: var(--accent); line-height: 1;
@@ -1205,6 +1207,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
   <span class="logo">Tessel <span>VS</span></span>
   <div class="tb-sep"></div>
   <div id="theme-pill" title="Toggle theme A/B">
+    <span id="theme-pill-slider"></span>
     <button id="theme-pill-a" class="theme-pill-btn" title="Theme A"></button>
     <button id="theme-pill-b" class="theme-pill-btn" title="Theme B"></button>
   </div>
@@ -4241,6 +4244,17 @@ function updateThemeBtn() {
   btnB.innerHTML = themeIcon(themeB);
   btnA.classList.toggle('active', activeId === themeA);
   btnB.classList.toggle('active', activeId === themeB);
+  var slider = document.getElementById('theme-pill-slider');
+  if (slider) {
+    var activeBtn = (activeId === themeA) ? btnA : (activeId === themeB) ? btnB : null;
+    if (activeBtn) {
+      slider.style.left  = activeBtn.offsetLeft + 'px';
+      slider.style.width = activeBtn.offsetWidth + 'px';
+      slider.style.opacity = '1';
+    } else {
+      slider.style.opacity = '0';
+    }
+  }
 }
 
 function renderThemeSlots() {
@@ -4268,16 +4282,28 @@ function renderThemeSlots() {
   var slotA = document.getElementById('opts-slot-a');
   var slotB = document.getElementById('opts-slot-b');
 
-  // Make slots themselves draggable so they can be dropped onto each other to swap
-  if (slotA) { slotA.draggable = true; slotA.ondragstart = function(e) { _draggedThemeId = themeA; e.dataTransfer.setData('text/plain', themeA); }; }
-  if (slotB) { slotB.draggable = true; slotB.ondragstart = function(e) { _draggedThemeId = themeB; e.dataTransfer.setData('text/plain', themeB); }; }
+  // Hide the dragged slot while drag is active so it isn't a confusing on-page copy
+  function setupSlotDrag(slot, themeVal) {
+    slot.draggable = true;
+    slot.ondragstart = function(e) {
+      _draggedThemeId = themeVal;
+      e.dataTransfer.setData('text/plain', themeVal);
+      // Defer hiding until after browser captures drag image
+      setTimeout(function() { slot.classList.add('dragging-source'); }, 0);
+    };
+    slot.ondragend = function() {
+      slot.classList.remove('dragging-source');
+    };
+  }
+  if (slotA) setupSlotDrag(slotA, themeA);
+  if (slotB) setupSlotDrag(slotB, themeB);
 
-  function clearSlotDragClasses() {
-    if (slotA) slotA.classList.remove('drag-over', 'swap-to-left', 'swap-to-right', 'drop-target');
-    if (slotB) slotB.classList.remove('drag-over', 'swap-to-left', 'swap-to-right', 'drop-target');
+  function resetSlotDragClasses() {
+    if (slotA) slotA.classList.remove('drag-over', 'drop-target');
+    if (slotB) slotB.classList.remove('drag-over', 'drop-target');
   }
 
-  function wireSlotClick(slot, otherSlot, getThemeId) {
+  function wireSlotClick(slot, getThemeId) {
     if (!slot) return;
     slot.onclick = function() {
       applyTheme(getThemeId());
@@ -4286,39 +4312,39 @@ function renderThemeSlots() {
     };
     slot.ondragover = function(e) {
       e.preventDefault();
-      var targetSlot = slot.getAttribute('data-slot');
-      var isSwap = (targetSlot === 'a' && _draggedThemeId === (localStorage.getItem('tvs:theme-b') || 'light')) ||
-                   (targetSlot === 'b' && _draggedThemeId === (localStorage.getItem('tvs:theme-a') || 'dark'));
-      clearSlotDragClasses();
-      if (isSwap) {
-        // Target stays put with dashed drop-zone border; source slot slides away
-        slot.classList.add('drop-target');
-        if (otherSlot) otherSlot.classList.add(targetSlot === 'b' ? 'swap-to-right' : 'swap-to-left');
-      } else {
-        slot.classList.add('drag-over');
+      var targetName = slot.getAttribute('data-slot');
+      var curA = localStorage.getItem('tvs:theme-a') || 'dark';
+      var curB = localStorage.getItem('tvs:theme-b') || 'light';
+      var isSwap = (targetName === 'a' && _draggedThemeId === curB) ||
+                   (targetName === 'b' && _draggedThemeId === curA);
+      // Only update when state changes — avoids restarting transitions on every event
+      var wantClass = isSwap ? 'drop-target' : 'drag-over';
+      if (!slot.classList.contains(wantClass)) {
+        slot.classList.remove('drag-over', 'drop-target');
+        slot.classList.add(wantClass);
       }
     };
     slot.ondragleave = function(e) {
-      // Only clear if leaving the slot entirely (not entering a child element)
-      if (!slot.contains(e.relatedTarget)) clearSlotDragClasses();
+      var rel = e.relatedTarget;
+      if (rel && (rel === slot || slot.contains(rel))) return;
+      slot.classList.remove('drag-over', 'drop-target');
     };
     slot.ondrop = function(e) {
       e.preventDefault();
-      clearSlotDragClasses();
+      resetSlotDragClasses();
       var droppedId = e.dataTransfer.getData('text/plain');
       if (!droppedId) return;
-      var targetSlot = slot.getAttribute('data-slot'); // 'a' or 'b'
+      var targetName = slot.getAttribute('data-slot');
       var curA = localStorage.getItem('tvs:theme-a') || 'dark';
       var curB = localStorage.getItem('tvs:theme-b') || 'light';
-      // If dropped theme is already in the other slot, swap
-      if (targetSlot === 'a' && droppedId === curB) {
-        localStorage.setItem('tvs:theme-a', droppedId);
+      if (targetName === 'a' && droppedId === curB) {
+        localStorage.setItem('tvs:theme-a', curB);
         localStorage.setItem('tvs:theme-b', curA);
-      } else if (targetSlot === 'b' && droppedId === curA) {
-        localStorage.setItem('tvs:theme-b', droppedId);
+      } else if (targetName === 'b' && droppedId === curA) {
+        localStorage.setItem('tvs:theme-b', curA);
         localStorage.setItem('tvs:theme-a', curB);
       } else {
-        localStorage.setItem(targetSlot === 'a' ? 'tvs:theme-a' : 'tvs:theme-b', droppedId);
+        localStorage.setItem(targetName === 'a' ? 'tvs:theme-a' : 'tvs:theme-b', droppedId);
       }
       renderThemeSlots();
       renderThemeList();
@@ -4326,8 +4352,8 @@ function renderThemeSlots() {
     };
   }
 
-  wireSlotClick(slotA, slotB, function() { return localStorage.getItem('tvs:theme-a') || 'dark'; });
-  wireSlotClick(slotB, slotA, function() { return localStorage.getItem('tvs:theme-b') || 'light'; });
+  wireSlotClick(slotA, function() { return localStorage.getItem('tvs:theme-a') || 'dark'; });
+  wireSlotClick(slotB, function() { return localStorage.getItem('tvs:theme-b') || 'light'; });
 }
 
 function renderThemeList() {
@@ -5552,11 +5578,15 @@ function dockPanel(panelId, zone) {
 
   function updateIndicator(pane) {
     var body    = pane.querySelector('.ctrl-pane-body');
+    var header  = pane.querySelector('.ctrl-pane-header');
     var indFwd  = pane.querySelector('.pane-h-overflow-ind');
     var indBack = pane.querySelector('.pane-h-back-ind');
     if (!body) return;
+    if (indBack) {
+      indBack.style.left = (header ? header.offsetWidth : 0) + 'px';
+      indBack.classList.toggle('show', body.scrollTop > 2);
+    }
     if (indFwd)  indFwd.classList.toggle('show',  body.scrollHeight > body.scrollTop + body.clientHeight + 2);
-    if (indBack) indBack.classList.toggle('show', body.scrollTop > 2);
   }
 
   function applyRows(pane, rows) {
@@ -5617,7 +5647,7 @@ function dockPanel(panelId, zone) {
     indBack.addEventListener('click', function() {
       var b = pane.querySelector('.ctrl-pane-body');
       if (!b) return;
-      b.scrollTo({ top: Math.max(0, b.scrollTop - ROW_H), behavior: 'smooth' });
+      b.scrollTo({ top: Math.max(0, b.scrollTop - Math.round(ROW_H / 2)), behavior: 'smooth' });
     });
 
     // Right-side forward indicator
@@ -5627,7 +5657,7 @@ function dockPanel(panelId, zone) {
     ind.addEventListener('click', function() {
       var b = pane.querySelector('.ctrl-pane-body');
       if (!b) return;
-      b.scrollTo({ top: b.scrollTop + ROW_H, behavior: 'smooth' });
+      b.scrollTo({ top: b.scrollTop + Math.round(ROW_H / 2), behavior: 'smooth' });
     });
 
     // Resize handle
@@ -5648,7 +5678,8 @@ function dockPanel(panelId, zone) {
       if (loadRows(id) <= 1) return;
       e.preventDefault();
       var delta = e.deltaY !== 0 ? e.deltaY : e.deltaX;
-      b.scrollBy({ top: delta, behavior: 'smooth' });
+      var step = Math.sign(delta) * Math.min(Math.abs(delta) * 0.3, ROW_H);
+      b.scrollBy({ top: step, behavior: 'smooth' });
       updateIndicator(pane);
     }, { passive: false });
 
