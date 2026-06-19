@@ -8,7 +8,7 @@ unless there is explicit reason to depart.
 Each pattern includes a `schema:` block with machine-readable rules an AI
 agent can apply directly when implementing or reviewing changes.
 
-Established: 2026-06-19  
+Established: 2026-06-19
 Last updated: 2026-06-19
 
 ---
@@ -53,8 +53,8 @@ schema:
   scope: [.ctrl-pane-collapse-btn, .panel-tab-arrow, "#btn-outline-collapse", "#btn-props-collapse"]
   rules:
     - dock_zone: left
-      state_open:      "‹"   # points toward left edge (collapse destination)
-      state_collapsed: "›"   # points toward document (invite expand)
+      state_open:      "‹"
+      state_collapsed: "›"
     - dock_zone: right
       state_open:      "›"
       state_collapsed: "‹"
@@ -66,11 +66,10 @@ schema:
   when_to_call_sync:
     - after dockPanel() moves panel to new zone
     - in default-zone restore path (inline, without calling dockPanel)
-  do_not: hardcode arrow chars; always derive from current dock-zone class
   detection: |
-    panel.classList.contains('dock-right')
-      ? (isOpen ? '›' : '‹')
-      : (isOpen ? '‹' : '›')
+    var onRight = pane.classList.contains('dock-right');
+    if (onRight) return isOpen ? '›' : '‹';
+    return isOpen ? '‹' : '›';
 ```
 
 ---
@@ -78,70 +77,42 @@ schema:
 ### P-003 — Horizontal dock mode (top/bottom) has no collapsed state
 
 In top/bottom zones the pane renders as a horizontal toolbar strip.
-Collapsed = `height: 0` = invisible with no affordance to recover.
+Collapsed = height: 0 = invisible with no affordance to recover.
 
 ```yaml
 schema:
   id: P-003
   scope: [.ctrl-pane.pane-h, "#outline-panel.pane-h", "#props-panel.pane-h"]
   rules:
-    - hide_elements_in_pane_h:
-        - .ctrl-pane-collapse-btn
-        - "#outline-content h3 .panel-tab-arrow"
-        - "#props-content h3 .panel-tab-arrow"
-      css: "display: none"
-    - on_dock_to_top_or_bottom:
-        if: panel.classList.contains('collapsed') && !panel.classList.contains('off')
-        then: call _sidePanelOpenFn[panelId]()
-    - badge_button: only on/off control available in horizontal mode
+    - hide_in_pane_h: [.ctrl-pane-collapse-btn, "#outline-content h3 .panel-tab-arrow", "#props-content h3 .panel-tab-arrow"]
+    - auto_open_if_collapsed_on_dock_to_horizontal: true
     - no_scrollbar_in_pane_h:
-        rule: scrollbar must never appear on any element in the pane-h stack
-        approach:
-          - set overflow:hidden on .ctrl-pane.pane-h and .ctrl-pane-content (outer wrappers)
-          - set overflow-x:auto ONLY on .ctrl-pane-body (innermost scrollable layer)
-          - set scrollbar-width:none and ::-webkit-scrollbar {display:none} on .ctrl-pane-body
-          - set width:auto !important on all three pane-h rules to override inline style.width
-            set by the vertical resize feature
-          - set scrollbar-gutter:auto on .ctrl-pane-body in pane-h mode to cancel
-            the stable gutter reservation that applies in vertical mode
-        do_not:
-          - set overflow-x:auto on the pane or content wrapper (only body scrolls)
-          - set scrollbar-gutter:stable on any element visible in pane-h mode
+        overflow_hidden_on: [.ctrl-pane.pane-h, .ctrl-pane-content.pane-h]
+        overflow_x_auto_only_on: .ctrl-pane-body
+        scrollbar_hidden: "scrollbar-width:none; ::-webkit-scrollbar {display:none}"
+        scrollbar_gutter: auto (cancel stable gutter in pane-h)
+        width_auto_important: true (beats inline style.width from resize JS)
   css_pattern: |
-    .ctrl-pane.pane-h {
-      width: auto !important; overflow: hidden;
-    }
-    .ctrl-pane.pane-h .ctrl-pane-content {
-      overflow: hidden;
-    }
+    .ctrl-pane.pane-h { width: auto !important; overflow: hidden; }
+    .ctrl-pane.pane-h .ctrl-pane-content { overflow: hidden; }
     .ctrl-pane.pane-h .ctrl-pane-body {
       overflow-x: auto; overflow-y: hidden;
-      scrollbar-gutter: auto;
-      scrollbar-width: none;
+      scrollbar-gutter: auto; scrollbar-width: none;
     }
     .ctrl-pane.pane-h .ctrl-pane-body::-webkit-scrollbar { display: none; }
-    #outline-panel.pane-h { width: auto !important; }
-    #props-panel.pane-h   { width: auto !important; }
+    #outline-panel.pane-h, #props-panel.pane-h { width: auto !important; }
 ```
 
 ---
 
 ### P-004 — Floating window mode has no collapsed state
 
-Float is only reachable from an expanded pane. Collapse carrot is meaningless
-in float mode and must be hidden.
-
 ```yaml
 schema:
   id: P-004
   scope: [.dock-float]
   rules:
-    - hide_in_float:
-        - .ctrl-pane-collapse-btn
-        - "#outline-content h3 .panel-tab-arrow"
-        - "#props-content h3 .panel-tab-arrow"
-      css: "display: none"
-    - on_off_control: badge button only
+    - hide: [.ctrl-pane-collapse-btn, "#outline-content h3 .panel-tab-arrow", "#props-content h3 .panel-tab-arrow"]
   css_pattern: |
     .dock-float .ctrl-pane-collapse-btn { display: none; }
     .dock-float #outline-content h3 .panel-tab-arrow { display: none; }
@@ -152,22 +123,19 @@ schema:
 
 ### P-005 — Badge button restores the last active state, not always "open"
 
-Turning a pane back on via badge should return it to the state it was in
-before it was turned off.
-
 ```yaml
 schema:
   id: P-005
   scope: [makeCtrlPane, makeSidePanel]
-  state_variable: _lastActiveState   # local var inside each factory closure
+  state_variable: _lastActiveState
   valid_values: [open, collapsed]
   update_on: [open(), collapse()]
-  do_not: update on hide()           # hide() is "off", not an active state
+  do_not_update_on: hide()
   badge_click_logic: |
-    if badge active  → hide()
-    if badge inactive:
+    if active → hide()
+    if inactive:
       if _lastActiveState === 'collapsed' → collapse()
-      else                               → open()
+      else → open()
   init: |
     var _lastActiveState = 'open';
     var state = ls(cfg.lsKey);
@@ -180,15 +148,13 @@ schema:
 
 ### P-006 — Pane order is preserved on expand/collapse
 
-`open()` must never reorder the panel within its dock zone.
-
 ```yaml
 schema:
   id: P-006
   scope: [makeCtrlPane.open, makeSidePanel.open]
   rules:
     - do_not: call parentElement.appendChild(panel) inside open()
-    - reason: appendChild moves the element to last-child, destroying dock order
+    - reason: appendChild moves element to last-child, destroying dock order
     - dom_order_is_visual_order: true
 ```
 
@@ -200,15 +166,9 @@ schema:
 schema:
   id: P-007
   scope: [.pane-expand-all-btn]
-  position:
-    container: .ctrl-pane-body
-    placement: absolute, top-right corner
-    top: 6px
-    right: 6px
+  position: absolute, top-right of .ctrl-pane-body (top:6px; right:6px)
   visibility: opacity 0 at rest, opacity 1 on .ctrl-pane-body:hover
-  do_not: place in .ctrl-pane-header (title bar)
-  reason: title bar controls = pane-level; body controls = content-level
-  hidden_in: [.pane-h]   # no meaning in horizontal mode
+  hidden_in: [.pane-h]
   css_pattern: |
     .pane-expand-all-btn { position: absolute; top: 6px; right: 6px; opacity: 0; }
     .ctrl-pane-body:hover .pane-expand-all-btn { opacity: 1; }
@@ -217,73 +177,154 @@ schema:
 
 ---
 
-### P-008 — Floating panes must clamp to viewport on badge toggle and window resize
-
-A floating pane can drift off-screen if the window is resized after the pane
-was positioned. Badge toggle-on and window resize must clamp it back.
+### P-008 — Floating panes clamp to viewport on badge toggle and window resize
 
 ```yaml
 schema:
   id: P-008
-  scope: [floatPanel, badge click handler, window resize]
   clamp_function: clampFloatPanel(panel)
-  margin: 60px   # minimum px of pane that must remain visible on each axis
+  margin: 60px
   clamp_x:
-    min: MARGIN - panelWidth    # allows partial off-left
+    min: MARGIN - panelWidth
     max: window.innerWidth - MARGIN
   clamp_y:
     min: 0
     max: window.innerHeight - MARGIN
-  call_on:
-    - badge click when removing .off class from a dock-float panel
-    - window resize event (for all visible dock-float panels)
-    - floatPanel() already clamps on initial position (min/max within viewport)
-  do_not: clamp during drag (user is actively repositioning)
-  css_note: "dock-float panels with .off class are display:none — skip them in resize handler"
+  call_on: [badge click removing .off from dock-float, window resize]
+  do_not: clamp during active drag
 ```
 
 ---
 
 ### P-009 — Vertical panes are user-resizable by dragging the inner border edge
 
-Users can drag the innermost edge of a vertically-docked pane to adjust its
-width. The handle is invisible at rest, appears as an accent-colored bar on
-hover, and is suppressed in all non-vertical modes.
-
 ```yaml
 schema:
   id: P-009
-  scope: [.ctrl-pane, "#outline-panel", "#props-panel"]
   handle_element: .pane-width-handle
   handle_position:
-    dock_left:  right edge of pane (right: 0)
-    dock_right: left edge of pane  (left: 0)
-  handle_css:
-    width: 5px
-    position: absolute
-    top: 0; bottom: 0
-    cursor: col-resize
-    default_opacity: 0
-    hover_opacity: 1
-    hover_background: var(--accent)
-    dragging_class: dragging
+    dock_left:  right: 0
+    dock_right: left: 0
+  handle_css: |
+    width: 5px; position: absolute; top: 0; bottom: 0;
+    cursor: col-resize; opacity: 0;
+  handle_hover: opacity 1, background: var(--accent)
   hidden_in: [.pane-h, .dock-float, .collapsed, .off]
-  min_width: 100px   # icons remain visible; text labels may be clipped
-  parent_requires: position:relative
+  min_width: 100px
   drag_behavior:
     dock_left:  newW = startW + (e.clientX - startX)
-    dock_right: newW = startW - (e.clientX - startX)   # inverted: drag left = wider
+    dock_right: newW = startW - (e.clientX - startX)
+  persistence_key: "tvs:pane-w:{panelId}"
   during_drag:
-    suppress_transition: add class .pane-resizing → transition: none !important
-    set_body_cursor: col-resize
-    set_body_user_select: none
-  persistence:
-    key: "tvs:pane-w:{panelId}"
-    save_on: mouseup
-    restore_on: page load (before handle is appended)
-  inline_width_override:
-    problem: inline style.width set by resize JS beats CSS width:auto in pane-h mode
-    fix: use width:auto !important on all pane-h rules
+    class: .pane-resizing → transition: none !important
+    body_cursor: col-resize
+    body_user_select: none
+```
+
+---
+
+### P-010 — Horizontal pane scroll indicators: back/forward chevrons
+
+When a pane is in horizontal (pane-h) mode and has more content than fits,
+back (‹) and forward (›) scroll indicators appear at the edges. The back
+indicator's left position is dynamically set to sit flush against the right
+edge of the pane's fixed header area.
+
+```yaml
+schema:
+  id: P-010
+  elements:
+    back_indicator:  .pane-h-back-ind
+    forward_indicator: .pane-h-overflow-ind
+  css: |
+    .pane-h-overflow-ind,
+    .pane-h-back-ind {
+      display: none; position: absolute;
+      top: 0; bottom: 0; width: 36px;
+      align-items: center; justify-content: center;
+      cursor: pointer; z-index: 10;
+      transition: border-color .12s, color .12s, background .12s;
+    }
+    .pane-h-overflow-ind { right: 0; }
+    .pane-h-overflow-ind::after { content: '›'; }
+    .pane-h-back-ind { left: 0; }
+    .pane-h-back-ind::after { content: '‹'; }
+    .pane-h-overflow-ind.show,
+    .pane-h-back-ind.show { display: flex; }
+    /* gradient fade behind chevron */
+    .pane-h-overflow-ind { background: linear-gradient(to right, transparent, var(--surface) 70%); }
+    .pane-h-back-ind     { background: linear-gradient(to left,  transparent, var(--surface) 70%); }
+
+  back_indicator_position:
+    rule: |
+      indBack.style.left = (header ? header.offsetWidth : 0) + 'px';
+    reason: |
+      The pane header (title/grip area) is a fixed-width non-scrolling zone.
+      The back indicator must not cover it; its left edge must begin at the
+      header's right edge. This is computed at render time via offsetWidth,
+      not hardcoded, so it adapts to different header widths.
+
+  visibility_logic: |
+    function updateIndicator(b, indFwd, indBack, header) {
+      indFwd.classList.toggle('show', b.scrollWidth > b.clientWidth && b.scrollLeft < b.scrollWidth - b.clientWidth - 2);
+      indBack.classList.toggle('show', b.scrollTop > 2);  // scrollTop threshold: 2px to avoid false show on tiny rounding
+      indBack.style.left = (header ? header.offsetWidth : 0) + 'px';
+    }
+
+  update_triggers:
+    - setTimeout(0) after row application (layout not yet settled at call time)
+    - on every scroll event of the pane body
+    - on every wheel event of the pane body
+```
+
+---
+
+### P-011 — Horizontal pane scroll step sizes and wheel damping
+
+Click on the back/forward indicator scrolls by half a row. The mouse wheel
+is intercepted and damped so the fast native scroll delta doesn't overshoot
+the narrow row height.
+
+```yaml
+schema:
+  id: P-011
+  constants:
+    ROW_H: 44   # px, height of one dock row
+  click_scroll:
+    step: Math.round(ROW_H / 2)   # 22px
+    direction:
+      forward: scrollTop + step
+      back:    Math.max(0, scrollTop - step)
+    behavior: smooth
+    code: |
+      indFwd.addEventListener('click', function() {
+        body.scrollTo({ top: body.scrollTop + Math.round(ROW_H / 2), behavior: 'smooth' });
+      });
+      indBack.addEventListener('click', function() {
+        body.scrollTo({ top: Math.max(0, body.scrollTop - Math.round(ROW_H / 2)), behavior: 'smooth' });
+      });
+
+  wheel_scroll:
+    active_when: multi-row mode (loadRows(id) > 1)
+    passive: false   # required for preventDefault()
+    damping_factor: 0.3
+    cap: ROW_H
+    formula: |
+      var step = Math.sign(delta) * Math.min(Math.abs(delta) * 0.3, ROW_H);
+      body.scrollBy({ top: step, behavior: 'smooth' });
+    rationale: |
+      Native wheel delta can be 100+ px per tick. Without damping, a single
+      scroll moves multiple rows. 0.3x with ROW_H cap means one fast tick
+      moves at most one row height, keeping navigation predictable.
+    code: |
+      body.addEventListener('wheel', function(e) {
+        if (loadRows(id) <= 1) return;
+        e.preventDefault();
+        var delta = e.deltaY || e.deltaX;
+        var step = Math.sign(delta) * Math.min(Math.abs(delta) * 0.3, ROW_H);
+        body.scrollBy({ top: step, behavior: 'smooth' });
+        updateIndicator(body, indFwd, indBack, header);
+      }, { passive: false });
 ```
 
 ---
@@ -292,85 +333,38 @@ schema:
 
 ### C-001 — Small icon buttons: quiet at rest, bordered box on hover
 
-Pane control buttons (collapse carrot, float ↗, redock) are invisible at rest
-and reveal a rounded-square border on hover.
-
 ```yaml
 schema:
   id: C-001
-  applies_to:
-    - .ctrl-pane-collapse-btn
-    - .panel-tab-arrow
-    - .ctrl-pane-float-btn
-  rest_state:
-    background: none
-    border: "1px solid transparent"
-  hover_state:
-    background: var(--surface2)
-    border: "1px solid var(--border)"
-    border_radius: 5px
-    color: var(--text)
-  font_sizes:
-    collapse_carrot: 16px
-    float_redock: 14px
+  applies_to: [.ctrl-pane-collapse-btn, .panel-tab-arrow, .ctrl-pane-float-btn]
+  rest_state: { background: none, border: "1px solid transparent" }
+  hover_state: { background: var(--surface2), border: "1px solid var(--border)", border_radius: 5px }
+  font_sizes: { collapse_carrot: 16px, float_redock: 14px }
   padding: "2px 5px"
-  rationale: visible affordance without resting visual noise
-  css_pattern: |
-    .ctrl-pane-collapse-btn {
-      border: 1px solid transparent; font-size: 16px;
-      padding: 2px 5px; border-radius: 5px;
-    }
-    .ctrl-pane-collapse-btn:hover {
-      background: var(--surface2); border-color: var(--border);
-    }
 ```
 
 ---
 
 ### C-002 — State-bearing toolbar buttons reflect their active state dynamically
 
-Buttons that represent whether something is currently open/active must use the
-`.active` class toggled programmatically. A permanent `class="primary"` is
-incorrect for a button whose state can change.
-
 ```yaml
 schema:
   id: C-002
-  pattern:
-    active_class: active        # CSS: background: var(--accent); color: var(--accent-text)
-    primary_class: primary      # same visual treatment — permanent, not toggled
   rule:
-    use_primary: false          # only for permanently-styled CTAs with no off state
-    use_active: true            # toggled on open/show, removed on close/hide
-  examples:
-    correct:
-      - element: "#btn-preview"
-        on_open:  classList.add('active')
-        on_close: classList.remove('active')
-    incorrect:
-      - element: "<button class='primary'>Preview</button>"
-        problem: "always appears active even when preview modal is closed"
-  escape_key: must also trigger close + remove active
+    use_primary: false   # only for permanent CTAs
+    use_active: true     # toggled programmatically
+  active_css: "background: var(--accent); color: var(--accent-text);"
+  escape_key: must trigger close + remove active
 ```
 
 ---
 
 ### C-003 — Segmented pill-box for binary or small-N option toggles
 
-When offering a choice between two or more mutually-exclusive options that the
-user will switch between regularly (not just set-and-forget), prefer a
-pill-box segmented control over a `<select>` dropdown.
-
 ```yaml
 schema:
   id: C-003
-  use_when:
-    - 2–4 mutually exclusive options
-    - user switches between them with some frequency
-    - options have short labels or can be represented by icons
-  do_not_use_when:
-    - more than 4 options (use select)
-    - label is long prose (use radio buttons)
+  use_when: [2-4 mutually exclusive options, user switches frequently, short labels or icons]
   structure: |
     <div class="opts-pill-group" id="my-pill">
       <div class="opts-pill-slider" id="my-slider"></div>
@@ -391,39 +385,24 @@ schema:
         }
       }
     }
-  slider_timing: call syncSlider() immediately on change; also setTimeout(syncSlider, 0) on init after layout
+  slider_timing: call immediately on change; also setTimeout(syncSlider, 0) on init
   css_key_properties:
     pill_group: "position:relative; border-radius:20px; overflow:hidden; display:inline-flex"
-    slider: "position:absolute; top:0; bottom:0; border-radius:20px; background:var(--accent); opacity:0.25; pointer-events:none; transition:left 0.18s, width 0.18s"
-    label: "position:relative; z-index:1; cursor:pointer"
-    checked_label: "font-weight:600; color:var(--text)"
+    slider: "position:absolute; top:0; bottom:0; background:var(--accent); pointer-events:none; transition:left .18s, width .18s"
 ```
 
 ---
 
 ### C-004 — Icon-driven controls must not use text labels for brevity
 
-Controls that are permanently visible in the toolbar should communicate
-through icons alone when the icon is unambiguous. Letter labels alongside
-icons add noise without aiding comprehension.
-
 ```yaml
 schema:
   id: C-004
-  applies_to: ["#theme-pill", any toolbar icon control]
-  rule:
-    prefer: SVG or Unicode glyph icon only
-    avoid: text labels alongside icons in toolbar pill-boxes
-  exception: |
-    When two adjacent icons are ambiguous without context (e.g., two
-    custom duo-tone theme swatches that look similar), a minimal label
-    (single letter A/B) may be added. Remove it once the icons are
-    sufficiently distinct on their own.
+  rule: { prefer: SVG or Unicode glyph only, avoid: text labels in toolbar pill-boxes }
   icon_selection:
-    dark_theme:  "☾ (U+263E LAST QUARTER MOON)"
-    light_theme: "☀ (U+2600 BLACK SUN WITH RAYS)"
+    dark_theme:  "☾ (U+263E)"
+    light_theme: "☀ (U+2600)"
     custom_theme: |
-      SVG duo-tone circle: left half = --bg color, right half = --accent color
       <svg viewBox="0 0 13 13">
         <circle cx="6.5" cy="6.5" r="5.5" fill="BG_COLOR"/>
         <path d="M6.5 1A5.5 5.5 0 0 1 6.5 12z" fill="ACCENT_COLOR"/>
@@ -436,154 +415,95 @@ schema:
 
 ### T-001 — Theme variables use --accent-text to guarantee contrast on accent backgrounds
 
-Hardcoding `color: #fff` on accent-colored backgrounds breaks WCAG contrast
-when the accent is a light colour (e.g. yellow in High Contrast theme).
-
 ```yaml
 schema:
   id: T-001
   css_variable: --accent-text
   root_default: "#fff"
   usage: |
-    Every element whose background is var(--accent) must use
-    color: var(--accent-text) instead of color: #fff
-  affected_selectors:
-    - button.active, button.primary
-    - .badge-btn.active
-    - .hl-btn.active
-    - .mib-btn.active
-    - .block-add-btn:hover
-    - .field-badge
-    - .theme-badge
+    Every element with background: var(--accent) must use color: var(--accent-text)
   per_theme_override: |
-    Themes with light accent colors must define --accent-text: #000000
-    Example (High Contrast): --accent-text: '#000000'
-  wcag_target: AA (4.5:1 for normal text), AAA (7:1) preferred for HC theme
-  do_not: hardcode color:#fff on any element with background:var(--accent)
+    Themes with light accents define --accent-text: '#000000'
+  do_not: hardcode color:#fff on any accent-background element
 ```
 
 ---
 
-### T-002 — Theme A/B toggle is a pill-box; icons reflect slot contents, not active state label
-
-The toolbar theme control is an icon-only pill-box. Each half shows the icon
-for whichever theme is assigned to that slot. Clicking either half toggles
-to the other theme (not necessarily the clicked side's theme).
+### T-002 — Theme A/B toggle is a pill-box; icons reflect slot contents
 
 ```yaml
 schema:
   id: T-002
   element: "#theme-pill"
-  structure: |
-    <div id="theme-pill">
-      <button id="theme-pill-a" class="theme-pill-btn"></button>
-      <button id="theme-pill-b" class="theme-pill-btn"></button>
-    </div>
-  icon_rules:
-    id_equals_dark:   "☾ (crescent moon Unicode glyph in a <span>)"
-    id_equals_light:  "☀ (sun Unicode glyph in a <span>)"
-    any_other_id:     "duo-tone SVG circle using --bg and --accent from that theme's vars"
-  active_indicator: ".theme-pill-btn.active { background: var(--accent); color: var(--accent-text); }"
   click_behavior: |
-    BOTH buttons call the same toggleThemePill() function.
-    toggleThemePill() always switches to whichever of A/B is not currently active.
+    BOTH buttons call the same toggleThemePill().
+    toggleThemePill() switches to whichever of A/B is not currently active.
     do_not: make left button activate A, right button activate B
-    reason: pill is a toggle, not a selector; clicking either side flips state
-  update_trigger:
-    - applyTheme() always calls updateThemeBtn() at end
-    - renderThemeSlots() calls updateThemeBtn() after slot assignment
-    - pill click calls updateThemeBtn() via applyTheme()
-  no_text_labels: true   # see C-004
+  update_trigger: [applyTheme(), renderThemeSlots(), pill click]
+  no_text_labels: true
 ```
 
 ---
 
 ### T-003 — Theme A/B slot assignment uses drag-and-drop, not Set A/Set B buttons
 
-The Options > Themes section provides two large drop-target rectangles for
-the A and B slots. Theme cards in the list below are draggable onto these
-targets. Swapping is atomic when the dropped theme already occupies the
-other slot.
-
 ```yaml
 schema:
   id: T-003
-  elements:
-    slot_a: "#opts-slot-a[data-slot='a']"
-    slot_b: "#opts-slot-b[data-slot='b']"
-    theme_card: ".theme-card[draggable='true'][data-theme-id]"
-  slot_visual:
-    border: "2px dashed var(--border)"
-    border_radius: 10px
-    min_height: 80px
-    active_slot_border: "2px solid var(--accent)"
-    drag_over_style: "border-style:solid; background:rgba(91,138,240,.08)"
-    cursor: grab
-  slot_draggable: true   # slots themselves are draggable for slot-to-slot swap
   drop_logic: |
-    var targetSlot = slot.getAttribute('data-slot');  // 'a' or 'b'
+    var targetSlot = slot.getAttribute('data-slot');
     var curA = localStorage.getItem('tvs:theme-a');
     var curB = localStorage.getItem('tvs:theme-b');
     if (targetSlot === 'a' && droppedId === curB) {
-      // swap: dropped theme was in B → swap both
-      localStorage.setItem('tvs:theme-a', droppedId);
+      localStorage.setItem('tvs:theme-a', curB);
       localStorage.setItem('tvs:theme-b', curA);
     } else if (targetSlot === 'b' && droppedId === curA) {
-      // swap: dropped theme was in A → swap both
-      localStorage.setItem('tvs:theme-b', droppedId);
+      localStorage.setItem('tvs:theme-b', curA);
       localStorage.setItem('tvs:theme-a', curB);
     } else {
       localStorage.setItem(targetSlot === 'a' ? 'tvs:theme-a' : 'tvs:theme-b', droppedId);
     }
-  do_not: add "Set A" / "Set B" buttons to theme card action rows
-  after_drop: call renderThemeSlots(), renderThemeList(), updateThemeBtn()
+  after_drop: [renderThemeSlots(), renderThemeList(), updateThemeBtn()]
 ```
 
 ---
 
 ### T-004 — Theme slot visual state semantics: active, hover, drag, rest
 
-The A/B slot area uses a two-layer visual model: an outer **slot** (the drop
-zone, with a fixed position border) and an inner **card** (the theme identity
-that can slide). Each interaction state has a precise visual meaning:
+Two-layer DOM model: outer `.opts-theme-slot` (fixed, border = slot-level state) +
+inner `.opts-theme-slot-card` (slides during swap, border = interactive affordance).
 
 | State | Outer slot border | Inner card border | Card opacity |
 |---|---|---|---|
-| Rest (inactive) | transparent | `1.5px solid var(--border)` | 1 |
-| Active (selected theme) | `2px solid var(--accent)` | unchanged | 1 |
-| Hover (inactive slot only) | transparent | `1.5px dashed var(--accent)` | 1 |
-| Dragging source (card in hand) | unchanged (active border stays if active) | — | 0 (card hidden) |
-| Drop target (swap preview) | `2px dashed var(--accent)` on slot | `1.5px dashed var(--accent)` on ghost `::before` | card slides to source position |
-| Preview mode (theme list preview) | transparent on all slots | unchanged | 1 |
+| Rest (inactive) | transparent | 1.5px solid var(--border) | 1 |
+| Active | 2px solid var(--accent) | unchanged | 1 |
+| Hover (inactive only) | transparent | 1.5px dashed var(--accent) | 1 |
+| Dragging source | unchanged | — | 0 |
+| Drop target (swap preview) | 2px dashed via ::before | 1.5px dashed ghost | slides |
+| Preview mode | transparent | unchanged | 1 |
 
 ```yaml
 schema:
   id: T-004
   qualitative_principles:
-    - The slot border communicates slot-level state (active, drop zone).
-      It never travels with the card.
-    - The card border communicates card-level interactivity (hover invitation,
-      drop confirmation). It travels with the card.
-    - Active state belongs to a slot POSITION (A or B), not a theme ID.
-      Swapping cards does not move the active indicator.
-    - The hover dashed border is suppressed on the active slot — dashed means
-      "click to activate", which is meaningless on the already-active slot.
-    - During drag, only the inner card becomes invisible (opacity 0).
-      The outer slot and its border remain visible so the active indicator
-      does not disappear when the user picks up a card from the active slot.
+    - Slot border = slot-level state; never travels with the card
+    - Card border = interactive affordance; travels with the card
+    - Active state = slot POSITION (A/B), never theme ID — swap doesn't move indicator
+    - Hover dashed suppressed on active slot (meaningless to invite activating active slot)
+    - Drag hides only the card (opacity 0), not the outer slot or its border
 
   dom_structure: |
-    <div class="opts-theme-slot-wrapper">       <!-- flex column, flex:1 -->
-      <div class="opts-theme-slot-label">A</div> <!-- fixed label above slot -->
+    <div class="opts-theme-slot-wrapper">
+      <div class="opts-theme-slot-label">A</div>
       <div class="opts-theme-slot" id="opts-slot-a" data-slot="a">
-        <div class="opts-theme-slot-card">       <!-- slides during drag preview -->
+        <div class="opts-theme-slot-card">
           <div class="opts-theme-slot-name" id="opts-slot-a-name">—</div>
           <div class="opts-theme-slot-swatches" id="opts-slot-a-swatches"></div>
         </div>
       </div>
     </div>
 
-  css_pattern: |
+  full_css: |
     .opts-theme-slot-wrapper {
       flex: 1; display: flex; flex-direction: column;
       gap: 6px; align-items: center;
@@ -611,6 +531,8 @@ schema:
     .opts-theme-slot:not(.active-slot):not(.no-hover):hover .opts-theme-slot-card {
       border-color: var(--accent); border-style: dashed;
     }
+    .opts-theme-slot.drag-over { border-color: var(--accent); background: rgba(91,138,240,.08); border-style: solid; }
+    .opts-theme-slot.drag-over-list .opts-theme-slot-card { border-color: var(--accent); border-style: dashed; }
     .opts-theme-slot.dragging-source { pointer-events: none; background: transparent !important; }
     .opts-theme-slot.dragging-source .opts-theme-slot-card { opacity: 0; }
     .opts-theme-slot.drop-target { background: rgba(91,138,240,.08); z-index: 2; }
@@ -622,40 +544,30 @@ schema:
 
   key_implementation_decisions:
     - label_above_card: |
-        The A/B label is placed in the wrapper ABOVE the slot element,
-        not inside the card. This prevents the label from appearing to
-        rename itself when the card slides to the other slot during a
-        swap preview.
-    - two_layer_border_model: |
-        Outer slot border = slot-position state (active, drop-zone).
-        Inner card border = interactive affordance (hover, drag feedback).
-        Separating these into two DOM elements was necessary to let
-        the card animate independently of the slot indicator.
+        Label placed in wrapper ABOVE slot so it doesn't appear to rename
+        when card slides to the other slot during swap preview.
     - source_slot_background_transparent: |
-        When dragging, setting background:transparent !important on the
-        dragging-source slot is required so the card sliding in from the
-        other slot is visible as it translates over the source area.
+        background:transparent !important on .dragging-source lets the incoming
+        card slide in from the other slot be visible through the source area.
     - z_index_on_drop_target: |
-        The drop-target slot needs z-index:2 so its sliding card paints
-        on top of the source slot element (first in DOM order).
+        z-index:2 on drop-target slot makes its card (translated outside slot bounds)
+        paint above the source slot (first in DOM order).
 ```
 
 ---
 
-### T-005 — Pill-box active indicator uses a sliding span, not background on the button
+### T-005 — Pill-box active indicator uses a sliding span
 
 ```yaml
 schema:
   id: T-005
-  element: "#theme-pill"
-  approach: absolute-positioned sliding span behind the buttons
   structure: |
     <div id="theme-pill" title="Toggle theme A/B">
       <span id="theme-pill-slider"></span>
       <button id="theme-pill-a" class="theme-pill-btn"></button>
       <button id="theme-pill-b" class="theme-pill-btn"></button>
     </div>
-  css_pattern: |
+  css: |
     #theme-pill { position: relative; overflow: hidden; }
     #theme-pill-slider {
       position: absolute; top: 2px; bottom: 2px; border-radius: 16px;
@@ -666,13 +578,13 @@ schema:
     .theme-pill-btn.active { color: var(--accent-text); }
   js_sync: |
     var activeBtn = activeSlot === 'a' ? btnA : btnB;
-    slider.style.left  = activeBtn.offsetLeft + 'px';
-    slider.style.width = activeBtn.offsetWidth + 'px';
+    slider.style.left    = activeBtn.offsetLeft + 'px';
+    slider.style.width   = activeBtn.offsetWidth + 'px';
     slider.style.opacity = previewing ? '0' : '1';
   do_not:
-    - set background on .theme-pill-btn.active
+    - set background on .theme-pill-btn.active (slider provides it)
     - animate with JS setInterval
-  preview_mode: set slider opacity to 0 when previewing
+  preview_mode: opacity 0 when tvs:previewing is set
 ```
 
 ---
@@ -683,19 +595,83 @@ schema:
 schema:
   id: T-006
   drag_start:
-    defer_hide: use setTimeout(0) so browser captures drag image before card is hidden
+    code: |
+      slot.ondragstart = function(e) {
+        _dragFromList = false;
+        _draggedThemeId = themeVal;
+        e.dataTransfer.setData('text/plain', themeVal);
+        setTimeout(function() { slot.classList.add('dragging-source'); }, 0);
+      };
+    why_setTimeout: |
+      Deferring class addition ensures browser captures drag image before
+      the card is hidden. Without defer, drag image is also invisible.
+
   drag_over:
-    idempotency: guard class changes with classList.contains() — ondragover fires 60/s
-    slide_preview: translateX(sourceSlot.offsetLeft - slot.offsetLeft) on hovered card
+    swap_detection: |
+      var isSwap = !_dragFromList && (
+        (targetName === 'a' && _draggedThemeId === curB) ||
+        (targetName === 'b' && _draggedThemeId === curA)
+      );
+    idempotency: |
+      Guard all class changes: if (!slot.classList.contains(wantClass)) { ... }
+      ondragover fires ~60/s — re-adding classes restarts CSS transitions.
+    slide_preview: |
+      card.style.transform = 'translateX(' + (sourceSlot.offsetLeft - slot.offsetLeft) + 'px)';
+      // transition: transform .22s cubic-bezier(.4,0,.2,1) on .opts-theme-slot-card
+
   drag_leave:
-    false_trigger_guard: "if (rel && (rel === slot || slot.contains(rel))) return;"
+    false_trigger_guard: |
+      slot.ondragleave = function(e) {
+        var rel = e.relatedTarget;
+        if (rel && (rel === slot || slot.contains(rel))) return;
+        // genuine leave — reset classes
+      };
+
   drag_end:
     transition_suppression: |
-      slot.style.transition = 'none'; slot.classList.remove('dragging-source');
-      void slot.offsetWidth; slot.style.transition = '';
+      slot.ondragend = function() {
+        slot.style.transition = 'none';
+        slot.classList.remove('dragging-source');
+        void slot.offsetWidth;   // force reflow to commit no-transition state
+        slot.style.transition = '';
+        resetSlotDragClasses(true);
+      };
+    why: |
+      Without suppression, a border-color transition that started while the
+      slot was hidden becomes visible as a flicker when dragging-source is removed.
+
   drop:
-    instant_reset: resetSlotDragClasses(true) before re-render
-    apply_active_slot_theme: applyTheme(localStorage['tvs:theme-' + activeSlot])
+    code: |
+      slot.ondrop = function(e) {
+        e.preventDefault();
+        slot.classList.remove('drag-over-list');
+        var dropCard = slot.querySelector('.opts-theme-slot-card');
+        if (dropCard) dropCard.removeAttribute('data-preview-id');
+        resetSlotDragClasses(true);
+        // ... swap logic ...
+        var activeSlot = localStorage.getItem('tvs:active-slot') || 'a';
+        var activeTheme = localStorage.getItem('tvs:theme-' + activeSlot) || 'dark';
+        applyTheme(activeTheme);
+        renderThemeSlots(); renderThemeList(); updateThemeBtn();
+        // no-hover suppression (see T-012)
+      };
+
+  reset_function: |
+    function resetSlotDragClasses(instant) {
+      [slotA, slotB].forEach(function(s) {
+        if (!s) return;
+        s.classList.remove('drag-over', 'drop-target', 'drag-over-list');
+        var sc = s.querySelector('.opts-theme-slot-card');
+        if (sc) sc.removeAttribute('data-preview-id');
+        restoreSlotCard(s);
+        var card = s.querySelector('.opts-theme-slot-card');
+        if (card) {
+          if (instant) card.style.transition = 'none';
+          card.style.transform = '';
+          if (instant) { void card.offsetWidth; card.style.transition = ''; }
+        }
+      });
+    }
 ```
 
 ---
@@ -708,11 +684,22 @@ schema:
   storage_key: "tvs:active-slot"
   values: ["a", "b"]
   set_when:
-    - user clicks slot card
-    - user clicks pill toggle
-    - NOT on card swap (position stays, theme changes)
-  render_rule: "slot.classList.toggle('active-slot', !previewing && activeSlot === slotName)"
-  migration: derive from tvs:active-theme on first load if tvs:active-slot absent
+    - user clicks slot card → set to that slot's data-slot attribute
+    - user clicks pill toggle → set to other position
+    - card swap drop → do NOT change (position stays, theme changes)
+  apply_theme_on_swap: |
+    applyTheme(localStorage.getItem('tvs:theme-' + activeSlot))
+  migration: |
+    if (!localStorage.getItem('tvs:active-slot')) {
+      var themeA = localStorage.getItem('tvs:theme-a') || 'dark';
+      var activeId = localStorage.getItem('tvs:active-theme') || 'dark';
+      localStorage.setItem('tvs:active-slot', activeId === themeA ? 'a' : 'b');
+    }
+  render_rule: |
+    slot.classList.toggle('active-slot',
+      (!previewing && activeSlot === slotName) ||
+      (previewing && !!previewingTheme && previewingTheme === themeId)
+    );
 ```
 
 ---
@@ -723,33 +710,43 @@ schema:
 schema:
   id: T-008
   storage_key: "tvs:previewing"
-  set_when: user clicks [data-theme-preview]
-  clear_when: [slot click, pill toggle, card swap drop]
-  visual_effect: [active-slot border off, pill slider opacity 0, pill .active removed]
-  do_not: skip renderThemeList() in slot onclick — needed to clear list outline
+  values: ["1", null]
+  set_when: user clicks [data-theme-preview] button
+  clear_when: [slot onclick, toggleThemePill, card swap ondrop]
+  clear_code: |
+    localStorage.removeItem('tvs:previewing');
+    localStorage.removeItem('tvs:previewing-theme');
+  visual_effect:
+    slot_active_border: suppressed
+    pill_slider_opacity: 0
+    pill_button_active_class: removed
+  render_pattern: |
+    var previewing = !!localStorage.getItem('tvs:previewing');
+    slot.classList.toggle('active-slot', !previewing && activeSlot === slotName);
+    slider.style.opacity = previewing ? '0' : '1';
+    btnA.classList.toggle('active', !previewing && activeSlot === 'a');
+    btnB.classList.toggle('active', !previewing && activeSlot === 'b');
+  do_not: |
+    Skip renderThemeList() in slot onclick — it must be called explicitly
+    to clear the previewed-theme outline from the list card.
 ```
 
 ---
 
 ### T-009 — List-to-slot drag: card border only, live theme preview during hover
 
-When a theme card is dragged from the theme list (not from an A/B slot) and
-hovered over a slot, only the inner card border goes dashed — the outer slot
-border does not change. The card content updates live to preview the dragged
-theme before the drop is confirmed.
-
 ```yaml
 schema:
   id: T-009
   drag_source_flag:
     variable: _dragFromList
-    set_true_in:  theme-card dragstart
-    set_false_in: theme-card dragend AND slot ondragstart
-  css_pattern: |
+    set_true_in:  ".theme-card[data-theme-id] dragstart"
+    set_false_in: ".theme-card dragend AND slot ondragstart"
+  css: |
     .opts-theme-slot.drag-over-list .opts-theme-slot-card {
       border-color: var(--accent); border-style: dashed;
     }
-  slot_ondragover_logic: |
+  slot_ondragover: |
     if (_dragFromList) {
       if (!slot.classList.contains('drag-over-list')) {
         slot.classList.remove('drag-over', 'drop-target', 'drag-over-list');
@@ -758,16 +755,35 @@ schema:
       var card = slot.querySelector('.opts-theme-slot-card');
       if (card && card.getAttribute('data-preview-id') !== _draggedThemeId) {
         card.setAttribute('data-preview-id', _draggedThemeId);
-        // update name + swatches to show dragged theme
+        var pt = getThemeById(_draggedThemeId);
+        var nameEl = document.getElementById('opts-slot-' + targetName + '-name');
+        var swEl   = document.getElementById('opts-slot-' + targetName + '-swatches');
+        if (nameEl && pt) nameEl.textContent = pt.name;
+        if (swEl && pt) swEl.innerHTML =
+          '<div class="theme-swatch" style="background:'+pt.vars['--bg']+';width:14px;height:14px;"></div>'
+          + '<div class="theme-swatch" style="background:'+pt.vars['--accent']+';width:14px;height:14px;"></div>';
       }
       return;
     }
   data_preview_id_guard: |
-    Guard live-preview DOM writes with data-preview-id attribute check to avoid
+    Guard live-preview DOM writes with data-preview-id attribute to avoid
     DOM thrash on every 60fps ondragover event when hovering in place.
+    Remove attribute on leave, drop, and resetSlotDragClasses.
   restore_helper: |
-    function restoreSlotCard(slot) { /* repopulate from localStorage tvs:theme-{slot} */ }
-    // Call on: ondragleave, ondrop, resetSlotDragClasses
+    function restoreSlotCard(slot) {
+      if (!slot) return;
+      var slotName = slot.getAttribute('data-slot');
+      var themeId = localStorage.getItem('tvs:theme-' + slotName) || (slotName === 'a' ? 'dark' : 'light');
+      var t = getThemeById(themeId);
+      var nameEl = document.getElementById('opts-slot-' + slotName + '-name');
+      var swEl   = document.getElementById('opts-slot-' + slotName + '-swatches');
+      if (nameEl) nameEl.textContent = t ? t.name : '—';
+      if (swEl) swEl.innerHTML = t
+        ? '<div class="theme-swatch" style="background:'+t.vars['--bg']+';width:14px;height:14px;"></div>'
+          + '<div class="theme-swatch" style="background:'+t.vars['--accent']+';width:14px;height:14px;"></div>'
+        : '';
+    }
+  call_restoreSlotCard_on: [ondragleave, ondrop, resetSlotDragClasses]
 ```
 
 ---
@@ -778,7 +794,7 @@ schema:
 schema:
   id: T-010
   storage_key: "tvs:previewing-theme"
-  set_when: user clicks [data-theme-preview]
+  set_when: user clicks [data-theme-preview] (alongside tvs:previewing)
   clear_when: same as tvs:previewing
   slot_active_border_rule: |
     var previewingTheme = localStorage.getItem('tvs:previewing-theme');
@@ -787,99 +803,181 @@ schema:
       (previewing && !!previewingTheme && previewingTheme === themeId)
     );
   theme_list_outline_rule: |
+    var listPreviewing = !!localStorage.getItem('tvs:previewing');
     var isActive = (listPreviewing && t.id === activeId)
       ? ' style="outline:2px solid var(--accent);"' : '';
-    // Outline ONLY in preview mode — not on slot/pill selection.
+    // Outline ONLY shown in preview mode, not on slot/pill selection.
   rationale: |
     List outline answers "what am I previewing?" (preview-mode only).
-    Slot border answers "which slot is selected?" (always).
-    The slot can additionally answer "is my theme being previewed?" in preview mode.
+    Slot active border answers "which slot is selected?" (normal mode) and
+    "is this slot's theme being previewed?" (preview mode).
 ```
 
 ---
 
 ### T-011 — Theme list reorder via drag handle with live FLIP animation
 
-Theme cards can be reordered by dragging a grip handle (⠿) on the left side.
-The drag shows a live placeholder with a dimmed card preview. Surrounding
-cards animate smoothly to their new positions using the FLIP technique.
-
 ```yaml
 schema:
   id: T-011
-
   persistence:
     storage_key: "tvs:theme-order"
     format: JSON array of theme IDs
-    getAllThemes_logic: |
-      Apply stored order to THEMES+customs map; append unknown themes at end.
+    getAllThemes_implementation: |
+      function getAllThemes() {
+        var all = THEMES.concat(getCustomThemes());
+        var order = getThemeOrder();
+        if (!order) return all;
+        var map = {};
+        for (var i = 0; i < all.length; i++) map[all[i].id] = all[i];
+        var result = [];
+        for (var j = 0; j < order.length; j++) {
+          if (map[order[j]]) { result.push(map[order[j]]); delete map[order[j]]; }
+        }
+        for (var k = 0; k < all.length; k++) { if (map[all[k].id]) result.push(all[k]); }
+        return result;
+      }
+    note: New themes not yet in order array are appended at end.
 
   drag_mode_flag:
     variable: _dragMode   # 'slot' | 'reorder'
     set_reorder: handle dragstart
-    set_slot:    handle dragend + container ondrop
-    purpose: slot ondragover early-returns when _dragMode === 'reorder'
+    set_slot:    handle dragend, container ondrop
+    slot_ondragover_guard: |
+      slot.ondragover = function(e) {
+        if (_dragMode === 'reorder') return;  // reorder never targets A/B slots
+        ...
+      };
 
   handle:
-    html: '<span class="theme-drag-handle" draggable="true" data-handle-for="{id}">⠿</span>'
-    placement: first child of .theme-card
-    mousedown: e.stopPropagation() to prevent card's own dragstart
+    html: '<span class="theme-drag-handle" draggable="true" data-handle-for="{themeId}">⠿</span>'
+    placement: first child of .theme-card, before swatches
+    mousedown: |
+      handle.addEventListener('mousedown', function(e) { e.stopPropagation(); });
+      // Prevents card's own dragstart from firing when handle is grabbed
+    css: |
+      .theme-drag-handle {
+        cursor: grab; color: var(--muted); font-size: 15px;
+        padding: 0 4px 0 0; flex-shrink: 0; user-select: none; line-height: 1;
+      }
+      .theme-drag-handle:active { cursor: grabbing; }
 
   placeholder:
-    class: theme-list-placeholder
-    content: cloneNode(true) of source card at 45% opacity
-    insert: setTimeout(0) after dragstart so browser captures drag image first
-    source_card_hiding: display:none (not visibility:hidden — must collapse from flow)
+    description: |
+      div.theme-list-placeholder wrapping a cloned, dimmed copy of the source card.
+      Represents the insertion point and moves live during drag.
     css: |
       .theme-list-placeholder {
         border: 1.5px dashed var(--accent); border-radius: 9px;
         padding: 4px; background: rgba(91,138,240,.05);
-        pointer-events: none;
+        pointer-events: none; flex-shrink: 0; box-sizing: border-box;
       }
-      .theme-list-placeholder .theme-card { opacity: 0.45; pointer-events: none; }
+      .theme-list-placeholder .theme-card {
+        opacity: 0.45; pointer-events: none; outline: none !important; margin: 0;
+      }
       .theme-card.reorder-dragging { display: none; }
-    rationale_display_none: |
-      visibility:hidden keeps card in flow — creates double-gap alongside placeholder.
-      display:none collapses it so placeholder occupies exactly one card's space.
+    creation_code: |
+      _placeholder = document.createElement('div');
+      _placeholder.className = 'theme-list-placeholder';
+      var clone = sourceCard.cloneNode(true);
+      clone.removeAttribute('draggable');
+      _placeholder.appendChild(clone);
+      setTimeout(function() {
+        sourceCard.classList.add('reorder-dragging');  // display:none removes from flow
+        sourceCard.parentNode.insertBefore(_placeholder, sourceCard.nextSibling);
+      }, 0);
+    why_setTimeout: Browser captures drag image synchronously at dragstart.
+      Deferring the hide ensures the drag image shows the card, not nothing.
+    why_display_none: |
+      visibility:hidden keeps card in flow → double-gap alongside placeholder.
+      display:none collapses it → placeholder occupies exactly one card's space.
 
   insertion_point:
     function: getInsertionPoint(e)
+    returns: "{ ref: Element | null, before: boolean }"
     coordinate_fix: |
       offsetTop is relative to offsetParent, NOT the viewport.
-      Convert: mouseY = e.clientY - cards[0].offsetParent.getBoundingClientRect().top
-      Do NOT use container.getBoundingClientRect().top — container may not be offsetParent,
-      causing all drops to register at the wrong position (typically always top of list).
+      WRONG: var mouseY = e.clientY - container.getBoundingClientRect().top;
+             (container may not be offsetParent → all drops land at top of list)
+      CORRECT:
+        var offsetParent = cards[0].offsetParent;
+        var parentTop = offsetParent ? offsetParent.getBoundingClientRect().top : 0;
+        var mouseY = e.clientY - parentTop;
     stability: |
-      offsetTop is unaffected by CSS transforms, so insertion point is stable
-      during FLIP animations (no feedback loop).
+      offsetTop is unaffected by CSS transforms. Using it avoids a feedback loop
+      where mid-animation getBoundingClientRect() shifts the computed midpoint,
+      toggles the insertion point, triggers another animation — endless stutter.
+    full_code: |
+      function getInsertionPoint(e) {
+        var cards = container.querySelectorAll('.theme-card[data-theme-id]:not(.reorder-dragging)');
+        if (!cards.length) return { ref: null, before: false };
+        var offsetParent = cards[0].offsetParent;
+        var parentTop = offsetParent ? offsetParent.getBoundingClientRect().top : 0;
+        var mouseY = e.clientY - parentTop;
+        for (var i = 0; i < cards.length; i++) {
+          var top = cards[i].offsetTop, h = cards[i].offsetHeight;
+          if (mouseY < top + h / 2) return { ref: cards[i], before: true };
+          if (mouseY < top + h)     return { ref: cards[i], before: false };
+        }
+        return { ref: null, before: false };
+      }
 
   flip_animation:
-    trigger: each time placeholder moves to a new DOM position
-    guard: skip if placeholder.nextSibling === newNext (no position change)
-    code: |
-      // Snapshot natural positions (offsetTop, transform-unaffected)
-      cards.forEach(c => beforeTops[id] = c.offsetTop);
-      // Move placeholder
-      container.insertBefore(_placeholder, ...);
-      // Animate each card
-      cards.forEach(c => {
-        var delta = beforeTops[id] - c.offsetTop;  // same offsetParent → correct delta
+    purpose: Cards slide smoothly to new positions as placeholder moves through list.
+    technique: FLIP (First-Last-Invert-Play)
+    trigger: each time placeholder moves to a new DOM position in ondragover
+    optimization: |
+      var newNext = ins.ref ? (ins.before ? ins.ref : ins.ref.nextSibling) : null;
+      if (_placeholder.nextSibling === newNext) return;  // skip if no position change
+    full_code: |
+      // First: snapshot natural positions (transform-unaffected)
+      var cards = Array.prototype.slice.call(
+        container.querySelectorAll('.theme-card[data-theme-id]:not(.reorder-dragging)')
+      );
+      var beforeTops = {};
+      cards.forEach(function(c) { beforeTops[c.getAttribute('data-theme-id')] = c.offsetTop; });
+      // Last: move placeholder
+      if (ins.ref) container.insertBefore(_placeholder, ins.before ? ins.ref : ins.ref.nextSibling);
+      else         container.appendChild(_placeholder);
+      // Invert + Play
+      cards.forEach(function(c) {
+        var id    = c.getAttribute('data-theme-id');
+        var delta = beforeTops[id] - c.offsetTop;  // same offsetParent → delta is correct
         if (Math.abs(delta) < 1) return;
         c.style.transition = 'none';
         c.style.transform  = 'translateY(' + delta + 'px)';
-        void c.offsetWidth;  // force reflow
+        void c.offsetWidth;                          // force reflow before enabling transition
         c.style.transition = 'transform 0.14s ease';
         c.style.transform  = '';
       });
-    feedback_loop_prevention: |
-      Using getBoundingClientRect() for both insertion point and FLIP snapshots
-      causes a feedback loop: mid-animation positions shift the computed midpoint,
-      toggling the insertion point, triggering more animations.
-      Fix: use offsetTop throughout (transform-unaffected).
+    cleanup: |
+      container.querySelectorAll('.theme-card').forEach(function(c) {
+        c.style.transition = '';
+        c.style.transform  = '';
+        c.classList.remove('reorder-dragging');
+      });
 
   drop_commit:
-    source: placeholder DOM position (nextElementSibling / previousElementSibling)
-    action: rebuild id order array, splice dragged id to new position, saveThemeOrder(ids)
+    source: placeholder's DOM siblings
+    code: |
+      var insertBeforeEl = _placeholder ? _placeholder.nextElementSibling : null;
+      var targetId = insertBeforeEl ? insertBeforeEl.getAttribute('data-theme-id') : null;
+      var insertBefore = !!targetId;
+      if (!insertBefore && _placeholder && _placeholder.previousElementSibling) {
+        targetId = _placeholder.previousElementSibling.getAttribute('data-theme-id');
+      }
+      removePlaceholder();
+      container.querySelectorAll('.theme-card').forEach(function(c) {
+        c.style.transition = ''; c.style.transform = ''; c.classList.remove('reorder-dragging');
+      });
+      if (!draggedId || !targetId || draggedId === targetId) { _dragMode = 'slot'; return; }
+      var ids = getAllThemes().map(function(t) { return t.id; });
+      ids.splice(ids.indexOf(draggedId), 1);
+      var tIdx = ids.indexOf(targetId);
+      ids.splice(insertBefore ? tIdx : tIdx + 1, 0, draggedId);
+      saveThemeOrder(ids);
+      _dragMode = 'slot';
+      renderThemeList();
 ```
 
 ---
@@ -891,16 +989,18 @@ schema:
   id: T-012
   symptom: |
     After a slot-to-slot drag-drop swap, the slot NOT receiving the drop
-    briefly shows a dashed card hover border even though the mouse is not over it.
+    briefly shows a dashed card hover border even though mouse is not over it.
   root_cause: |
-    Browser retains stale :hover on the non-targeted slot after DOM re-render
-    triggered by ondrop → renderThemeSlots().
+    Browser retains stale :hover on non-targeted slot after DOM re-render
+    from ondrop → renderThemeSlots(). Consistently reproducible on Chrome.
   fix:
     css: |
       .opts-theme-slot:not(.active-slot):not(.no-hover):hover .opts-theme-slot-card {
         border-color: var(--accent); border-style: dashed;
       }
     js: |
+      var sA = document.getElementById('opts-slot-a');
+      var sB = document.getElementById('opts-slot-b');
       var otherSlot = (targetName === 'a') ? sB : sA;
       if (otherSlot) otherSlot.classList.add('no-hover');
       function clearNoHover() {
@@ -909,8 +1009,195 @@ schema:
       }
       document.addEventListener('mousemove', clearNoHover);
   scoping_rule: |
-    Apply no-hover ONLY to the OTHER slot (not the drop target).
-    Drop target is where mouse is — should express hover normally.
+    Apply no-hover ONLY to the OTHER slot. The drop target (where mouse is)
+    should express hover normally — dashed if inactive, nothing if active.
+```
+
+---
+
+### T-013 — Theme application: CSS injection and light color detection
+
+Theme application writes a <style> tag directly into the document head
+with all CSS custom properties. Light/dark body class is derived from
+the background color luminance.
+
+```yaml
+schema:
+  id: T-013
+  function: applyTheme(themeId)
+  style_element_id: "tvs-theme-style"
+  mechanism: |
+    function applyTheme(themeId) {
+      var t = getThemeById(themeId) || getThemeById('dark');
+      var vars = t.vars;
+      var css = ':root {\n';
+      for (var k in vars) css += '  ' + k + ': ' + vars[k] + ';\n';
+      css += '}';
+      var el = document.getElementById('tvs-theme-style');
+      if (!el) { el = document.createElement('style'); el.id = 'tvs-theme-style'; document.head.appendChild(el); }
+      el.textContent = css;
+      document.body.classList.remove('light');
+      if (isLightColor(vars['--bg'])) document.body.classList.add('light');
+      localStorage.setItem('tvs:active-theme', themeId);
+      updateThemeBtn();
+    }
+  light_detection: |
+    function isLightColor(hex) {
+      // Parses hex, computes relative luminance, returns true if > 0.5
+      var r = parseInt(hex.slice(1,3),16)/255;
+      var g = parseInt(hex.slice(3,5),16)/255;
+      var b = parseInt(hex.slice(5,7),16)/255;
+      return 0.2126*r + 0.7152*g + 0.0722*b > 0.5;
+    }
+  body_class_light: |
+    document.body.classList contains 'light' when active theme has a light background.
+    Used to adjust CSS that can't rely on CSS variables alone (e.g., scrollbar colors).
+  always_calls: updateThemeBtn()
+  storage_key: "tvs:active-theme"
+```
+
+---
+
+### T-014 — Custom theme storage structure and editor
+
+Custom themes are stored as a JSON array in localStorage. The editor provides
+color picker + hex text input pairs for each CSS variable, organized by group.
+
+```yaml
+schema:
+  id: T-014
+  storage_key: "tvs:custom-themes"
+  theme_object_shape: |
+    {
+      id: string,          // 'custom-' + Date.now() for new themes
+      name: string,
+      preset: false,       // always false for custom themes
+      vars: {
+        '--bg':       '#hex',
+        '--surface':  '#hex',
+        '--surface2': '#hex',
+        '--border':   '#hex',
+        '--text':     '#hex',
+        '--muted':    '#hex',
+        '--accent':   '#hex',
+        '--accent-text': '#hex',
+        '--red':      '#hex',
+        // ... all THEME_VAR_GROUPS keys
+      }
+    }
+  storage_functions: |
+    function getCustomThemes() {
+      try { return JSON.parse(localStorage.getItem('tvs:custom-themes') || '[]'); }
+      catch(e) { return []; }
+    }
+    function saveCustomThemes(arr) {
+      localStorage.setItem('tvs:custom-themes', JSON.stringify(arr));
+    }
+  theme_var_groups:
+    description: Three groups organizing the CSS variables in the editor UI
+    groups:
+      - label: "UI Colors"
+        vars: [--bg, --surface, --surface2, --border, --text, --muted, --accent, --accent-text, --red]
+      - label: "Canvas Colors"
+        vars: [...canvas-specific vars...]
+      - label: "Field Colors"
+        vars: [...field-specific vars...]
+    each_entry: "{ key: '--varname', label: 'Display Label', type: 'color' | 'text' }"
+
+  editor_container: "#theme-editor-container"
+  editor_visibility: "display: none by default; cleared innerHTML to close"
+
+  showThemeEditor_implementation: |
+    function showThemeEditor(themeId) {
+      var theme = getThemeById(themeId);
+      if (!theme) return;
+      var editVars = JSON.parse(JSON.stringify(theme.vars));  // deep clone
+      var container = document.getElementById('theme-editor-container');
+      // ... build HTML with inputs ...
+      // Color + hex sync:
+      container.querySelectorAll('[data-var]').forEach(function(colorInput) {
+        var key = colorInput.getAttribute('data-var');
+        var hexInput = container.querySelector('[data-hex-var="' + key + '"]');
+        colorInput.addEventListener('input', function() {
+          editVars[key] = colorInput.value;
+          if (hexInput) hexInput.value = colorInput.value;
+        });
+        if (hexInput) {
+          hexInput.addEventListener('input', function() {
+            var v = hexInput.value.trim();
+            if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+              editVars[key] = v;
+              colorInput.value = v;
+            }
+          });
+        }
+      });
+      // Save:
+      container.querySelector('#theme-ed-save').addEventListener('click', function() {
+        var customs = getCustomThemes();
+        var found = false;
+        for (var i = 0; i < customs.length; i++) {
+          if (customs[i].id === themeId) { customs[i].vars = editVars; found = true; break; }
+        }
+        if (!found) customs.push({ id: themeId, name: nameVal, preset: false, vars: editVars });
+        saveCustomThemes(customs);
+        container.style.display = 'none';
+        container.innerHTML = '';
+        renderThemeList(); renderThemeSlots();
+      });
+    }
+
+  new_theme_creation: |
+    function showNewThemeEditor() {
+      var newId = 'custom-' + Date.now();
+      var activeId = localStorage.getItem('tvs:active-theme') || 'dark';
+      var src = getThemeById(activeId) || getThemeById('dark');
+      var customs = getCustomThemes();
+      customs.push({ id: newId, name: 'Custom Theme', preset: false,
+                     vars: JSON.parse(JSON.stringify(src.vars)) });
+      saveCustomThemes(customs);
+      renderThemeList(); renderThemeSlots();
+      showThemeEditor(newId);
+    }
+  editor_css: |
+    .theme-editor { border: 1px solid var(--border); padding: 12px; margin: 8px 0; border-radius: 7px; }
+    .theme-editor-name { width: 100%; }
+    .theme-color-row { display: flex; align-items: center; gap: 8px; }
+    .theme-color-input { width: 36px; height: 22px; padding: 0; }
+    .theme-color-hex { width: 80px; font-family: monospace; }
+    .theme-text-input { flex: 1; font-family: monospace; }
+```
+
+---
+
+### T-015 — Preset theme structure
+
+Six built-in preset themes shipped with the application. Presets cannot be
+edited or deleted; they can be duplicated to create a custom variant.
+
+```yaml
+schema:
+  id: T-015
+  preset_flag: "preset: true"
+  preset_themes:
+    - id: dark,            name: "Dark"
+    - id: light,           name: "Light"
+    - id: nord,            name: "Nord"
+    - id: solarized-dark,  name: "Solarized Dark"
+    - id: warm-light,      name: "Warm Light"
+    - id: high-contrast,   name: "High Contrast"
+  storage: |
+    THEMES constant (module-level array). Not in localStorage.
+    getCustomThemes() reads only tvs:custom-themes.
+    getAllThemes() = THEMES.concat(getCustomThemes()) then apply tvs:theme-order.
+  ui_rules:
+    - preset themes show only: Preview, Duplicate
+    - custom themes show: Preview, Duplicate, Edit, Delete
+    - do_not: show Edit/Delete buttons when t.preset === true
+  deletion_safety: |
+    var customs = getCustomThemes().filter(function(t) { return t.id !== id; });
+    saveCustomThemes(customs);
+    // Only custom themes can be deleted — filter only affects getCustomThemes() array
 ```
 
 ---
@@ -922,13 +1209,35 @@ schema:
 ```yaml
 schema:
   id: D-001
-  applies_to: ["#options-dialog", any future draggable overlay]
-  clamp:
-    min_y: document.getElementById('toolbar').getBoundingClientRect().bottom
-    max_y: window.innerHeight - dialog.offsetHeight
-    min_x: 0
-    max_x: window.innerWidth - dialog.offsetWidth
-  clamp_applies_to: [drag onMove handler, position restore on open]
+  applies_to: ["#options-dialog"]
+  initial_position:
+    css: "position: fixed; left: 50%; transform: translateX(-50%); top: 80px; z-index: 900;"
+    note: JS overrides top/left from saved position; transform is reset once dragged
+  drag_implementation: |
+    header.addEventListener('mousedown', function(e) {
+      if (e.target === btnClose) return;
+      var rect = dialog.getBoundingClientRect();
+      var startX = e.clientX - rect.left;
+      var startY = e.clientY - rect.top;
+      function onMove(e) {
+        var tb = document.getElementById('toolbar');
+        var tbH = tb ? tb.getBoundingClientRect().bottom : 0;
+        var dlgW = dialog.offsetWidth, dlgH = dialog.offsetHeight;
+        var x = Math.max(0, Math.min(window.innerWidth  - dlgW, e.clientX - startX));
+        var y = Math.max(tbH, Math.min(window.innerHeight - dlgH, e.clientY - startY));
+        dialog.style.left = x + 'px';
+        dialog.style.top  = y + 'px';
+        dialog.style.transform = 'none';
+      }
+      // ... mouseup saves to tvs:opts:pos ...
+    });
+  persistence_key: "tvs:opts:pos"
+  persistence_format: "{left: px, top: px}"
+  clamp_on_restore: |
+    // Clamp restored position to current viewport/toolbar
+    var tbH = toolbar ? toolbar.getBoundingClientRect().bottom : 0;
+    var rx = Math.max(0, Math.min(window.innerWidth  - dlgW, parseFloat(savedPos.left)));
+    var ry = Math.max(tbH, Math.min(window.innerHeight - dlgH, parseFloat(savedPos.top)));
 ```
 
 ---
@@ -939,14 +1248,67 @@ schema:
 schema:
   id: D-002
   applies_to: ["#options-dialog"]
-  grip: "#options-dialog-resize"
-  resize_target:
-    width: dialog element
-    height: "#options-dialog-main" (content area only)
+  grip_element: "#options-dialog-resize"
+  grip_css: |
+    position: absolute; bottom: 0; right: 0;
+    width: 18px; height: 18px; cursor: se-resize;
+    border-bottom-right-radius: 8px; opacity: 0.6;
+    background: linear-gradient(135deg, transparent 50%, var(--border) 50%);
+  grip_hover: opacity 1
+  resize_implementation: |
+    grip.addEventListener('mousedown', function(e) {
+      var startX = e.clientX, startY = e.clientY;
+      var startW = dialog.offsetWidth;
+      var startH = document.getElementById('options-dialog-main').offsetHeight;
+      function onMove(e) {
+        var w = Math.max(MIN_W, startW + (e.clientX - startX));
+        var h = Math.max(MIN_H, startH + (e.clientY - startY));
+        dialog.style.width = w + 'px';
+        document.getElementById('options-dialog-main').style.height = h + 'px';
+      }
+      // ... mouseup saves to tvs:opts:size ...
+    });
   min_width: 480px
   min_height: 280px
+  resize_target:
+    width: dialog element itself
+    height: "#options-dialog-main" only (header stays fixed height)
   persistence_key: "tvs:opts:size"
-  do_not: resize entire dialog height (header stays fixed)
+  persistence_format: "{w: number, h: number}"
+
+### D-003 — Options dialog navigation persists active section
+
+```yaml
+schema:
+  id: D-003
+  applies_to: ["#options-dialog"]
+  nav_element: "#opts-nav"
+  nav_structure: |
+    <nav id="opts-nav">
+      <button data-opts-section="themes">Themes</button>
+      <button data-opts-section="layout">Layout</button>
+      ...
+    </nav>
+    <div id="opts-content">
+      <div data-opts-panel="themes">...</div>
+      <div data-opts-panel="layout">...</div>
+    </div>
+  navigation_logic: |
+    container.querySelectorAll('[data-opts-section]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var section = this.getAttribute('data-opts-section');
+        document.querySelectorAll('[data-opts-panel]').forEach(function(p) {
+          p.style.display = p.getAttribute('data-opts-panel') === section ? '' : 'none';
+        });
+        document.querySelectorAll('[data-opts-section]').forEach(function(b) {
+          b.classList.toggle('active', b === btn);
+        });
+        localStorage.setItem('tvs:opts:section', section);
+      });
+    });
+  persistence_keys:
+    section: "tvs:opts:section"
+    open: "tvs:opts:open"
 ```
 
 ---
@@ -959,9 +1321,127 @@ schema:
 schema:
   id: Z-001
   function: dockPanel(panelId, zone)
-  responsibilities:
-    - dom_move, class_update, float_cleanup, arrow_sync
-    - auto_open_if_horizontal, options_dock_button_sync, localStorage
+  zones: [left, right, top, bottom]
+  implementation: |
+    function dockPanel(panelId, zone) {
+      var panel = document.getElementById(panelId);
+      var zoneEl = document.getElementById('dock-' + zone);
+      zoneEl.appendChild(panel);
+      panel.classList.remove('dock-left','dock-right','dock-top','dock-bottom','dock-float','pane-h');
+      panel.classList.add('dock-' + zone);
+      if (zone === 'top' || zone === 'bottom') panel.classList.add('pane-h');
+      // auto-open if moving collapsed pane to horizontal zone
+      if ((zone === 'top' || zone === 'bottom') &&
+          panel.classList.contains('collapsed') &&
+          !panel.classList.contains('off')) {
+        _sidePanelOpenFn[panelId]();
+      }
+      _sidePanelArrowSync[panelId]();
+      // sync options dock buttons
+      document.querySelectorAll('.opts-dock-btn[data-zone]').forEach(function(b) {
+        b.classList.toggle('active', b.getAttribute('data-zone') === zone);
+      });
+      localStorage.setItem('tvs:dock:' + panelId, zone);
+    }
   default_zone_restore_path:
-    note: skips dockPanel to avoid DOM move; must manually replicate all steps
+    note: Skips dockPanel to avoid DOM move; must manually replicate all steps
+    steps:
+      - apply dock class
+      - add pane-h if zone is top/bottom
+      - call _sidePanelOpenFn if collapsed + horizontal
+      - call _sidePanelArrowSync
+  persistence_key: "tvs:dock:{panelId}"
+```
+
+---
+
+### Z-002 — Float panel system: state, positioning, clamping, z-index
+
+```yaml
+schema:
+  id: Z-002
+  function: floatPanel(panelId)
+  constants:
+    FLOAT_W: 260px
+    FLOAT_H: 380px
+    MIN_W:   160px
+    MIN_H:   120px
+    CLAMP_MARGIN: 60px
+  state_persistence:
+    key: "tvs:float:{panelId}"
+    format: "{x, y, w, h}"
+  implementation: |
+    function floatPanel(panelId) {
+      var panel = document.getElementById(panelId);
+      var lastZone = panel.className.match(/dock-(left|right|top|bottom)/);
+      lastZone = lastZone ? lastZone[1] : 'left';
+      panel.classList.remove('collapsed');
+      document.getElementById('dock-float').appendChild(panel);
+      panel.classList.remove('dock-left','dock-right','dock-top','dock-bottom','pane-h');
+      panel.classList.add('dock-float');
+      var state = loadFloatState(panelId);
+      var x = state ? state.x : Math.max(0, (window.innerWidth - FLOAT_W) / 2);
+      var y = state ? state.y : Math.max(0, (window.innerHeight - FLOAT_H) / 2);
+      var w = state ? state.w : FLOAT_W;
+      var h = state ? state.h : FLOAT_H;
+      x = Math.max(0, Math.min(window.innerWidth  - w, x));
+      y = Math.max(0, Math.min(window.innerHeight - h, y));
+      panel.style.left = x + 'px'; panel.style.top = y + 'px';
+      panel.style.width = w + 'px'; panel.style.height = h + 'px';
+      // auto-increment z-index
+      panel.style.zIndex = ++_floatZCounter;
+    }
+  clamp_function: |
+    function clampFloatPanel(panel) {
+      var MARGIN = 60;
+      var w = panel.offsetWidth, h = panel.offsetHeight;
+      var x = parseFloat(panel.style.left) || 0;
+      var y = parseFloat(panel.style.top)  || 0;
+      panel.style.left = Math.max(MARGIN - w, Math.min(window.innerWidth  - MARGIN, x)) + 'px';
+      panel.style.top  = Math.max(0,          Math.min(window.innerHeight - MARGIN, y)) + 'px';
+    }
+  clamp_called_on: [window resize for all visible dock-float panels, badge toggle-on]
+  opacity_blur_settings:
+    description: Float panels can have background opacity and blur applied
+    storage_keys:
+      opacity: "tvs:opts:float-opacity"
+      blur:    "tvs:opts:float-blur"
+    defaults: { opacity: 70, blur: 0 }
+    range: { opacity: "0-100", blur: "0-20" }
+    css_application: |
+      panel.style.opacity = (opacity / 100).toFixed(2);
+      panel.style.backdropFilter = blur > 0 ? 'blur(' + blur + 'px)' : '';
+```
+
+---
+
+## localStorage Key Reference
+
+All keys used by tessel-vs.html:
+
+```yaml
+schema:
+  id: LS-001
+  keys:
+    theme:
+      "tvs:active-theme":    "ID of currently applied theme"
+      "tvs:theme-a":         "Theme ID assigned to slot A"
+      "tvs:theme-b":         "Theme ID assigned to slot B"
+      "tvs:active-slot":     "'a' or 'b' — which slot position is active"
+      "tvs:previewing":      "'1' when in preview mode, absent otherwise"
+      "tvs:previewing-theme": "Theme ID being previewed (set with tvs:previewing)"
+      "tvs:theme-order":     "JSON array of theme IDs — display order"
+      "tvs:custom-themes":   "JSON array of custom theme objects"
+    options_dialog:
+      "tvs:opts:pos":     "{left, top} — dialog position"
+      "tvs:opts:size":    "{w, h} — dialog size"
+      "tvs:opts:section": "active nav section name"
+      "tvs:opts:open":    "'1' if dialog was open on last close"
+      "tvs:opts:float-opacity": "0-100, float panel background opacity"
+      "tvs:opts:float-blur":    "0-20, float panel backdrop blur"
+    panels:
+      "tvs:dock:{panelId}":   "dock zone: left|right|top|bottom"
+      "tvs:float:{panelId}":  "{x,y,w,h} float panel position+size"
+      "tvs:pane-w:{panelId}": "px width of vertical pane"
+      "tvs:{panelId}":        "panel open/collapsed/off state"
 ```
