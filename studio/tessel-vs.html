@@ -4165,11 +4165,8 @@ function updateThemeBtn() {
     }
   }
 
-  var bothDefault = (themeA === 'dark' || themeA === 'light') && (themeB === 'dark' || themeB === 'light');
-  var labelA = bothDefault ? '' : '<span style="font-size:10px;font-weight:700;margin-left:2px;">A</span>';
-  var labelB = bothDefault ? '' : '<span style="font-size:10px;font-weight:700;margin-left:2px;">B</span>';
-  btnA.innerHTML = themeIcon(themeA) + labelA;
-  btnB.innerHTML = themeIcon(themeB) + labelB;
+  btnA.innerHTML = themeIcon(themeA);
+  btnB.innerHTML = themeIcon(themeB);
   btnA.classList.toggle('active', activeId === themeA);
   btnB.classList.toggle('active', activeId === themeB);
 }
