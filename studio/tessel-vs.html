@@ -4528,8 +4528,12 @@ function makeCtrlPane(cfg) {
   _sidePanelArrowSync[cfg.paneId] = syncArrow;
   _sidePanelOpenFn[cfg.paneId]   = function() { open(); };
 
+  function _restorePaneW() {
+    try { var w = localStorage.getItem('tvs:pane-w:' + cfg.paneId); if (w) pane.style.width = parseInt(w, 10) + 'px'; } catch(e) {}
+  }
   function open() {
     pane.classList.remove('collapsed', 'off');
+    _restorePaneW();
     var ch = arrowDir(true);
     collapseBtn.textContent = ch;
     tabArrow.innerHTML = ch;
@@ -4539,6 +4543,7 @@ function makeCtrlPane(cfg) {
   }
   function collapse() {
     pane.classList.remove('off');
+    pane.style.width = '';
     pane.classList.add('collapsed');
     var ch = arrowDir(false);
     collapseBtn.textContent = ch;
@@ -4549,6 +4554,7 @@ function makeCtrlPane(cfg) {
   }
   function hide() {
     pane.classList.remove('collapsed');
+    pane.style.width = '';
     pane.classList.add('off');
     badge.classList.remove('active');
     lss(cfg.lsKey, 'off');
@@ -5079,8 +5085,12 @@ function makeSidePanel(cfg) {
   _sidePanelArrowSync[cfg.panelId] = syncArrow;
   _sidePanelOpenFn[cfg.panelId]   = function() { open(); };
 
+  function _restorePanelW() {
+    try { var w = localStorage.getItem('tvs:pane-w:' + cfg.panelId); if (w) panel.style.width = parseInt(w, 10) + 'px'; } catch(e) {}
+  }
   function open() {
     panel.classList.remove('collapsed', 'off');
+    _restorePanelW();
     setArrows(true);
     badge.classList.add('active');
     lss(cfg.lsKey, 'open');
@@ -5088,6 +5098,7 @@ function makeSidePanel(cfg) {
   }
   function collapse() {
     panel.classList.remove('off');
+    panel.style.width = '';
     panel.classList.add('collapsed');
     setArrows(false);
     badge.classList.add('active'); // badge stays on when collapsed
@@ -5096,6 +5107,7 @@ function makeSidePanel(cfg) {
   }
   function hide() {
     panel.classList.remove('collapsed');
+    panel.style.width = '';
     panel.classList.add('off');
     badge.classList.remove('active');
     lss(cfg.lsKey, 'off');
@@ -5378,9 +5390,9 @@ function dockPanel(panelId, zone) {
     var pane = document.getElementById(id);
     if (!pane) return;
 
-    // Restore saved width
+    // Restore saved width only when pane is in vertical open state
     var saved = loadW(id);
-    if (saved) pane.style.width = saved + 'px';
+    if (saved && isVertical(pane)) pane.style.width = saved + 'px';
 
     // Create handle
     var handle = document.createElement('div');
