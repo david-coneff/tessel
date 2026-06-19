@@ -209,7 +209,7 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 
 /* CONTROLS PANES (text-pane, form-pane share .ctrl-pane) */
 .ctrl-pane {
-  display: flex; flex-direction: row;
+  display: flex; flex-direction: row; position: relative;
   background: var(--surface); flex-shrink: 0;
   transition: width .2s ease; width: 192px;
 }
@@ -236,6 +236,18 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
   color: var(--muted); letter-spacing: .5px; flex: 1; white-space: nowrap;
   user-select: none; pointer-events: none;
 }
+.pane-width-handle {
+  position: absolute; top: 0; bottom: 0; width: 5px; cursor: col-resize;
+  z-index: 10; opacity: 0;
+}
+.pane-width-handle:hover, .pane-width-handle.dragging { opacity: 1; background: var(--accent); }
+.pane-resizing { transition: none !important; }
+.dock-left  .pane-width-handle { right: 0; left: auto; }
+.dock-right .pane-width-handle { left: 0; right: auto; }
+.pane-h     .pane-width-handle,
+.dock-float .pane-width-handle,
+.collapsed  .pane-width-handle,
+.off        .pane-width-handle { display: none; }
 .ctrl-pane-collapse-btn {
   background: none; border: 1px solid transparent; cursor: pointer; color: var(--muted);
   font-size: 16px; padding: 2px 5px; line-height: 1; border-radius: 5px; flex-shrink: 0;
@@ -279,7 +291,7 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 
 /* OUTLINE PANEL */
 #outline-panel {
-  display: flex; flex-direction: row;
+  display: flex; flex-direction: row; position: relative;
   background: var(--surface); flex-shrink: 0;
   transition: width .2s ease; width: 148px;
 }
@@ -500,7 +512,7 @@ button.danger:hover { border-color: var(--red); color: var(--red); }
 
 /* PROPERTIES PANEL */
 #props-panel {
-  display: flex; flex-direction: row;
+  display: flex; flex-direction: row; position: relative;
   background: var(--surface); flex-shrink: 0;
   transition: width .2s ease; width: 260px;
 }
@@ -5319,6 +5331,68 @@ function dockPanel(panelId, zone) {
   PANE_IDS.forEach(function(panelId) {
     var s; try { s=localStorage.getItem('tvs:dock:'+panelId); } catch(e) {}
     if (s==='float') floatPanel(panelId);
+  });
+})();
+
+// ── Vertical pane width resize ───────────────────────────────────────────────
+(function() {
+  var PANE_IDS = ['format-pane','text-pane','form-pane','outline-panel','props-panel'];
+  var MIN_W = 100; // enough to show icons; labels can be clipped
+  var LS_PREFIX = 'tvs:pane-w:';
+
+  function lsKey(id) { return LS_PREFIX + id; }
+  function saveW(id, w) { try { localStorage.setItem(lsKey(id), w); } catch(e) {} }
+  function loadW(id) { try { var v = localStorage.getItem(lsKey(id)); return v ? parseInt(v, 10) : null; } catch(e) { return null; } }
+
+  function isVertical(pane) {
+    return !pane.classList.contains('pane-h') &&
+           !pane.classList.contains('dock-float') &&
+           !pane.classList.contains('collapsed') &&
+           !pane.classList.contains('off');
+  }
+
+  PANE_IDS.forEach(function(id) {
+    var pane = document.getElementById(id);
+    if (!pane) return;
+
+    // Restore saved width
+    var saved = loadW(id);
+    if (saved) pane.style.width = saved + 'px';
+
+    // Create handle
+    var handle = document.createElement('div');
+    handle.className = 'pane-width-handle';
+    pane.appendChild(handle);
+
+    handle.addEventListener('mousedown', function(e) {
+      if (!isVertical(pane)) return;
+      e.preventDefault();
+      var startX = e.clientX;
+      var startW = pane.offsetWidth;
+      var onRight = pane.classList.contains('dock-right');
+      handle.classList.add('dragging');
+      pane.classList.add('pane-resizing');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+
+      function onMove(e) {
+        var dx = e.clientX - startX;
+        // Right-docked: dragging left increases width
+        var newW = onRight ? Math.max(MIN_W, startW - dx) : Math.max(MIN_W, startW + dx);
+        pane.style.width = newW + 'px';
+      }
+      function onUp() {
+        handle.classList.remove('dragging');
+        pane.classList.remove('pane-resizing');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        saveW(id, pane.offsetWidth);
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
   });
 })();
 
