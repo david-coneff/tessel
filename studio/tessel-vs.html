@@ -5017,7 +5017,13 @@ function convertFocusedBlock(newType, level) {
   if (newCe) { newCe.focus(); if (savedSel) restoreSelCharOffsets(newCe, savedSel); }
 }
 
-document.getElementById('btn-preview').addEventListener('click', showPreview);
+document.getElementById('btn-preview').addEventListener('click', function() {
+  if (document.getElementById('preview-modal').classList.contains('show')) {
+    closePreview();
+  } else {
+    showPreview();
+  }
+});
 function closePreview() {
   document.getElementById('preview-modal').classList.remove('show');
   document.getElementById('btn-preview').classList.remove('active');
