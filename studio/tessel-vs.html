@@ -958,7 +958,7 @@ kbd {
 }
 .opts-theme-slot:active { cursor: grabbing; }
 .opts-theme-slot:hover { background: var(--surface2); }
-.opts-theme-slot:hover .opts-theme-slot-card { border-color: var(--accent); border-style: dashed; }
+.opts-theme-slot:not(.active-slot):hover .opts-theme-slot-card { border-color: var(--accent); border-style: dashed; }
 .opts-theme-slot.drag-over { border-color: var(--accent); background: rgba(91,138,240,.08); border-style: solid; }
 /* Source slot disappears while dragged — user "has it in hand" */
 .opts-theme-slot.dragging-source { pointer-events: none; background: transparent !important; }
@@ -4352,6 +4352,7 @@ function renderThemeSlots() {
       localStorage.setItem('tvs:active-slot', slot.getAttribute('data-slot'));
       applyTheme(getThemeId());
       renderThemeSlots();
+      renderThemeList();
       updateThemeBtn();
     };
     slot.ondragover = function(e) {
