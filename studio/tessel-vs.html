@@ -642,7 +642,7 @@ select.prop-input { cursor: pointer; }
   display: none; position: fixed; z-index: 900;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,.4);
-  width: 630px; min-width: 480px;
+  width: 680px; min-width: 480px;
   top: 80px; left: 50%; transform: translateX(-50%);
   user-select: none;
 }
@@ -674,6 +674,14 @@ select.prop-input { cursor: pointer; }
   font-size: 16px; padding: 2px 5px; line-height: 1; border-radius: 4px;
 }
 #options-dialog-close:hover { background: var(--surface2); color: var(--text); }
+#options-dialog-resize {
+  position: absolute; bottom: 0; right: 0;
+  width: 18px; height: 18px; cursor: se-resize;
+  border-bottom-right-radius: 8px;
+  background: linear-gradient(135deg, transparent 40%, var(--border) 40%, var(--border) 55%, transparent 55%, transparent 65%, var(--border) 65%, var(--border) 80%, transparent 80%);
+  opacity: 0.6;
+}
+#options-dialog-resize:hover { opacity: 1; }
 
 .opts-section-title {
   font-size: 10px; font-weight: 700; text-transform: uppercase;
@@ -1571,6 +1579,7 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
 
     </div>
   </div>
+  <div id="options-dialog-resize" title="Resize"></div>
 </div>
 
 <!-- STATUS BAR -->
@@ -5491,6 +5500,36 @@ function dockPanel(panelId, zone) {
     document.addEventListener('mouseup', onUp);
     e.preventDefault();
   });
+
+  // Resize from bottom-right corner
+  var resizeGrip = document.getElementById('options-dialog-resize');
+  resizeGrip.addEventListener('mousedown', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var startX = e.clientX, startY = e.clientY;
+    var startW = dialog.offsetWidth, startH = document.getElementById('options-dialog-main').offsetHeight;
+    var MIN_W = 480, MIN_H = 280;
+    function onResizeMove(e) {
+      var newW = Math.max(MIN_W, startW + (e.clientX - startX));
+      var newH = Math.max(MIN_H, startH + (e.clientY - startY));
+      dialog.style.width = newW + 'px';
+      document.getElementById('options-dialog-main').style.height = newH + 'px';
+    }
+    function onResizeUp() {
+      document.removeEventListener('mousemove', onResizeMove);
+      document.removeEventListener('mouseup', onResizeUp);
+      try { localStorage.setItem('tvs:opts:size', JSON.stringify({w: dialog.offsetWidth, h: document.getElementById('options-dialog-main').offsetHeight})); } catch(e) {}
+    }
+    document.addEventListener('mousemove', onResizeMove);
+    document.addEventListener('mouseup', onResizeUp);
+  });
+
+  // Restore saved size
+  (function() {
+    var s; try { s = JSON.parse(localStorage.getItem('tvs:opts:size')); } catch(e) {}
+    if (s && s.w) dialog.style.width = s.w + 'px';
+    if (s && s.h) document.getElementById('options-dialog-main').style.height = s.h + 'px';
+  })();
 
   // Close only via the X button (no outside-click dismiss)
 
