@@ -1832,7 +1832,6 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
         <label style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:56px;">Date/time</label>
         <div style="flex:1;display:flex;align-items:center;gap:4px;position:relative;">
           <div id="datefmt-help-dt-display" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;padding:5px 7px;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
-          <input type="datetime-local" id="datefmt-help-dt" style="position:absolute;right:0;top:0;width:32px;height:100%;opacity:0;pointer-events:none;border:none;padding:0;">
           <button type="button" id="datefmt-help-cal-btn" title="Pick date &amp; time" style="display:flex;align-items:center;flex-shrink:0;height:28px;padding:0 6px;background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);opacity:.7;line-height:1;"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="1" y="3" width="14" height="12" rx="1.5"/><path d="M1 7h14M5 1v4M11 1v4"/></svg></button>
         </div>
       </div>
@@ -7835,6 +7834,184 @@ function dockPanel(panelId, zone) {
   restorePaneOrder();
 })();
 
+// ── Editor Custom Date/Time Picker ────────────────────────────────────────
+// openEditorPicker(anchorEl, currentDate, isDatetime, onSelect)
+(function() {
+  var _epInp = null, _epIsDatetime = false, _epCb = null;
+  var _epYear = 0, _epMonth = 0, _epSelDate = null, _epHr = 0, _epMn = 0;
+
+  function _epPad(n) { return n < 10 ? '0' + n : '' + n; }
+
+  function _epCreate() {
+    if (document.getElementById('ed-picker')) return;
+    var p = document.createElement('div');
+    p.id = 'ed-picker';
+    p.style.cssText = 'display:none;position:fixed;z-index:99999;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.32);min-width:260px;font-size:13px;color:var(--text);user-select:none;';
+    p.innerHTML =
+      '<div style="display:flex;align-items:center;gap:4px;padding:8px 10px;border-bottom:1px solid var(--border);">'
+      + '<button id="ep-prev" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:16px;line-height:1;padding:2px 8px;">&#8249;</button>'
+      + '<button id="ep-title" style="flex:1;background:none;border:1px solid var(--border);border-radius:4px;cursor:default;color:var(--text);font-weight:600;font-size:12px;padding:4px 8px;text-align:center;"></button>'
+      + '<button id="ep-next" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:16px;line-height:1;padding:2px 8px;">&#8250;</button>'
+      + '<button id="ep-close" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:16px;line-height:1;padding:2px 7px;">&#215;</button>'
+      + '</div>'
+      + '<div style="padding:8px 10px;">'
+      + '<div id="ep-wds" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;"></div>'
+      + '<div id="ep-days" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>'
+      + '</div>'
+      + '<div id="ep-time" style="display:none;display:flex;align-items:center;gap:4px;padding:8px 10px;border-top:1px solid var(--border);">'
+      + '<span style="font-size:11px;color:var(--muted);min-width:30px;">Time</span>'
+      + '<button id="ep-hr-dn" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:14px;padding:3px 7px;">&#8722;</button>'
+      + '<input id="ep-hr" type="number" min="0" max="23" style="width:36px;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:13px;padding:3px 4px;-moz-appearance:textfield;outline:none;">'
+      + '<button id="ep-hr-up" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:14px;padding:3px 7px;">&#43;</button>'
+      + '<span style="font-weight:700;color:var(--muted);">:</span>'
+      + '<button id="ep-mn-dn" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:14px;padding:3px 7px;">&#8722;</button>'
+      + '<input id="ep-mn" type="number" min="0" max="59" style="width:36px;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:13px;padding:3px 4px;-moz-appearance:textfield;outline:none;">'
+      + '<button id="ep-mn-up" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:14px;padding:3px 7px;">&#43;</button>'
+      + '</div>'
+      + '<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;border-top:1px solid var(--border);">'
+      + '<button id="ep-today" style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);font-size:11px;padding:4px 10px;">Today</button>'
+      + '<span style="flex:1"></span>'
+      + '<button id="ep-clear" style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);font-size:11px;padding:4px 10px;">Clear</button>'
+      + '<button id="ep-done" style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);font-size:11px;padding:4px 10px;font-weight:600;">Done</button>'
+      + '</div>';
+
+    // Weekday headers
+    var wds = p.querySelector('#ep-wds');
+    ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(function(d) {
+      var s = document.createElement('div');
+      s.style.cssText = 'text-align:center;font-size:10px;font-weight:600;color:var(--muted);padding:2px 0;';
+      s.textContent = d;
+      wds.appendChild(s);
+    });
+
+    // Hover effects on step/nav buttons
+    p.addEventListener('mouseover', function(e) {
+      var btn = e.target.closest('button');
+      if (!btn || !p.contains(btn)) return;
+      btn.style.borderColor = 'var(--accent)';
+      btn.style.color = 'var(--accent)';
+    });
+    p.addEventListener('mouseout', function(e) {
+      var btn = e.target.closest('button');
+      if (!btn || !p.contains(btn)) return;
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    });
+
+    document.body.appendChild(p);
+
+    document.getElementById('ep-prev').addEventListener('click', function() { _epMonth--; if (_epMonth < 0) { _epMonth = 11; _epYear--; } _epRender(); });
+    document.getElementById('ep-next').addEventListener('click', function() { _epMonth++; if (_epMonth > 11) { _epMonth = 0; _epYear++; } _epRender(); });
+    document.getElementById('ep-close').addEventListener('click', _epClose);
+    document.getElementById('ep-today').addEventListener('click', function() {
+      var n = new Date();
+      if (_epIsDatetime) { _epHr = n.getHours(); _epMn = n.getMinutes(); document.getElementById('ep-hr').value = _epPad(_epHr); document.getElementById('ep-mn').value = _epPad(_epMn); }
+      _epSelDate = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+      _epYear = _epSelDate.getFullYear(); _epMonth = _epSelDate.getMonth();
+      _epRender(); if (!_epIsDatetime) _epCommit();
+    });
+    document.getElementById('ep-clear').addEventListener('click', function() { _epClose(); if (_epCb) _epCb(null); });
+    document.getElementById('ep-done').addEventListener('click', _epCommit);
+    document.getElementById('ep-hr-dn').addEventListener('click', function() { _epHr = (_epHr - 1 + 24) % 24; document.getElementById('ep-hr').value = _epPad(_epHr); });
+    document.getElementById('ep-hr-up').addEventListener('click', function() { _epHr = (_epHr + 1) % 24; document.getElementById('ep-hr').value = _epPad(_epHr); });
+    document.getElementById('ep-mn-dn').addEventListener('click', function() { _epMn = (_epMn - 5 + 60) % 60; document.getElementById('ep-mn').value = _epPad(_epMn); });
+    document.getElementById('ep-mn-up').addEventListener('click', function() { _epMn = (_epMn + 5) % 60; document.getElementById('ep-mn').value = _epPad(_epMn); });
+    document.getElementById('ep-hr').addEventListener('change', function() { var v = parseInt(this.value, 10); _epHr = isNaN(v) ? 0 : Math.max(0, Math.min(23, v)); this.value = _epPad(_epHr); });
+    document.getElementById('ep-mn').addEventListener('change', function() { var v = parseInt(this.value, 10); _epMn = isNaN(v) ? 0 : Math.max(0, Math.min(59, v)); this.value = _epPad(_epMn); });
+    document.addEventListener('mousedown', function(e) {
+      var pk = document.getElementById('ed-picker');
+      if (pk && pk.style.display !== 'none' && !pk.contains(e.target) && e.target !== _epInp) _epClose();
+    }, true);
+  }
+
+  function _epRender() {
+    var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var title = document.getElementById('ep-title');
+    if (title) title.textContent = MONTHS[_epMonth] + ' ' + _epYear;
+    var days = document.getElementById('ep-days');
+    if (!days) return;
+    days.innerHTML = '';
+    var firstDay = new Date(_epYear, _epMonth, 1).getDay();
+    var daysInMonth = new Date(_epYear, _epMonth + 1, 0).getDate();
+    var daysInPrev = new Date(_epYear, _epMonth, 0).getDate();
+    var today = new Date(); today = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    for (var i = 0; i < firstDay; i++) {
+      var blank = document.createElement('div');
+      blank.style.cssText = 'text-align:center;padding:5px 2px;font-size:12px;color:var(--muted);opacity:.4;';
+      blank.textContent = daysInPrev - firstDay + 1 + i;
+      days.appendChild(blank);
+    }
+    for (var d = 1; d <= daysInMonth; d++) {
+      var cell = document.createElement('div');
+      var cellDate = new Date(_epYear, _epMonth, d);
+      var isSel = _epSelDate && cellDate.getTime() === _epSelDate.getTime();
+      var isToday = cellDate.getTime() === today.getTime();
+      cell.style.cssText = 'text-align:center;padding:5px 2px;border-radius:4px;cursor:pointer;font-size:12px;border:1px solid transparent;'
+        + (isSel ? 'background:var(--accent);color:#fff;border-color:var(--accent);' : '')
+        + (!isSel && isToday ? 'font-weight:700;color:var(--accent);' : '');
+      cell.textContent = d;
+      if (!isSel) {
+        cell.addEventListener('mouseover', function() { this.style.borderColor = 'var(--accent)'; this.style.color = 'var(--accent)'; });
+        cell.addEventListener('mouseout', function() { this.style.borderColor = 'transparent'; this.style.color = ''; });
+      }
+      (function(yr, mo, dy) {
+        cell.addEventListener('click', function() {
+          _epSelDate = new Date(yr, mo, dy); _epRender();
+          if (!_epIsDatetime) _epCommit();
+        });
+      }(_epYear, _epMonth, d));
+      days.appendChild(cell);
+    }
+    var trail = (7 - (firstDay + daysInMonth) % 7) % 7;
+    for (var t = 1; t <= trail; t++) {
+      var tb = document.createElement('div');
+      tb.style.cssText = 'text-align:center;padding:5px 2px;font-size:12px;color:var(--muted);opacity:.4;';
+      tb.textContent = t; days.appendChild(tb);
+    }
+  }
+
+  function _epCommit() {
+    if (!_epSelDate) return;
+    var d = new Date(_epSelDate.getFullYear(), _epSelDate.getMonth(), _epSelDate.getDate(), _epIsDatetime ? _epHr : 0, _epIsDatetime ? _epMn : 0, 0);
+    _epClose();
+    if (_epCb) _epCb(d);
+  }
+
+  function _epClose() {
+    var pk = document.getElementById('ed-picker');
+    if (pk) pk.style.display = 'none';
+    _epCb = null; _epInp = null;
+  }
+
+  window.openEditorPicker = function(anchorEl, currentDate, isDatetime, onSelect) {
+    _epCreate();
+    _epCb = onSelect;
+    _epInp = anchorEl;
+    _epIsDatetime = !!isDatetime;
+    var init = (currentDate && !isNaN(currentDate.getTime())) ? currentDate : new Date();
+    _epSelDate = new Date(init.getFullYear(), init.getMonth(), init.getDate());
+    _epYear = _epSelDate.getFullYear(); _epMonth = _epSelDate.getMonth();
+    _epHr = init.getHours(); _epMn = init.getMinutes();
+    var timeRow = document.getElementById('ep-time');
+    if (timeRow) timeRow.style.display = isDatetime ? 'flex' : 'none';
+    var hrInp = document.getElementById('ep-hr'); var mnInp = document.getElementById('ep-mn');
+    if (hrInp) hrInp.value = _epPad(_epHr); if (mnInp) mnInp.value = _epPad(_epMn);
+    var todayBtn = document.getElementById('ep-today');
+    if (todayBtn) todayBtn.textContent = isDatetime ? 'Now' : 'Today';
+    _epRender();
+    var pk = document.getElementById('ed-picker');
+    pk.style.display = '';
+    var r = anchorEl.getBoundingClientRect();
+    var pw = pk.offsetWidth || 264; var ph = pk.offsetHeight || 320;
+    var left = r.left; var top = r.bottom + 6;
+    if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+    if (left < 8) left = 8;
+    if (top + ph > window.innerHeight - 8) top = r.top - ph - 6;
+    if (top < 8) top = 8;
+    pk.style.left = left + 'px'; pk.style.top = top + 'px';
+  };
+})();
+
 // ── Date Pattern Help Floater ─────────────────────────────────────────────
 (function() {
   var helpDialog = document.getElementById('datefmt-help-dialog');
@@ -7842,7 +8019,6 @@ function dockPanel(panelId, zone) {
   var helpClose   = document.getElementById('datefmt-help-close');
   var helpBtn     = document.getElementById('opts-datefmt-help-btn');
   var helpPattern = document.getElementById('datefmt-help-pattern');
-  var helpDt        = document.getElementById('datefmt-help-dt');
   var helpDtDisplay = document.getElementById('datefmt-help-dt-display');
   var helpCalBtn    = document.getElementById('datefmt-help-cal-btn');
   var helpPreview   = document.getElementById('datefmt-help-preview');
@@ -7920,21 +8096,16 @@ function dockPanel(panelId, zone) {
     }
   }
 
-  // Calendar button — same pattern as produced forms
+  // Calendar button — opens editor custom picker
   if (helpCalBtn) {
     helpCalBtn.addEventListener('mouseenter', function() { helpCalBtn.style.opacity = '1'; helpCalBtn.style.borderColor = 'var(--accent)'; helpCalBtn.style.color = 'var(--accent)'; });
     helpCalBtn.addEventListener('mouseleave', function() { helpCalBtn.style.opacity = '.7'; helpCalBtn.style.borderColor = 'var(--border)'; helpCalBtn.style.color = 'var(--text)'; });
     helpCalBtn.addEventListener('click', function() {
-      helpDt.value = nowLocalISO();
-      try { helpDt.showPicker(); } catch(e) { helpDt.click(); }
-    });
-  }
-  if (helpDt) {
-    helpDt.addEventListener('change', function() {
-      if (!helpDt.value) return;
-      _helpDate = new Date(helpDt.value);
-      syncDisplay(_helpDate);
-      updatePreview();
+      openEditorPicker(helpCalBtn, _helpDate, true, function(date) {
+        _helpDate = date;
+        syncDisplay(_helpDate);
+        updatePreview();
+      });
     });
   }
 
@@ -7947,7 +8118,6 @@ function dockPanel(panelId, zone) {
   function openHelp() {
     helpDialog.style.display = '';
     _helpDate = new Date();
-    helpDt.value = nowLocalISO();
     syncDisplay(_helpDate);
     updatePreview();
     try { localStorage.setItem(HELP_OPEN_KEY, '1'); } catch(e) {}
