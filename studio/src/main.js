@@ -171,6 +171,10 @@ import { initOptionsDialog } from './lib/OptionsDialog.js';
 import { FORMAT_PANE_ITEMS, getHiddenItems, setItemHidden, initPaneBuilder } from './lib/PaneBuilder.js';
 import { updateToolbarState, FONT_MAP, updateInlineFormatState, isBlockLevelFormatting,
          applyFontFamily, convertFocusedBlock, closePreview, initInlineFormat } from './lib/InlineFormat.js';
+import { initFileOps, initFileOpsListeners, setStatus, markUnsaved, isPersistUndo,
+         saveDraft, loadDraft, openMd, openHtml, getCompiledHtml, saveFile,
+         closeAllDropdowns, showPreview, flatBlockList } from './lib/FileOps.js';
+import { initToolbarWiring } from './lib/ToolbarWiring.js';
 import { parseMd as TesselParseMd, blocksToHtml, buildPage as TesselBuildPage } from './lib/TesselCompiler.js';
 import { icon, makeSeparator, makeTextInput, makeToggle } from './tessel-ui/index.js';
 
@@ -205,6 +209,17 @@ initExport({
   saveDraft:         saveDraft,
   getCompiledHtml:   getCompiledHtml,
 });
+initFileOps({
+  setUnsaved:        function(v) { _unsaved = v; },
+  getBlocks:         function() { return blocks; },
+  setBlocks:         function(v) { blocks = v; },
+  setSelectedBlockId: function(v) { selectedBlockId = v; },
+  getFilename:       function() { return _filename; },
+  setFilename:       function(v) { _filename = v; },
+  renderCanvas:      renderCanvas,
+  renderProps:       renderProps,
+});
+initFileOpsListeners();
 var _filename = 'document';
 
 // Undo/Redo
@@ -1236,325 +1251,10 @@ function showInsertFloat(afterId, anchorEl) {
 }
 
 
-function markUnsaved() { _unsaved = true; setStatus('Unsaved changes'); }
-
-function isPersistUndo() {
-  try { return localStorage.getItem('tvs:opts:persist-undo') === '1'; } catch(e) { return false; }
-}
-
-function saveDraft() {
-  try {
-    var payload = { blocks: blocks };
-    if (isPersistUndo()) { var _uh = saveUndoHistory(); payload.undoStack = _uh.undoStack; payload.redoStack = _uh.redoStack; }
-    localStorage.setItem('tvs:draft', JSON.stringify(payload));
-  } catch(e) {}
-  _unsaved = false;
-  setStatus('Draft saved');
-}
-
-function loadDraft() {
-  try {
-    var raw = localStorage.getItem('tvs:draft');
-    if (!raw) return;
-    var payload = JSON.parse(raw);
-    // Support both old format (plain array) and new format (object with blocks key)
-    if (Array.isArray(payload)) {
-      blocks = payload;
-    } else {
-      blocks = payload.blocks || [];
-      if (payload.undoStack) { loadUndoHistory(payload.undoStack, payload.redoStack); }
-    }
-    renderCanvas();
-    updateUndoButtons();
-    setStatus('Draft restored');
-  } catch(e) {}
-  try { var fn = localStorage.getItem('tvs:filename'); if (fn) _filename = fn; } catch(e) {}
-}
-
-function flatBlockList(arr) {
-  var result = [];
-  arr.forEach(function(b) {
-    result.push(b);
-    if (b.type === 'section' && b.children) result = result.concat(flatBlockList(b.children));
-  });
-  return result;
-}
-
-var _statusTimer = null;
-function setStatus(msg) {
-  document.getElementById('status-bar').textContent = msg;
-  if (_statusTimer) clearTimeout(_statusTimer);
-  _statusTimer = setTimeout(function() { document.getElementById('status-bar').textContent = 'Ready'; }, 4000);
-}
-
-function openMd(file) {
-  _filename = file.name.replace(/\.md$/i, '');
-  try { localStorage.setItem('tvs:filename', _filename); } catch(e) {}
-  var rd = new FileReader();
-  rd.onload = function(e) {
-    try {
-      blocks = TesselParseMd(e.target.result);
-      selectedBlockId = null;
-      renderCanvas(); renderProps();
-      _unsaved = false;
-      saveDraft();
-      setStatus('Opened ' + file.name);
-    } catch(ex) { setStatus('Error parsing file: ' + ex.message); }
-  };
-  rd.readAsText(file);
-}
-
-function openHtml(file) {
-  _filename = file.name.replace(/\.html?$/i, '');
-  try { localStorage.setItem('tvs:filename', _filename); } catch(e) {}
-  var rd = new FileReader();
-  rd.onload = function(ev) {
-    var html = ev.target.result;
-    var m = html.match(/<script[^>]+type="text\/tessel-source"[^>]*data-encoding="base64"[^>]*>([\s\S]*?)<\/script>/i)
-           || html.match(/<script[^>]+data-encoding="base64"[^>]+type="text\/tessel-source"[^>]*>([\s\S]*?)<\/script>/i);
-    if (!m) { setStatus('No tessel source found in this HTML file.'); return; }
-    try {
-      var raw = decodeURIComponent(escape(atob(m[1].trim())));
-      var parsed = JSON.parse(raw);
-      // New format: JSON array of blocks
-      if (Array.isArray(parsed)) {
-        blocks = parsed.map(function(b) { b.id = b.id || uid(); return b; });
-      } else {
-        // Legacy format: markdown string — parse with TesselCompiler
-        blocks = TesselParseMd(raw);
-      }
-      selectedBlockId = null;
-      renderCanvas(); renderProps();
-      _unsaved = false;
-      saveDraft();
-      setStatus('Opened ' + file.name);
-    } catch(ex) { setStatus('Error: ' + ex.message); }
-  };
-  rd.readAsText(file);
-}
-
-function getCustomFontFaceCSS() {
-  var css = '';
-  var prefix = 'tvs:font:';
-  try {
-    for (var i = 0; i < localStorage.length; i++) {
-      var k = localStorage.key(i);
-      if (k && k.indexOf(prefix) === 0) {
-        var d = JSON.parse(localStorage.getItem(k));
-        css += '@font-face { font-family: "' + d.family + '"; src: url("' + d.dataUrl + '") format("' + d.format + '"); }\n';
-      }
-    }
-  } catch(e) {}
-  return css;
-}
-
-// ---------------------------------------------------------------------------
-function getCompiledHtml() {
-  var bodyHtml = blocksToHtml(blocks);
-  var srcB64 = '';
-  try { srcB64 = btoa(unescape(encodeURIComponent(JSON.stringify(blocks)))); } catch(e) {}
-  var extraCss = '';
-  try {
-    if (localStorage.getItem('tvs:opts:embed-fonts') === '1') {
-      var fc = getCustomFontFaceCSS();
-      if (fc) extraCss = fc;
-    }
-  } catch(e) {}
-  return TesselBuildPage(bodyHtml, { title: _filename, extraCss: extraCss, sourceB64: srcB64 });
-}
-
-
-// Shared save helper: file picker with fallback to silent download
-function saveFile(fname, content, mimeType, lsKey) {
-  var mode = (function(){ try { return localStorage.getItem(lsKey) || 'picker'; } catch(e) { return 'picker'; } })();
-  if (mode === 'picker' && window.showSaveFilePicker) {
-    var ext = fname.split('.').pop().toLowerCase();
-    var typeMap = { html: 'text/html', md: 'text/markdown', json: 'application/json', zip: 'application/zip' };
-    window.showSaveFilePicker({
-      suggestedName: fname,
-      types: [{ description: fname, accept: { [typeMap[ext] || mimeType]: ['.' + ext] } }]
-    }).then(function(fh) {
-      return fh.createWritable().then(function(w) {
-        return w.write(content).then(function() { return w.close(); });
-      }).then(function() { setStatus('Saved ' + fname); });
-    }).catch(function(ex) {
-      if (ex.name !== 'AbortError') setStatus('Save error: ' + ex.message);
-    });
-  } else {
-    var blob = new Blob([content], { type: mimeType });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url; a.download = fname;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(function() { URL.revokeObjectURL(url); }, 1200);
-    setStatus('Exported ' + fname);
-  }
-}
-
-
-function showPreview() {
-  try {
-    var html = getCompiledHtml();
-    document.getElementById('preview-frame').srcdoc = html;
-    document.getElementById('preview-modal').classList.add('show');
-    document.getElementById('btn-preview').classList.add('active');
-  } catch(ex) { setStatus('Preview error: ' + ex.message); }
-}
-
-
-function closeAllDropdowns() {
-  document.querySelectorAll('.dropdown-menu').forEach(function(m){ m.classList.remove('show'); });
-  document.getElementById('insert-float').classList.remove('show');
-}
-
-document.addEventListener('click', function(e) {
-  if (!e.target.closest('.dropdown') && !e.target.closest('#insert-float') && !e.target.closest('.block-add-btn')) {
-    closeAllDropdowns();
-  }
-});
-
-function setupDropdown(btnId, menuId) {
-  document.getElementById(btnId).addEventListener('click', function(e) {
-    e.stopPropagation();
-    var menu = document.getElementById(menuId);
-    var was = menu.classList.contains('show');
-    closeAllDropdowns();
-    if (!was) menu.classList.add('show');
-  });
-}
-
-setupDropdown('btn-file-dd', 'dm-file');
 
 makeDockablePane({ paneId: 'format-pane', badgeId: 'badge-format', lsKey: 'tvs:format-pane-state' });
 makeDockablePane({ paneId: 'text-pane',   badgeId: 'badge-text',   lsKey: 'tvs:text-pane-state' });
 makeDockablePane({ paneId: 'form-pane',   badgeId: 'badge-form',   lsKey: 'tvs:form-pane-state' });
-
-// ── Toolbar UI upgrade ─────────────────────────────────────────────────
-(function initToolbarUI() {
-  // Upgrade undo/redo to icon-only tui-btn--icon
-  var undoBtn = document.getElementById('btn-undo');
-  var redoBtn = document.getElementById('btn-redo');
-  undoBtn.innerHTML = ''; undoBtn.className = 'tui-btn tui-btn--icon';
-  redoBtn.innerHTML = ''; redoBtn.className = 'tui-btn tui-btn--icon';
-  undoBtn.appendChild(icon('undo', 15));
-  redoBtn.appendChild(icon('redo', 15));
-
-  // Upgrade preview button
-  var previewBtn = document.getElementById('btn-preview');
-  if (previewBtn) {
-    previewBtn.innerHTML = '';
-    previewBtn.className = 'tui-btn tui-btn--ghost';
-    previewBtn.appendChild(icon('eye', 14));
-    var lbl = document.createElement('span');
-    lbl.className = 'tui-btn__label';
-    lbl.textContent = 'Preview';
-    previewBtn.appendChild(lbl);
-  }
-
-  // Upgrade file-dropdown button
-  var fileBtn = document.getElementById('btn-file-dd');
-  if (fileBtn) {
-    fileBtn.innerHTML = '';
-    fileBtn.className = 'tui-btn tui-btn--ghost';
-    fileBtn.appendChild(icon('file-text', 14));
-    var lbl2 = document.createElement('span');
-    lbl2.className = 'tui-btn__label';
-    lbl2.textContent = 'File';
-    fileBtn.appendChild(lbl2);
-    fileBtn.appendChild(icon('chevron-down', 11));
-  }
-
-  // Upgrade badge buttons to tui-btn--badge
-  ['badge-format','badge-text','badge-form','badge-outline','badge-props'].forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el) el.classList.add('tui-btn', 'tui-btn--badge');
-  });
-
-  // Replace .tb-sep divs with tui-separator spans
-  document.querySelectorAll('#toolbar .tb-sep').forEach(function(sep) {
-    var replacement = makeSeparator('vertical');
-    sep.parentNode.replaceChild(replacement, sep);
-  });
-})();
-
-document.getElementById('btn-undo').addEventListener('click', undo);
-document.getElementById('btn-redo').addEventListener('click', redo);
-
-document.getElementById('btn-new').addEventListener('click', function() {
-  closeAllDropdowns();
-  if (_unsaved && !confirm('Discard unsaved changes?')) return;
-  blocks = []; selectedBlockId = null;
-  clearUndoHistory();
-  updateUndoButtons();
-  renderCanvas(); renderProps();
-  _filename = 'document';
-  try { localStorage.removeItem('tvs:filename'); } catch(e) {}
-  setStatus('New document');
-  _unsaved = false;
-});
-
-document.getElementById('open-md-item').addEventListener('click', function() { closeAllDropdowns(); document.getElementById('pick-md').click(); });
-document.getElementById('open-html-item').addEventListener('click', function() { closeAllDropdowns(); document.getElementById('pick-html').click(); });
-document.getElementById('open-zip-item').addEventListener('click', function() { closeAllDropdowns(); document.getElementById('pick-zip').click(); });
-document.getElementById('pick-md').addEventListener('change', function() { var f = this.files && this.files[0]; if (!f) return; this.value=''; openMd(f); });
-document.getElementById('pick-html').addEventListener('change', function() { var f = this.files && this.files[0]; if (!f) return; this.value=''; openHtml(f); });
-document.getElementById('pick-zip').addEventListener('change', function() { var f = this.files && this.files[0]; if (!f) return; this.value=''; openZip(f); });
-document.getElementById('btn-export-zip').addEventListener('click', function() { closeAllDropdowns(); exportZip(); });
-document.getElementById('btn-save').addEventListener('click', function() { closeAllDropdowns(); saveDraft(); });
-document.getElementById('btn-export-md').addEventListener('click', function() { closeAllDropdowns(); exportMd(); });
-document.getElementById('btn-export').addEventListener('click', function() { closeAllDropdowns(); exportHtml(); });
-
-document.getElementById('btn-h1').addEventListener('click', function() { convertFocusedBlock('heading', 1); });
-document.getElementById('btn-h2').addEventListener('click', function() { convertFocusedBlock('heading', 2); });
-document.getElementById('btn-h3').addEventListener('click', function() { convertFocusedBlock('heading', 3); });
-document.getElementById('btn-para').addEventListener('click', function() { convertFocusedBlock('paragraph'); });
-
-// Prevent format pane buttons from stealing focus/selection from the canvas
-document.querySelector('#format-pane .ctrl-pane-body').addEventListener('mousedown', function(e) {
-  if (e.target.closest('.ctrl-btn')) e.preventDefault();
-});
-
-document.getElementById('btn-indent-more').addEventListener('click', function() {
-  if (!lastFocusedTextBlockId) return;
-  var b = getBlock(lastFocusedTextBlockId);
-  if (!b) return;
-  b.indent = Math.min((b.indent || 0) + 1, 8);
-  var wrap = document.querySelector('[data-block-id="' + b.id + '"] .block-inner');
-  if (wrap) wrap.style.paddingLeft = (b.indent * 24) + 'px';
-  markUnsaved();
-});
-document.getElementById('btn-indent-less').addEventListener('click', function() {
-  if (!lastFocusedTextBlockId) return;
-  var b = getBlock(lastFocusedTextBlockId);
-  if (!b) return;
-  b.indent = Math.max((b.indent || 0) - 1, 0);
-  var wrap = document.querySelector('[data-block-id="' + b.id + '"] .block-inner');
-  if (wrap) wrap.style.paddingLeft = b.indent ? (b.indent * 24) + 'px' : '';
-  markUnsaved();
-});
-
-document.getElementById('btn-preview').addEventListener('click', function() {
-  if (document.getElementById('preview-modal').classList.contains('show')) {
-    closePreview();
-  } else {
-    showPreview();
-  }
-});
-document.getElementById('preview-close').addEventListener('click', closePreview);
-
-document.addEventListener('keydown', function(e) {
-  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') { e.preventDefault(); exportMd(); }
-  else if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveDraft(); }
-  if ((e.ctrlKey || e.metaKey) && e.key === 'e') { e.preventDefault(); exportHtml(); }
-  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); exportHtml(); }
-  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') { e.preventDefault(); undo(); }
-  if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); redo(); }
-  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z') { e.preventDefault(); redo(); }
-  if (e.key === 'Escape') {
-    closeAllDropdowns();
-    closePreview();
-  }
-});
 
 initInlineFormat({
   getLastFocusedTextBlockId: function() { return lastFocusedTextBlockId; },
@@ -1609,5 +1309,17 @@ initCustomFonts({
   updateInlineFormatState: updateInlineFormatState,
 });
 initPaneDragReorder({ dockPanel: dockPanel });
+initToolbarWiring({
+  getUnsaved:                function() { return _unsaved; },
+  setBlocks:                 function(v) { blocks = v; },
+  setSelectedBlockId:        function(v) { selectedBlockId = v; },
+  renderCanvas:              renderCanvas,
+  renderProps:               renderProps,
+  setFilename:               function(v) { _filename = v; },
+  setUnsaved:                function(v) { _unsaved = v; },
+  getLastFocusedTextBlockId: function() { return lastFocusedTextBlockId; },
+  getBlock:                  getBlock,
+  markUnsaved:               markUnsaved,
+});
 
 })();
