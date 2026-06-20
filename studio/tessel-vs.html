@@ -3906,7 +3906,7 @@ var TesselCompiler = (function() {
     '.tc-picker-cal{padding:8px 10px;}',
     '.tc-picker-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;}',
     '.tc-picker-wd{text-align:center;font-size:10px;font-weight:600;color:var(--muted);padding:2px 0;}',
-    '.tc-picker-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;min-height:160px;align-content:start;}',
+    '.tc-picker-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;height:182px;align-content:start;}',
     '.tc-picker-day{text-align:center;padding:5px 2px;border-radius:4px;cursor:pointer;font-size:12px;border:1px solid transparent;}',
     '.tc-picker-day:hover{border-color:var(--accent);color:var(--accent);}',
     '.tc-picker-day.tc-picker-day-other{color:var(--muted);opacity:.45;}',
@@ -3929,7 +3929,7 @@ var TesselCompiler = (function() {
     '.tc-picker-time-inp{width:100%;box-sizing:border-box;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:14px;padding:5px 0;-moz-appearance:textfield;outline:none;display:block;}',
     '.tc-picker-time-inp::-webkit-inner-spin-button,.tc-picker-time-inp::-webkit-outer-spin-button{-webkit-appearance:none!important;margin:0;}',
     '.tc-picker-time-inp:focus{border-color:var(--accent);}',
-    '.tc-picker-time-sep{font-weight:700;font-size:16px;color:var(--muted);width:22px;text-align:center;align-self:center;line-height:1;}',
+    '.tc-picker-time-sep{font-weight:700;font-size:16px;color:var(--muted);width:22px;display:flex;align-items:center;justify-content:center;align-self:stretch;}',
     '.tc-picker-ampm{display:none;}',
     '.tc-picker-footer{display:flex;align-items:stretch;border-top:1px solid var(--border);padding:8px 10px;gap:0;}',
     '.tc-picker-foot-btn{background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);font-size:11px;padding:4px 10px;line-height:1.4;}',
@@ -4171,7 +4171,7 @@ var TesselCompiler = (function() {
     '    +\'<div class="tc-picker-days" id="tc-pcr-days"></div>\'',
     '    +\'</div>\'',
     '    +\'<div class="tc-picker-time" id="tc-pcr-time">\'',
-    '    +\'<div class="tc-picker-time-lbl">Time</div>\'',
+    '    +\'<div class="tc-picker-time-lbl" id="tc-pcr-time-lbl">Time</div>\'',
     '    +\'<div class="tc-picker-time-inner">\'',
     // Grid: [hr col] [sep col] [mn col]
     '    +\'<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:3px 0;flex:1;">\'',
@@ -4194,15 +4194,19 @@ var TesselCompiler = (function() {
     '    +\'</div>\'',
     // Footer mirrors time grid: [Done+Clear:1fr] [22px] [Now:1fr] [gap] [12h/24h pill]
     '    +\'<div class="tc-picker-footer tc-picker-footer-dt" id="tc-pcr-footer">\'',
-    '    +\'<div id="tc-pcr-lbl-spc" style="display:none;border-right:1px solid transparent;padding:0 6px;"></div>\'',
-    '    +\'<div style="flex:1;display:flex;align-items:center;gap:0;padding:0;">\'',
-    '    +\'<div style="flex:1;display:flex;gap:4px;">\'',
-    '    +\'<button class="tc-picker-foot-btn tc-picker-done-btn" id="tc-pcr-done" style="flex:1;">Done</button>\'',
-    '    +\'<button class="tc-picker-foot-btn tc-picker-clear-btn" id="tc-pcr-clear" style="flex:1;">Clear</button>\'',
+    '    +\'<div id="tc-pcr-lbl-spc" style="display:none;border-right:1px solid transparent;flex-shrink:0;"></div>\'',
+    '    +\'<div style="flex:1;display:flex;align-items:center;gap:8px;padding:8px 10px;">\'',
+    '    +\'<div style="flex:1;display:grid;grid-template-columns:1fr auto 1fr;">\'',
+    '    +\'<div style="margin-right:4px;border:1px solid var(--border);border-radius:4px;overflow:hidden;display:flex;align-items:stretch;">\'',
+    '    +\'<button class="tc-picker-foot-btn tc-picker-done-btn" id="tc-pcr-done" style="flex:1;border:none;">Done</button>\'',
+    '    +\'<div style="width:1px;background:var(--border);flex-shrink:0;"></div>\'',
+    '    +\'<button class="tc-picker-foot-btn tc-picker-clear-btn" id="tc-pcr-clear" style="flex:1;border:none;">Clear</button>\'',
     '    +\'</div>\'',
-    '    +\'<span style="width:22px;flex-shrink:0;"></span>\'',
-    '    +\'<button class="tc-picker-foot-btn tc-picker-today-btn" id="tc-pcr-today" style="flex:1;">Today</button>\'',
-    '    +\'<div class="tc-picker-pill" id="tc-pcr-hrfmt-wrap" style="display:none;margin-left:8px;">\'',
+    '    +\'<span style="width:22px;flex-shrink:0;display:block;"></span>\'',
+    '    +\'<div style="margin-left:4px;">\'',
+    '    +\'<button class="tc-picker-foot-btn tc-picker-today-btn" id="tc-pcr-today" style="width:100%;">Now</button>\'',
+    '    +\'</div></div>\'',
+    '    +\'<div class="tc-picker-pill" id="tc-pcr-hrfmt-wrap" style="display:none;">\'',
     '    +\'<div class="tc-picker-pill-thumb" id="tc-pcr-hrfmt-thumb" style="transform:translateX(100%);"></div>\'',
     '    +\'<span class="tc-picker-pill-lbl" id="tc-pcr-fmt12" style="color:var(--muted);">12h</span>\'',
     '    +\'<span class="tc-picker-pill-lbl" id="tc-pcr-fmt24" style="color:#fff;">24h</span>\'',
@@ -4213,6 +4217,19 @@ var TesselCompiler = (function() {
     '    var s=document.createElement("div");s.className="tc-picker-wd";s.textContent=d;wds.appendChild(s);',
     '  });',
     '  document.body.appendChild(p);',
+    '  (function(){',
+    '    var sv=p.style.visibility,sd=p.style.display;',
+    '    var ts=document.getElementById("tc-picker-time");',
+    '    if(!ts)return;',
+    '    var stsd=ts.style.display;',
+    '    p.style.visibility="hidden";p.style.display="block";',
+    '    ts.style.display="flex";',
+    '    var tl=document.getElementById("tc-pcr-time-lbl");',
+    '    var sp=document.getElementById("tc-pcr-lbl-spc");',
+    '    if(tl&&sp)sp.style.width=tl.offsetWidth+"px";',
+    '    ts.style.display=stsd;',
+    '    p.style.display=sd;p.style.visibility=sv;',
+    '  }());',
     '  document.getElementById("tc-pcr-prev").addEventListener("click",function(){_pMonth--;if(_pMonth<0){_pMonth=11;_pYear--;}_renderCal();});',
     '  document.getElementById("tc-pcr-next").addEventListener("click",function(){_pMonth++;if(_pMonth>11){_pMonth=0;_pYear++;}_renderCal();});',
     '  document.getElementById("tc-pcr-close").addEventListener("click",_closePicker);',
@@ -7981,12 +7998,12 @@ function dockPanel(panelId, zone) {
       + '</div>'
       + '<div style="padding:8px 10px;">'
       + '<div id="ep-wds" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;"></div>'
-      + '<div id="ep-days" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;min-height:160px;align-content:start;"></div>'
+      + '<div id="ep-days" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;height:182px;align-content:start;"></div>'
       + '</div>'
       // ── Time section ──────────────────────────────────────────
       // Outer flex: vertical "Time" label left, controls fill remainder
       + '<div id="ep-time" style="display:none;border-top:1px solid var(--border);align-items:stretch;">'
-      +   '<div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;color:var(--muted);padding:10px 6px;border-right:1px solid var(--border);display:flex;align-items:center;justify-content:center;letter-spacing:.04em;">Time</div>'
+      +   '<div id="ep-time-lbl" style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;color:var(--muted);padding:10px 6px;border-right:1px solid var(--border);display:flex;align-items:center;justify-content:center;letter-spacing:.04em;">Time</div>'
       +   '<div style="flex:1;display:flex;align-items:center;justify-content:center;padding:10px;gap:8px;">'
       //     CSS grid: columns [hr] [colon] [mn] — guarantees +/- match input widths exactly
       +     '<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:3px 0;flex:1;">'
@@ -7994,7 +8011,7 @@ function dockPanel(panelId, zone) {
       +       '<span style="display:block;width:22px;"></span>'
       +       '<button id="ep-mn-up" style="' + _EP_STEP_STYLE + 'margin-left:4px;">&#43;</button>'
       +       '<input id="ep-hr" type="number" min="0" max="23" style="' + _EP_INP_STYLE + 'margin-right:4px;">'
-      +       '<span style="font-weight:700;font-size:16px;color:var(--muted);width:22px;text-align:center;align-self:center;line-height:1;">:</span>'
+      +       '<span style="font-weight:700;font-size:16px;color:var(--muted);width:22px;display:flex;align-items:center;justify-content:center;align-self:stretch;">:</span>'
       +       '<input id="ep-mn" type="number" min="0" max="59" style="' + _EP_INP_STYLE + 'margin-left:4px;">'
       +       '<button id="ep-hr-dn" style="' + _EP_STEP_STYLE + 'margin-right:4px;">&#8722;</button>'
       +       '<span style="display:block;width:22px;"></span>'
@@ -8012,19 +8029,25 @@ function dockPanel(panelId, zone) {
       // Wrapped in same left-offset as time-inner to align columns
       + '<div id="ep-footer" style="display:flex;align-items:stretch;border-top:1px solid var(--border);">'
       // Transparent spacer matching the "Time" label column width
-      +   '<div id="ep-lbl-spc" style="display:none;border-right:1px solid transparent;padding:0 6px;"></div>'
-      +   '<div style="flex:1;display:flex;align-items:center;gap:0;padding:8px 10px;">'
-      //     Left zone (under hr column): Done + Clear
-      +     '<div style="flex:1;display:flex;gap:4px;">'
-      +       '<button id="ep-done" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);font-size:11px;padding:4px 6px;font-weight:600;">Done</button>'
-      +       '<button id="ep-clear" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);font-size:11px;padding:4px 6px;">Clear</button>'
+      +   '<div id="ep-lbl-spc" style="display:none;border-right:1px solid transparent;flex-shrink:0;"></div>'
+      +   '<div style="flex:1;display:flex;align-items:center;gap:8px;padding:8px 10px;">'
+      //     Main grid: mirrors time section 1fr/auto/1fr structure for pixel-perfect column alignment
+      +     '<div style="flex:1;display:grid;grid-template-columns:1fr auto 1fr;">'
+      //       1fr cell under HH: Done+Clear as a single bordered group
+      +       '<div style="margin-right:4px;border:1px solid var(--border);border-radius:4px;overflow:hidden;display:flex;align-items:stretch;">'
+      +         '<button id="ep-done" style="flex:1;background:var(--surface2);border:none;cursor:pointer;color:var(--text);font-size:11px;padding:4px 6px;font-weight:600;">Done</button>'
+      +         '<div style="width:1px;background:var(--border);flex-shrink:0;"></div>'
+      +         '<button id="ep-clear" style="flex:1;background:var(--surface2);border:none;cursor:pointer;color:var(--text);font-size:11px;padding:4px 6px;">Clear</button>'
+      +       '</div>'
+      //       22px spacer under colon
+      +       '<span style="width:22px;flex-shrink:0;display:block;"></span>'
+      //       1fr cell under MM: Now button constrained to same width as MM input
+      +       '<div style="margin-left:4px;">'
+      +         '<button id="ep-today" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);font-size:11px;padding:4px 6px;">Now</button>'
+      +       '</div>'
       +     '</div>'
-      //     Spacer matching colon column (22px)
-      +     '<span style="width:22px;flex-shrink:0;"></span>'
-      //     Right zone (under mn column): Now — full width of the mn column
-      +     '<button id="ep-today" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);font-size:11px;padding:4px 6px;">Today</button>'
-      //     Gap + 12h/24h sliding pill (same slot as AM/PM pill)
-      +     '<div id="ep-hrfmt-wrap" style="display:none;position:relative;margin-left:8px;width:80px;align-self:stretch;border:1px solid var(--border);border-radius:5px;cursor:pointer;overflow:hidden;">'
+      //     Gap (from gap:8px on parent) + 12h/24h sliding pill (same slot as AM/PM pill)
+      +     '<div id="ep-hrfmt-wrap" style="display:none;position:relative;width:80px;align-self:stretch;border:1px solid var(--border);border-radius:5px;cursor:pointer;overflow:hidden;">'
       +       '<div id="ep-hrfmt-thumb" style="position:absolute;top:2px;left:2px;width:calc(50% - 2px);height:calc(100% - 4px);border-radius:3px;background:var(--accent);transition:transform 0.18s ease;z-index:0;will-change:transform;"></div>'
       +       '<span id="ep-fmt-12" style="flex:1;position:relative;z-index:1;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;pointer-events:none;color:var(--muted);">12h</span>'
       +       '<span id="ep-fmt-24" style="flex:1;position:relative;z-index:1;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;pointer-events:none;color:#fff;">24h</span>'
@@ -8065,6 +8088,21 @@ function dockPanel(panelId, zone) {
     document.head.appendChild(_epStyle);
 
     document.body.appendChild(p);
+
+    // Measure Time label width once and sync footer spacer for perfect column alignment
+    (function() {
+      var savedVis = p.style.visibility;
+      var savedDisp = p.style.display;
+      var timeSec = document.getElementById('ep-time');
+      var savedTimeDisp = timeSec.style.display;
+      p.style.visibility = 'hidden'; p.style.display = 'block';
+      timeSec.style.display = 'flex';
+      var timeLbl = document.getElementById('ep-time-lbl');
+      var spc = document.getElementById('ep-lbl-spc');
+      if (timeLbl && spc) spc.style.width = timeLbl.offsetWidth + 'px';
+      timeSec.style.display = savedTimeDisp;
+      p.style.display = savedDisp; p.style.visibility = savedVis;
+    }());
 
     document.getElementById('ep-prev').addEventListener('click', function() { _epMonth--; if (_epMonth < 0) { _epMonth = 11; _epYear--; } _epRender(); });
     document.getElementById('ep-next').addEventListener('click', function() { _epMonth++; if (_epMonth > 11) { _epMonth = 0; _epYear++; } _epRender(); });
