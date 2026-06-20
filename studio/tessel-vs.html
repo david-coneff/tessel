@@ -8362,8 +8362,28 @@ function dockPanel(panelId, zone) {
   var HELP_OPEN_KEY = 'tvs:datefmtHelpOpen';
   var HELP_POS_KEY  = 'tvs:datefmtHelpPos';
 
+  function _clampHelpPos() {
+    var tb = document.getElementById('toolbar');
+    var tbH = tb ? tb.getBoundingClientRect().bottom : 0;
+    var dlgW = helpDialog.offsetWidth;
+    var dlgH = helpDialog.offsetHeight;
+    if (helpDialog.style.transform !== 'none') {
+      var r = helpDialog.getBoundingClientRect();
+      helpDialog.style.left = r.left + 'px';
+      helpDialog.style.top  = r.top  + 'px';
+      helpDialog.style.transform = 'none';
+    }
+    var x = parseFloat(helpDialog.style.left) || 0;
+    var y = parseFloat(helpDialog.style.top)  || 0;
+    x = Math.max(0, Math.min(window.innerWidth  - dlgW, x));
+    y = Math.max(tbH, Math.min(window.innerHeight - dlgH, y));
+    helpDialog.style.left = x + 'px';
+    helpDialog.style.top  = y + 'px';
+  }
+
   function openHelp() {
     helpDialog.style.display = '';
+    _clampHelpPos();
     _helpDate = new Date();
     syncDisplay(_helpDate);
     updatePreview();
@@ -8409,8 +8429,15 @@ function dockPanel(panelId, zone) {
   });
   document.addEventListener('mousemove', function(e) {
     if (!_dragging) return;
-    helpDialog.style.left = (e.clientX - _dx) + 'px';
-    helpDialog.style.top  = (e.clientY - _dy) + 'px';
+    var dlgW = helpDialog.offsetWidth, dlgH = helpDialog.offsetHeight;
+    var tb = document.getElementById('toolbar');
+    var tbH = tb ? tb.getBoundingClientRect().bottom : 0;
+    var x = e.clientX - _dx;
+    var y = e.clientY - _dy;
+    x = Math.max(0, Math.min(window.innerWidth  - dlgW, x));
+    y = Math.max(tbH, Math.min(window.innerHeight - dlgH, y));
+    helpDialog.style.left = x + 'px';
+    helpDialog.style.top  = y + 'px';
   });
   document.addEventListener('mouseup', function() {
     if (_dragging) {
