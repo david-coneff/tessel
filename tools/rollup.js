@@ -4,7 +4,6 @@
  *
  * Combines all compiler modules into:
  *   dist/tessel.bundle.js   — single JS file, browser + Node compatible
- *   dist/tessel-min.html    — minimal self-referencing loader stub (for dev)
  *
  * Usage:
  *   node tools/rollup.js [--out <dir>] [--watch]
@@ -16,10 +15,6 @@
  *
  * You can also run this to compile a single .md file for quick testing:
  *   node tools/rollup.js --compile path/to/doc.md [--html-out path/to/out.html]
- *
- * Build a fully self-contained Tessel Studio (no external deps):
- *   node tools/rollup.js --studio
- *   → writes dist/tessel-studio.html
  */
 
 'use strict';
@@ -82,7 +77,7 @@ function buildBundle() {
     var src = readFile(path.join(COMPILER, mod.file));
     src = stripCjsShim(src);
     // Strip file-level 'use strict' duplicates
-    src = src.replace(/^['"]use strict['"];\n?/m, '');
+    src = src.replace(/^['"']use strict['"'];\n?/m, '');
     parts.push('// ---- ' + mod.file + ' ----');
     parts.push(src.trim());
     parts.push('');
@@ -127,22 +122,6 @@ function getVersion() {
   } catch(e) { return '0.1.0'; }
 }
 
-// ---- build standalone Studio (bundle inlined) ----
-function buildStudio(outDir) {
-  var studioSrc = readFile(path.join(ROOT, 'studio', 'tessel-studio.html'));
-  var bundle    = readFile(path.join(outDir, 'tessel.bundle.js'));
-  // Replace the relative <script src="../dist/tessel.bundle.js"> with inline bundle
-  var standalone = studioSrc.replace(
-    /<script\s+src="\.\.\/dist\/tessel\.bundle\.js"><\/script>/,
-    '<script>\n' + bundle + '\n</script>'
-  );
-  // Update title to indicate standalone
-  standalone = standalone.replace('<title>Tessel Studio</title>', '<title>Tessel Studio (standalone)</title>');
-  var outPath = path.join(outDir, 'tessel-studio.html');
-  fs.writeFileSync(outPath, standalone, 'utf8');
-  console.log('Standalone Studio: ' + outPath + ' (' + Math.round(standalone.length / 1024) + ' KB)');
-}
-
 // ---- compile a .md file ----
 function compileMd(mdPath, outPath) {
   // Require the local modules (not the bundle — use the source for dev speed)
@@ -159,14 +138,12 @@ function main() {
   var args = process.argv.slice(2);
   var outDir = DIST;
   var watchMode  = false;
-  var studioMode = false;
   var compileFile = null;
   var compileOut  = null;
 
   for (var i = 0; i < args.length; i++) {
     if (args[i] === '--out' && args[i + 1]) { outDir = path.resolve(args[++i]); }
     else if (args[i] === '--watch') { watchMode = true; }
-    else if (args[i] === '--studio') { studioMode = true; }
     else if (args[i] === '--compile' && args[i + 1]) { compileFile = path.resolve(args[++i]); }
     else if (args[i] === '--html-out' && args[i + 1]) { compileOut = path.resolve(args[++i]); }
   }
@@ -183,10 +160,6 @@ function main() {
   fs.writeFileSync(bundlePath, bundle, 'utf8');
   console.log('Bundle written: ' + bundlePath + ' (' + Math.round(bundle.length / 1024) + ' KB)');
 
-  if (studioMode) {
-    buildStudio(outDir);
-  }
-
   if (watchMode) {
     var watchTargets = MODULES.map(function(m) { return path.join(COMPILER, m.file); }).concat([ENTRY]);
     console.log('Watching for changes...');
@@ -197,7 +170,6 @@ function main() {
           var updated = buildBundle();
           fs.writeFileSync(bundlePath, updated, 'utf8');
           console.log('Rebuilt: ' + bundlePath);
-          if (studioMode) buildStudio(outDir);
         } catch(err) {
           console.error('Build error: ' + err.message);
         }
