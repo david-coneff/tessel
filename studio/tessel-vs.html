@@ -3918,9 +3918,9 @@ var TesselCompiler = (function() {
     '.tc-picker-time-lbl{writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;color:var(--muted);padding:10px 6px;border-right:1px solid var(--border);display:flex;align-items:center;justify-content:center;letter-spacing:.04em;}',
     '.tc-picker-time-inner{flex:1;display:flex;align-items:center;justify-content:center;padding:10px;gap:8px;}',
     '.tc-picker-time-cols{display:flex;flex-direction:column;gap:3px;flex:1;}',
-    '.tc-picker-hrfmt{display:flex;border:1px solid var(--border);border-radius:4px;overflow:hidden;}',
+    '.tc-picker-hrfmt{display:flex;border:1px solid var(--border);border-radius:4px;overflow:hidden;width:80px;}',
     '.tc-picker-hrfmt-div{width:1px;background:var(--border);flex-shrink:0;}',
-    '.tc-picker-hrfmt-btn{background:var(--surface2);border:none;cursor:pointer;font-size:11px;font-weight:600;padding:3px 9px;color:var(--muted);}',
+    '.tc-picker-hrfmt-btn{background:var(--surface2);border:none;cursor:pointer;font-size:11px;font-weight:600;padding:0 10px;color:var(--muted);flex:1;display:flex;align-items:center;justify-content:center;height:100%;transition:background 0.18s ease,color 0.18s ease;}',
     '.tc-picker-hrfmt-btn.active{background:var(--accent);color:#fff;}',
     '.tc-picker-step-row{display:flex;align-items:center;gap:4px;}',
     '.tc-picker-step-spc{width:14px;flex-shrink:0;}',
@@ -3930,9 +3930,9 @@ var TesselCompiler = (function() {
     '.tc-picker-time-inp{width:100%;box-sizing:border-box;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:14px;padding:5px 0;-moz-appearance:textfield;outline:none;display:block;}',
     '.tc-picker-time-inp::-webkit-inner-spin-button,.tc-picker-time-inp::-webkit-outer-spin-button{-webkit-appearance:none!important;margin:0;}',
     '.tc-picker-time-inp:focus{border-color:var(--accent);}',
-    '.tc-picker-time-sep{font-weight:700;font-size:16px;color:var(--muted);flex-shrink:0;}',
-    '.tc-picker-ampm{display:none;flex-direction:row;border:1px solid var(--border);border-radius:4px;overflow:hidden;align-self:stretch;}',
-    '.tc-picker-ampm-btn{background:var(--surface2);border:none;cursor:pointer;font-size:11px;font-weight:600;padding:0 10px;color:var(--muted);flex:1;display:flex;align-items:center;justify-content:center;height:100%;}',
+    '.tc-picker-time-sep{font-weight:700;font-size:16px;color:var(--muted);width:22px;text-align:center;align-self:center;line-height:1;}',
+    '.tc-picker-ampm{display:none;flex-direction:row;border:1px solid var(--border);border-radius:4px;overflow:hidden;align-self:stretch;width:80px;}',
+    '.tc-picker-ampm-btn{background:var(--surface2);border:none;cursor:pointer;font-size:11px;font-weight:600;padding:0 10px;color:var(--muted);flex:1;display:flex;align-items:center;justify-content:center;height:100%;transition:background 0.18s ease,color 0.18s ease;}',
     '.tc-picker-ampm-btn.active{background:var(--accent);color:#fff;}',
     '.tc-picker-ampm-div{width:1px;background:var(--border);flex-shrink:0;}',
     '.tc-picker-footer{display:flex;align-items:stretch;border-top:1px solid var(--border);padding:8px 10px;gap:0;}',
@@ -4226,8 +4226,9 @@ var TesselCompiler = (function() {
     '  document.getElementById("tc-pcr-hr").addEventListener("change",function(){',
     '    if(_p12){_pHr=_pHrFrom12(this.value,_pHr>=12);}else{var v=parseInt(this.value,10);_pHr=isNaN(v)?0:Math.max(0,Math.min(23,v));}_pSyncTime();});',
     '  document.getElementById("tc-pcr-mn").addEventListener("change",function(){var v=parseInt(this.value,10);if(isNaN(v))v=0;_pMn=Math.max(0,Math.min(59,v));this.value=_pad(_pMn);});',
-    '  document.getElementById("tc-pcr-am").addEventListener("click",function(){if(_pHr>=12){_pHr-=12;_pSyncTime();}});',
-    '  document.getElementById("tc-pcr-pm").addEventListener("click",function(){if(_pHr<12){_pHr+=12;_pSyncTime();}});',
+    '  function _pToggleAmPm(){_pHr=(_pHr+12)%24;_pSyncTime();}',
+    '  document.getElementById("tc-pcr-am").addEventListener("click",_pToggleAmPm);',
+    '  document.getElementById("tc-pcr-pm").addEventListener("click",_pToggleAmPm);',
     '  function _pToggleFmt(){_p12=!_p12;try{localStorage.setItem("tc:picker12hr",_p12?"1":"0");}catch(e){}_pSyncTime();}',
     '  document.getElementById("tc-pcr-fmt12").addEventListener("click",_pToggleFmt);',
     '  document.getElementById("tc-pcr-fmt24").addEventListener("click",_pToggleFmt);',
@@ -7933,8 +7934,8 @@ function dockPanel(panelId, zone) {
   }
 
   // Pill button styles
-  var _EP_PILL_BASE   = 'background:var(--surface2);border:none;cursor:pointer;font-size:11px;font-weight:600;padding:3px 9px;color:var(--muted);';
-  var _EP_PILL_ACTIVE = 'background:var(--accent);border:none;cursor:pointer;font-size:11px;font-weight:600;padding:3px 9px;color:#fff;';
+  var _EP_PILL_BASE   = 'background:var(--surface2);border:none;cursor:pointer;font-size:11px;font-weight:600;padding:3px 9px;color:var(--muted);transition:background 0.18s ease,color 0.18s ease;';
+  var _EP_PILL_ACTIVE = 'background:var(--accent);border:none;cursor:pointer;font-size:11px;font-weight:600;padding:3px 9px;color:#fff;transition:background 0.18s ease,color 0.18s ease;';
   // Shared styles — no fixed width; grid handles column sizing
   var _EP_INP_STYLE  = 'width:100%;box-sizing:border-box;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:14px;padding:5px 0;-moz-appearance:textfield;outline:none;';
   var _EP_STEP_STYLE = 'width:100%;box-sizing:border-box;background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:12px;line-height:1;padding:3px 0;text-align:center;';
@@ -7956,11 +7957,11 @@ function dockPanel(panelId, zone) {
       amWrap.style.opacity = _ep12 ? '1' : '0.3';
       amWrap.style.pointerEvents = _ep12 ? '' : 'none';
     }
-    if (amBtn) amBtn.style.cssText = (_epHr < 12 ? _EP_PILL_ACTIVE : _EP_PILL_BASE) + 'padding:0 10px;height:100%;display:flex;align-items:center;justify-content:center;';
-    if (pmBtn) pmBtn.style.cssText = (_epHr >= 12 ? _EP_PILL_ACTIVE : _EP_PILL_BASE) + 'padding:0 10px;height:100%;display:flex;align-items:center;justify-content:center;';
+    if (amBtn) amBtn.style.cssText = (_epHr < 12 ? _EP_PILL_ACTIVE : _EP_PILL_BASE) + 'flex:1;padding:0 10px;height:100%;display:flex;align-items:center;justify-content:center;';
+    if (pmBtn) pmBtn.style.cssText = (_epHr >= 12 ? _EP_PILL_ACTIVE : _EP_PILL_BASE) + 'flex:1;padding:0 10px;height:100%;display:flex;align-items:center;justify-content:center;';
     // 12h/24h: active = currently selected; inactive = the option you'd switch TO
-    if (fmt12Btn) fmt12Btn.style.cssText = (_ep12 ? _EP_PILL_ACTIVE : _EP_PILL_BASE);
-    if (fmt24Btn) fmt24Btn.style.cssText = (!_ep12 ? _EP_PILL_ACTIVE : _EP_PILL_BASE);
+    if (fmt12Btn) fmt12Btn.style.cssText = (_ep12 ? _EP_PILL_ACTIVE : _EP_PILL_BASE) + 'flex:1;padding:0 10px;height:100%;display:flex;align-items:center;justify-content:center;';
+    if (fmt24Btn) fmt24Btn.style.cssText = (!_ep12 ? _EP_PILL_ACTIVE : _EP_PILL_BASE) + 'flex:1;padding:0 10px;height:100%;display:flex;align-items:center;justify-content:center;';
   }
 
   function _epCreate() {
@@ -7991,17 +7992,17 @@ function dockPanel(panelId, zone) {
       +       '<span style="display:block;width:22px;"></span>'
       +       '<button id="ep-mn-up" style="' + _EP_STEP_STYLE + 'margin-left:4px;">&#43;</button>'
       +       '<input id="ep-hr" type="number" min="0" max="23" style="' + _EP_INP_STYLE + 'margin-right:4px;">'
-      +       '<span style="font-weight:700;font-size:16px;color:var(--muted);display:flex;align-items:center;justify-content:center;width:22px;">:</span>'
+      +       '<span style="font-weight:700;font-size:16px;color:var(--muted);width:22px;text-align:center;align-self:center;line-height:1;">:</span>'
       +       '<input id="ep-mn" type="number" min="0" max="59" style="' + _EP_INP_STYLE + 'margin-left:4px;">'
       +       '<button id="ep-hr-dn" style="' + _EP_STEP_STYLE + 'margin-right:4px;">&#8722;</button>'
       +       '<span style="display:block;width:22px;"></span>'
       +       '<button id="ep-mn-dn" style="' + _EP_STEP_STYLE + 'margin-left:4px;">&#8722;</button>'
       +     '</div>'
       //     AM/PM horizontal pill — always rendered; dimmed when 24h
-      +     '<div id="ep-ampm-wrap" style="display:flex;flex-direction:row;border:1px solid var(--border);border-radius:4px;overflow:hidden;align-self:stretch;">'
-      +       '<button id="ep-am" style="' + _EP_PILL_ACTIVE + 'padding:0 10px;height:100%;display:flex;align-items:center;justify-content:center;">AM</button>'
+      +     '<div id="ep-ampm-wrap" style="display:flex;flex-direction:row;border:1px solid var(--border);border-radius:4px;overflow:hidden;align-self:stretch;width:80px;">'
+      +       '<button id="ep-am" style="' + _EP_PILL_ACTIVE + 'flex:1;padding:0 10px;height:100%;display:flex;align-items:center;justify-content:center;">AM</button>'
       +       '<div style="width:1px;background:var(--border);flex-shrink:0;"></div>'
-      +       '<button id="ep-pm" style="' + _EP_PILL_BASE + 'padding:0 10px;height:100%;display:flex;align-items:center;justify-content:center;">PM</button>'
+      +       '<button id="ep-pm" style="' + _EP_PILL_BASE + 'flex:1;padding:0 10px;height:100%;display:flex;align-items:center;justify-content:center;">PM</button>'
       +     '</div>'
       +   '</div>'
       + '</div>'
@@ -8021,10 +8022,10 @@ function dockPanel(panelId, zone) {
       //     Right zone (under mn column): Now — full width of the mn column
       +     '<button id="ep-today" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);font-size:11px;padding:4px 6px;">Today</button>'
       //     Gap + 12h/24h pill (same slot as AM/PM pill)
-      +     '<div id="ep-hrfmt-wrap" style="display:none;margin-left:8px;border:1px solid var(--border);border-radius:4px;overflow:hidden;align-self:stretch;">'
-      +       '<button id="ep-fmt-12" style="' + _EP_PILL_BASE + 'height:100%;">12h</button>'
-      +       '<div style="width:1px;background:var(--border);flex-shrink:0;display:inline-block;height:100%;"></div>'
-      +       '<button id="ep-fmt-24" style="' + _EP_PILL_ACTIVE + 'height:100%;">24h</button>'
+      +     '<div id="ep-hrfmt-wrap" style="display:none;margin-left:8px;border:1px solid var(--border);border-radius:4px;overflow:hidden;align-self:stretch;width:80px;">'
+      +       '<button id="ep-fmt-12" style="' + _EP_PILL_BASE + 'flex:1;padding:0 10px;height:100%;display:flex;align-items:center;justify-content:center;">12h</button>'
+      +       '<div style="width:1px;background:var(--border);flex-shrink:0;"></div>'
+      +       '<button id="ep-fmt-24" style="' + _EP_PILL_ACTIVE + 'flex:1;padding:0 10px;height:100%;display:flex;align-items:center;justify-content:center;">24h</button>'
       +     '</div>'
       +   '</div>'
       + '</div>';
@@ -8094,8 +8095,9 @@ function dockPanel(panelId, zone) {
     });
     document.getElementById('ep-mn').addEventListener('change', function() { var v = parseInt(this.value, 10); _epMn = isNaN(v) ? 0 : Math.max(0, Math.min(59, v)); this.value = _epPad(_epMn); });
 
-    document.getElementById('ep-am').addEventListener('click', function() { if (_epHr >= 12) { _epHr -= 12; _epSyncTimeUi(); } });
-    document.getElementById('ep-pm').addEventListener('click', function() { if (_epHr < 12)  { _epHr += 12; _epSyncTimeUi(); } });
+    function _epToggleAmPm() { _epHr = (_epHr + 12) % 24; _epSyncTimeUi(); }
+    document.getElementById('ep-am').addEventListener('click', _epToggleAmPm);
+    document.getElementById('ep-pm').addEventListener('click', _epToggleAmPm);
 
     function _epToggleFmt() {
       _ep12 = !_ep12; try { localStorage.setItem('tvs:picker12hr', _ep12 ? '1' : '0'); } catch(e) {} _epSyncTimeUi();
