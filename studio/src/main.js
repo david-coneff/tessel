@@ -157,6 +157,7 @@ import { serializeBlocks, serializeBlock, astToBlocks, nodeToBlock } from './lib
 import { initUndo, pushUndo, inputPushUndo, undo, redo, updateUndoButtons,
          clearUndoHistory, saveUndoHistory, loadUndoHistory, trimUndoStack, cancelUndoDebounce,
          getUndoDepth, getUndoGranularity, getUndoTimeWindow } from './lib/undo.js';
+import { FloatingPane } from './lib/FloatingPane.js';
 import { icon, makeSeparator, makeTextInput, makeToggle } from './tessel-ui/index.js';
 
 (function() {
@@ -4972,31 +4973,22 @@ function dockPanel(panelId, zone) {
   var btnOpen = document.getElementById('btn-options');
   var btnClose= document.getElementById('options-dialog-close');
 
+  var optsPane = new FloatingPane(dialog, {
+    header:    document.getElementById('options-dialog-header'),
+    closeBtn:  btnClose,
+    posKey:    'tvs:opts:pos',
+    openKey:   'tvs:opts:open',
+    sizeEl:    document.getElementById('options-dialog-main'),
+    sizeKey:   'tvs:opts:size',
+    resizeEl:  document.getElementById('options-dialog-resize'),
+    minW: 480, minH: 280,
+    showClass: 'show',
+  });
+  optsPane.restoreSize();
+
   function openDialog() {
     closeAllDropdowns();
-    dialog.classList.add('show');
-    if (!dialog._dragged) {
-      var savedPos; try { savedPos = JSON.parse(localStorage.getItem('tvs:opts:pos')); } catch(e) {}
-      if (savedPos && savedPos.left && savedPos.top) {
-        var dlgW = dialog.offsetWidth, dlgH = dialog.offsetHeight;
-        var tbH2 = (function(){ var t = document.getElementById('toolbar'); return t ? t.getBoundingClientRect().bottom : 0; })();
-        var rx = Math.max(0, Math.min(window.innerWidth  - dlgW,  parseFloat(savedPos.left)));
-        var ry = Math.max(tbH2, Math.min(window.innerHeight - dlgH, parseFloat(savedPos.top)));
-        dialog.style.left = rx + 'px';
-        dialog.style.top  = ry + 'px';
-        dialog.style.transform = 'none';
-        dialog._dragged = true;
-      } else {
-        dialog.style.left = Math.round((window.innerWidth - dialog.offsetWidth) / 2) + 'px';
-        dialog.style.top  = '80px';
-        dialog.style.transform = 'none';
-      }
-    }
-    try { localStorage.setItem('tvs:opts:open', '1'); } catch(e) {}
-  }
-  function closeDialog() {
-    dialog.classList.remove('show');
-    try { localStorage.setItem('tvs:opts:open', '0'); } catch(e) {}
+    optsPane.open();
   }
 
   // Dock picker buttons
@@ -5233,69 +5225,7 @@ function dockPanel(panelId, zone) {
   }
 
   btnOpen.addEventListener('click', function(e) { e.stopPropagation(); openDialog(); });
-  btnClose.addEventListener('click', closeDialog);
-
-  // Drag with viewport clamping
-  var header = document.getElementById('options-dialog-header');
-  header.addEventListener('mousedown', function(e) {
-    if (e.target === btnClose) return;
-    var rect = dialog.getBoundingClientRect();
-    var startX = e.clientX - rect.left;
-    var startY = e.clientY - rect.top;
-    dialog.style.transform = 'none';
-    dialog._dragged = true;
-    function onMove(e) {
-      var dlgW = dialog.offsetWidth, dlgH = dialog.offsetHeight;
-      var tb = document.getElementById('toolbar');
-      var tbH = tb ? tb.getBoundingClientRect().bottom : 0;
-      var x = e.clientX - startX;
-      var y = e.clientY - startY;
-      x = Math.max(0, Math.min(window.innerWidth  - dlgW,  x));
-      y = Math.max(tbH, Math.min(window.innerHeight - dlgH, y));
-      dialog.style.left = x + 'px';
-      dialog.style.top  = y + 'px';
-    }
-    function onUp() {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-      try { localStorage.setItem('tvs:opts:pos', JSON.stringify({left: dialog.style.left, top: dialog.style.top})); } catch(e) {}
-    }
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-    e.preventDefault();
-  });
-
-  // Resize from bottom-right corner
-  var resizeGrip = document.getElementById('options-dialog-resize');
-  resizeGrip.addEventListener('mousedown', function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    var startX = e.clientX, startY = e.clientY;
-    var startW = dialog.offsetWidth, startH = document.getElementById('options-dialog-main').offsetHeight;
-    var MIN_W = 480, MIN_H = 280;
-    function onResizeMove(e) {
-      var newW = Math.max(MIN_W, startW + (e.clientX - startX));
-      var newH = Math.max(MIN_H, startH + (e.clientY - startY));
-      dialog.style.width = newW + 'px';
-      document.getElementById('options-dialog-main').style.height = newH + 'px';
-    }
-    function onResizeUp() {
-      document.removeEventListener('mousemove', onResizeMove);
-      document.removeEventListener('mouseup', onResizeUp);
-      try { localStorage.setItem('tvs:opts:size', JSON.stringify({w: dialog.offsetWidth, h: document.getElementById('options-dialog-main').offsetHeight})); } catch(e) {}
-    }
-    document.addEventListener('mousemove', onResizeMove);
-    document.addEventListener('mouseup', onResizeUp);
-  });
-
-  // Restore saved size
-  (function() {
-    var s; try { s = JSON.parse(localStorage.getItem('tvs:opts:size')); } catch(e) {}
-    if (s && s.w) dialog.style.width = s.w + 'px';
-    if (s && s.h) document.getElementById('options-dialog-main').style.height = s.h + 'px';
-  })();
-
-  // Close only via the X button (no outside-click dismiss)
+  // close handled by optsPane constructor
 
   // ── Editing section ──────────────────────────────────────────────────────────
   var autoSaveTimer = null;
@@ -6399,93 +6329,25 @@ function dockPanel(panelId, zone) {
 
   helpPattern.addEventListener('input', function() { syncDisplay(_helpDate); updatePreview(); });
 
-  // Open
-  var HELP_OPEN_KEY = 'tvs:datefmtHelpOpen';
-  var HELP_POS_KEY  = 'tvs:datefmtHelpPos';
-
-  function _clampHelpPos() {
-    var tb = document.getElementById('toolbar');
-    var tbH = tb ? tb.getBoundingClientRect().bottom : 0;
-    var dlgW = helpDialog.offsetWidth;
-    var dlgH = helpDialog.offsetHeight;
-    if (helpDialog.style.transform !== 'none') {
-      var r = helpDialog.getBoundingClientRect();
-      helpDialog.style.left = r.left + 'px';
-      helpDialog.style.top  = r.top  + 'px';
-      helpDialog.style.transform = 'none';
-    }
-    var x = parseFloat(helpDialog.style.left) || 0;
-    var y = parseFloat(helpDialog.style.top)  || 0;
-    x = Math.max(0, Math.min(window.innerWidth  - dlgW, x));
-    y = Math.max(tbH, Math.min(window.innerHeight - dlgH, y));
-    helpDialog.style.left = x + 'px';
-    helpDialog.style.top  = y + 'px';
-  }
+  var helpPane = new FloatingPane(helpDialog, {
+    header:   helpHeader,
+    closeBtn: helpClose,
+    posKey:   'tvs:datefmtHelpPos',
+    openKey:  'tvs:datefmtHelpOpen',
+  });
 
   function openHelp() {
-    helpDialog.style.display = '';
-    _clampHelpPos();
+    helpPane.open();
     _helpDate = new Date();
     syncDisplay(_helpDate);
     updatePreview();
-    try { localStorage.setItem(HELP_OPEN_KEY, '1'); } catch(e) {}
-  }
-
-  function closeHelp() {
-    helpDialog.style.display = 'none';
-    try { localStorage.removeItem(HELP_OPEN_KEY); } catch(e) {}
   }
 
   // Restore open state on load
-  (function() {
-    try {
-      if (localStorage.getItem(HELP_OPEN_KEY) === '1') {
-        var pos = JSON.parse(localStorage.getItem(HELP_POS_KEY) || 'null');
-        if (pos) {
-          helpDialog.style.left      = pos.left;
-          helpDialog.style.top       = pos.top;
-          helpDialog.style.transform = 'none';
-        }
-        openHelp();
-      }
-    } catch(e) {}
-  })();
+  try { if (localStorage.getItem('tvs:datefmtHelpOpen') === '1') openHelp(); } catch(e) {}
 
   if (helpBtn) helpBtn.addEventListener('click', openHelp);
-  if (helpClose) helpClose.addEventListener('click', closeHelp);
-
-  // Drag to move
-  var _dx = 0, _dy = 0, _dragging = false;
-  helpHeader.addEventListener('mousedown', function(e) {
-    if (e.target === helpClose) return;
-    _dragging = true;
-    var rect = helpDialog.getBoundingClientRect();
-    // Switch from transform-centering to fixed coords on first drag
-    helpDialog.style.left = rect.left + 'px';
-    helpDialog.style.top  = rect.top  + 'px';
-    helpDialog.style.transform = 'none';
-    _dx = e.clientX - rect.left;
-    _dy = e.clientY - rect.top;
-    e.preventDefault();
-  });
-  document.addEventListener('mousemove', function(e) {
-    if (!_dragging) return;
-    var dlgW = helpDialog.offsetWidth, dlgH = helpDialog.offsetHeight;
-    var tb = document.getElementById('toolbar');
-    var tbH = tb ? tb.getBoundingClientRect().bottom : 0;
-    var x = e.clientX - _dx;
-    var y = e.clientY - _dy;
-    x = Math.max(0, Math.min(window.innerWidth  - dlgW, x));
-    y = Math.max(tbH, Math.min(window.innerHeight - dlgH, y));
-    helpDialog.style.left = x + 'px';
-    helpDialog.style.top  = y + 'px';
-  });
-  document.addEventListener('mouseup', function() {
-    if (_dragging) {
-      try { localStorage.setItem(HELP_POS_KEY, JSON.stringify({left: helpDialog.style.left, top: helpDialog.style.top})); } catch(e) {}
-    }
-    _dragging = false;
-  });
+  // close handled by helpPane constructor
 })();
 
 })();
