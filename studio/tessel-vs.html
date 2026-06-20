@@ -3911,14 +3911,15 @@ var TesselCompiler = (function() {
     '.tc-picker-day.tc-picker-day-sel{background:var(--accent);color:#fff;border-color:var(--accent);}',
     '.tc-picker-day.tc-picker-day-sel:hover{background:var(--accent);color:#fff;}',
     '.tc-picker-day.tc-picker-day-empty{cursor:default;}',
-    '.tc-picker-time{display:flex;align-items:center;gap:4px;padding:8px 10px;border-top:1px solid var(--border);}',
+    '.tc-picker-time{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--border);}',
     '.tc-picker-time-lbl{font-size:11px;color:var(--muted);min-width:30px;}',
-    '.tc-picker-step{background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:14px;line-height:1;padding:3px 7px;display:flex;align-items:center;}',
+    '.tc-picker-time-col{display:flex;flex-direction:column;align-items:center;gap:3px;}',
+    '.tc-picker-step{background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:11px;line-height:1;padding:2px 9px;}',
     '.tc-picker-step:hover{border-color:var(--accent);color:var(--accent);}',
-    '.tc-picker-time-inp{width:36px;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:13px;padding:3px 4px;-moz-appearance:textfield;outline:none;}',
+    '.tc-picker-time-inp{width:44px;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:14px;padding:5px 4px;-moz-appearance:textfield;outline:none;}',
     '.tc-picker-time-inp::-webkit-inner-spin-button,.tc-picker-time-inp::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}',
     '.tc-picker-time-inp:focus{border-color:var(--accent);}',
-    '.tc-picker-time-sep{font-weight:700;font-size:14px;color:var(--muted);}',
+    '.tc-picker-time-sep{font-weight:700;font-size:16px;color:var(--muted);margin-bottom:1px;}',
     '.tc-picker-footer{display:flex;align-items:center;gap:6px;padding:8px 10px;border-top:1px solid var(--border);}',
     '.tc-picker-foot-btn{background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);font-size:11px;padding:4px 10px;line-height:1.4;}',
     '.tc-picker-foot-btn:hover{border-color:var(--accent);color:var(--accent);}',
@@ -4135,13 +4136,17 @@ var TesselCompiler = (function() {
     '    +\'</div>\'',
     '    +\'<div class="tc-picker-time" id="tc-pcr-time" style="display:none">\'',
     '    +\'<span class="tc-picker-time-lbl">Time</span>\'',
-    '    +\'<button class="tc-picker-step" id="tc-pcr-hr-dn">&#8722;</button>\'',
-    '    +\'<input class="tc-picker-time-inp" id="tc-pcr-hr" type="number" min="0" max="23" value="12">\'',
+    '    +\'<div class="tc-picker-time-col">\'',
     '    +\'<button class="tc-picker-step" id="tc-pcr-hr-up">&#43;</button>\'',
+    '    +\'<input class="tc-picker-time-inp" id="tc-pcr-hr" type="number" min="0" max="23" value="12">\'',
+    '    +\'<button class="tc-picker-step" id="tc-pcr-hr-dn">&#8722;</button>\'',
+    '    +\'</div>\'',
     '    +\'<span class="tc-picker-time-sep">:</span>\'',
-    '    +\'<button class="tc-picker-step" id="tc-pcr-mn-dn">&#8722;</button>\'',
-    '    +\'<input class="tc-picker-time-inp" id="tc-pcr-mn" type="number" min="0" max="59" value="0">\'',
+    '    +\'<div class="tc-picker-time-col">\'',
     '    +\'<button class="tc-picker-step" id="tc-pcr-mn-up">&#43;</button>\'',
+    '    +\'<input class="tc-picker-time-inp" id="tc-pcr-mn" type="number" min="0" max="59" value="0">\'',
+    '    +\'<button class="tc-picker-step" id="tc-pcr-mn-dn">&#8722;</button>\'',
+    '    +\'</div>\'',
     '    +\'</div>\'',
     '    +\'<div class="tc-picker-footer">\'',
     '    +\'<button class="tc-picker-foot-btn tc-picker-today-btn" id="tc-pcr-today">Today</button>\'',
@@ -7858,15 +7863,21 @@ function dockPanel(panelId, zone) {
       + '<div id="ep-wds" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;"></div>'
       + '<div id="ep-days" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>'
       + '</div>'
-      + '<div id="ep-time" style="display:none;display:flex;align-items:center;gap:4px;padding:8px 10px;border-top:1px solid var(--border);">'
+      + '<div id="ep-time" style="display:none;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--border);">'
       + '<span style="font-size:11px;color:var(--muted);min-width:30px;">Time</span>'
-      + '<button id="ep-hr-dn" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:14px;padding:3px 7px;">&#8722;</button>'
-      + '<input id="ep-hr" type="number" min="0" max="23" style="width:36px;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:13px;padding:3px 4px;-moz-appearance:textfield;outline:none;">'
-      + '<button id="ep-hr-up" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:14px;padding:3px 7px;">&#43;</button>'
-      + '<span style="font-weight:700;color:var(--muted);">:</span>'
-      + '<button id="ep-mn-dn" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:14px;padding:3px 7px;">&#8722;</button>'
-      + '<input id="ep-mn" type="number" min="0" max="59" style="width:36px;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:13px;padding:3px 4px;-moz-appearance:textfield;outline:none;">'
-      + '<button id="ep-mn-up" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:14px;padding:3px 7px;">&#43;</button>'
+      + '<div style="display:flex;align-items:center;gap:6px;">'
+      +   '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">'
+      +     '<button id="ep-hr-up" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:11px;line-height:1;padding:2px 9px;">&#43;</button>'
+      +     '<input id="ep-hr" type="number" min="0" max="23" style="width:44px;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:14px;padding:5px 4px;-moz-appearance:textfield;outline:none;">'
+      +     '<button id="ep-hr-dn" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:11px;line-height:1;padding:2px 9px;">&#8722;</button>'
+      +   '</div>'
+      +   '<span style="font-weight:700;font-size:16px;color:var(--muted);margin-bottom:1px;">:</span>'
+      +   '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">'
+      +     '<button id="ep-mn-up" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:11px;line-height:1;padding:2px 9px;">&#43;</button>'
+      +     '<input id="ep-mn" type="number" min="0" max="59" style="width:44px;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:14px;padding:5px 4px;-moz-appearance:textfield;outline:none;">'
+      +     '<button id="ep-mn-dn" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:11px;line-height:1;padding:2px 9px;">&#8722;</button>'
+      +   '</div>'
+      + '</div>'
       + '</div>'
       + '<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;border-top:1px solid var(--border);">'
       + '<button id="ep-today" style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);font-size:11px;padding:4px 10px;">Today</button>'
