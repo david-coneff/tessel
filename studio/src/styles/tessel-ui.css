@@ -29,7 +29,6 @@
   border: 1px solid transparent;
 }
 .tui-btn--badge:hover { border-color: var(--border); }
-.tui-btn--badge.active { border-color: var(--accent); color: var(--accent); }
 .tui-btn--sm { padding: 2px 6px; font-size: 11px; }
 .tui-btn:disabled { opacity: 0.4; cursor: default; pointer-events: none; }
 .tui-btn__icon { flex-shrink: 0; display: flex; }
