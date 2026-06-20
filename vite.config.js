@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
-  root: path.resolve(__dirname, 'studio/src'),
+  // root is repo root so outDir:'studio' is a child, not a parent
   build: {
     outDir: path.resolve(__dirname, 'studio'),
     emptyOutDir: false,
