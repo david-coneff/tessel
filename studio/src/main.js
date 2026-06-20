@@ -156,6 +156,7 @@ import { FIELD_TYPES } from './lib/metadata.js';
 import { serializeBlocks, serializeBlock, astToBlocks, nodeToBlock } from './lib/blocks.js';
 import { initUndo, pushUndo, inputPushUndo, undo, redo, updateUndoButtons,
          clearUndoHistory, saveUndoHistory, loadUndoHistory, trimUndoStack, cancelUndoDebounce } from './lib/undo.js';
+import { icon, makeSeparator, makeTextInput, makeToggle } from './tessel-ui/index.js';
 
 (function() {
 'use strict';
@@ -1322,20 +1323,14 @@ function mkPropRow(label) {
 }
 
 function mkInput(val, onChange) {
-  var inp = document.createElement('input');
-  inp.type = 'text'; inp.className = 'prop-input'; inp.value = val;
-  inp.addEventListener('input', function() { onChange(inp.value); });
-  return inp;
+  var wrap = makeTextInput({ value: val, onChange: onChange });
+  wrap.input.className += ' prop-input';
+  return wrap;
 }
 
 function mkCheckRow(label, checked, onChange) {
   var row = document.createElement('div'); row.className = 'prop-check-row';
-  var lbl = document.createElement('label'); lbl.style.fontSize = '11px'; lbl.style.color = 'var(--text)';
-  var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!checked; cb.style.marginRight = '6px';
-  cb.addEventListener('change', function() { onChange(cb.checked); });
-  lbl.appendChild(cb);
-  lbl.appendChild(document.createTextNode(label));
-  row.appendChild(lbl);
+  row.appendChild(makeToggle({ label: label, checked: !!checked, onChange: onChange }));
   return row;
 }
 
@@ -4069,6 +4064,54 @@ document.querySelectorAll('#form-pane .ctrl-btn[data-insert-field]').forEach(fun
   });
 });
 
+
+// ── 2.4 Toolbar UI upgrade ─────────────────────────────────────────────────
+(function initToolbarUI() {
+  // Upgrade undo/redo to icon-only tui-btn--icon
+  var undoBtn = document.getElementById('btn-undo');
+  var redoBtn = document.getElementById('btn-redo');
+  undoBtn.innerHTML = ''; undoBtn.className = 'tui-btn tui-btn--icon';
+  redoBtn.innerHTML = ''; redoBtn.className = 'tui-btn tui-btn--icon';
+  undoBtn.appendChild(icon('undo', 15));
+  redoBtn.appendChild(icon('redo', 15));
+
+  // Upgrade preview button
+  var previewBtn = document.getElementById('btn-preview');
+  if (previewBtn) {
+    previewBtn.innerHTML = '';
+    previewBtn.className = 'tui-btn tui-btn--ghost';
+    previewBtn.appendChild(icon('eye', 14));
+    var lbl = document.createElement('span');
+    lbl.className = 'tui-btn__label';
+    lbl.textContent = 'Preview';
+    previewBtn.appendChild(lbl);
+  }
+
+  // Upgrade file-dropdown button
+  var fileBtn = document.getElementById('btn-file-dd');
+  if (fileBtn) {
+    fileBtn.innerHTML = '';
+    fileBtn.className = 'tui-btn tui-btn--ghost';
+    fileBtn.appendChild(icon('file-text', 14));
+    var lbl2 = document.createElement('span');
+    lbl2.className = 'tui-btn__label';
+    lbl2.textContent = 'File';
+    fileBtn.appendChild(lbl2);
+    fileBtn.appendChild(icon('chevron-down', 11));
+  }
+
+  // Upgrade badge buttons to tui-btn--badge
+  ['badge-format','badge-text','badge-form','badge-outline','badge-props'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.add('tui-btn', 'tui-btn--badge');
+  });
+
+  // Replace .tb-sep divs with tui-separator spans
+  document.querySelectorAll('#toolbar .tb-sep').forEach(function(sep) {
+    var replacement = makeSeparator('vertical');
+    sep.parentNode.replaceChild(replacement, sep);
+  });
+})();
 
 document.getElementById('btn-undo').addEventListener('click', undo);
 document.getElementById('btn-redo').addEventListener('click', redo);
