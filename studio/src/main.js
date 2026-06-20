@@ -168,6 +168,9 @@ import { initCustomFonts } from './lib/CustomFonts.js';
 import { initPaneDragReorder } from './lib/PaneDragReorder.js';
 import { dockPanel, floatPanel, initDockSystem } from './lib/DockSystem.js';
 import { initOptionsDialog } from './lib/OptionsDialog.js';
+import { FORMAT_PANE_ITEMS, getHiddenItems, setItemHidden, initPaneBuilder } from './lib/PaneBuilder.js';
+import { updateToolbarState, FONT_MAP, updateInlineFormatState, isBlockLevelFormatting,
+         applyFontFamily, convertFocusedBlock, closePreview, initInlineFormat } from './lib/InlineFormat.js';
 import { parseMd as TesselParseMd, blocksToHtml, buildPage as TesselBuildPage } from './lib/TesselCompiler.js';
 import { icon, makeSeparator, makeTextInput, makeToggle } from './tessel-ui/index.js';
 
@@ -1232,131 +1235,6 @@ function showInsertFloat(afterId, anchorEl) {
   fl.classList.add('show');
 }
 
-function updateToolbarState(b) {
-  var activeType  = b ? b.type  : null;
-  var activeLevel = b ? b.level : null;
-  var map = { 'btn-h1': ['heading',1], 'btn-h2': ['heading',2], 'btn-h3': ['heading',3], 'btn-para': ['paragraph',null] };
-  Object.keys(map).forEach(function(id) {
-    var t = map[id][0], l = map[id][1];
-    var matches = activeType === t && (l === null || activeLevel === l);
-    document.getElementById(id).classList.toggle('active', matches);
-  });
-}
-
-// Normalise a computed font-family string to one of our known keys, or 'default'
-var FONT_MAP = [
-  { key: 'georgia',  re: /georgia/i },
-  { key: 'franklin', re: /franklin\s*gothic/i },
-  { key: 'verdana',  re: /verdana/i },
-];
-function normFont(fontFamily) {
-  for (var i = 0; i < FONT_MAP.length; i++) {
-    if (FONT_MAP[i].re.test(fontFamily)) return FONT_MAP[i].key;
-  }
-  return 'default';
-}
-
-// Walk every text node within a Range and collect their computed styles
-function collectRangeStyles(range) {
-  var bold = false, italic = false, underline = false;
-  var fonts = {};
-
-  // Grab the nearest contenteditable ancestor to constrain the walk
-  var root = range.commonAncestorContainer;
-  if (root.nodeType === 3) root = root.parentNode;
-  while (root && !root.isContentEditable) root = root.parentNode;
-  if (!root) return null;
-
-  // Iterate over every text node that overlaps the range
-  var iter = document.createNodeIterator(root, NodeFilter.SHOW_TEXT);
-  var node;
-  while ((node = iter.nextNode())) {
-    // Skip nodes completely outside the range
-    if (range.comparePoint(node, 0) > 0) continue;        // starts after range
-    if (range.comparePoint(node, node.length) < 0) continue; // ends before range
-    var el = node.parentNode;
-    var cs = window.getComputedStyle(el);
-    if (parseInt(cs.fontWeight, 10) >= 700 || cs.fontWeight === 'bold' || cs.fontWeight === 'bolder') bold = true;
-    if (cs.fontStyle === 'italic' || cs.fontStyle === 'oblique') italic = true;
-    if (cs.textDecorationLine && cs.textDecorationLine.indexOf('underline') !== -1) underline = true;
-    fonts[normFont(cs.fontFamily)] = true;
-  }
-
-  return { bold: bold, italic: italic, underline: underline, fonts: fonts };
-}
-
-function updateInlineFormatState() {
-  var sel = window.getSelection();
-  var empty = !sel || sel.rangeCount === 0 || sel.isCollapsed;
-
-  var bold = false, italic = false, underline = false;
-  var fonts = {};
-
-  if (!empty) {
-    var range = sel.getRangeAt(0);
-    var styles = collectRangeStyles(range);
-    if (styles) {
-      bold = styles.bold; italic = styles.italic; underline = styles.underline;
-      fonts = styles.fonts;
-    }
-  } else {
-    // Collapsed cursor — use execCommand query state for bold/italic/underline
-    try {
-      bold      = document.queryCommandState('bold');
-      italic    = document.queryCommandState('italic');
-      underline = document.queryCommandState('underline');
-    } catch(e) {}
-    // Font at cursor: walk up from the anchor node
-    if (sel && sel.anchorNode) {
-      var el = sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentNode : sel.anchorNode;
-      if (el && el.closest && el.closest('[contenteditable]')) {
-        fonts[normFont(window.getComputedStyle(el).fontFamily)] = true;
-      }
-    }
-  }
-
-  document.getElementById('btn-bold').classList.toggle('active', bold);
-  document.getElementById('btn-italic').classList.toggle('active', italic);
-  document.getElementById('btn-underline').classList.toggle('active', underline);
-
-  // Highlight link button if cursor/selection is inside an anchor
-  var inLink = false;
-  if (sel && sel.anchorNode) {
-    var ln = sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentNode : sel.anchorNode;
-    inLink = !!(ln && ln.closest && ln.closest('a'));
-  }
-  document.getElementById('btn-link').classList.toggle('active', inLink);
-
-  // Built-in font buttons
-  var builtInFontBtnMap = {
-    'default':  'btn-font-default',
-    'georgia':  'btn-font-georgia',
-    'franklin': 'btn-font-franklin',
-    'verdana':  'btn-font-verdana',
-  };
-  Object.keys(builtInFontBtnMap).forEach(function(key) {
-    var el = document.getElementById(builtInFontBtnMap[key]);
-    if (el) el.classList.toggle('active', !!fonts[key]);
-  });
-  // Custom font buttons — their FONT_MAP key equals their btnId
-  FONT_MAP.forEach(function(entry) {
-    if (builtInFontBtnMap[entry.key] !== undefined) return; // skip built-ins
-    if (entry.key === 'default') return;
-    var el = document.getElementById(entry.key);
-    if (el) el.classList.toggle('active', !!fonts[entry.key]);
-  });
-}
-
-document.addEventListener('selectionchange', function() {
-  // Only update if the selection is inside a canvas contenteditable
-  var sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0) { updateInlineFormatState(); return; }
-  var node = sel.anchorNode;
-  if (node && node.nodeType === 3) node = node.parentNode;
-  if (node && node.closest && node.closest('#canvas [contenteditable]')) {
-    updateInlineFormatState();
-  }
-});
 
 function markUnsaved() { _unsaved = true; setStatus('Unsaved changes'); }
 
@@ -1547,217 +1425,11 @@ function setupDropdown(btnId, menuId) {
 
 setupDropdown('btn-file-dd', 'dm-file');
 
-// ── Dockable pane factory ────────────────────────────────────────────────────
 makeDockablePane({ paneId: 'format-pane', badgeId: 'badge-format', lsKey: 'tvs:format-pane-state' });
 makeDockablePane({ paneId: 'text-pane',   badgeId: 'badge-text',   lsKey: 'tvs:text-pane-state' });
 makeDockablePane({ paneId: 'form-pane',   badgeId: 'badge-form',   lsKey: 'tvs:form-pane-state' });
 
-var FORMAT_PANE_ITEMS = [
-  { group: 'Block Type', labelId: 'fmt-group-blocktype' },
-  { label: 'Heading 1',  btnId: 'btn-h1' },
-  { label: 'Heading 2',  btnId: 'btn-h2' },
-  { label: 'Heading 3',  btnId: 'btn-h3' },
-  { label: 'Paragraph',  btnId: 'btn-para' },
-  { group: 'Indent', labelId: 'fmt-group-indent' },
-  { label: 'Indent',  btnId: 'btn-indent-more' },
-  { label: 'Outdent', btnId: 'btn-indent-less' },
-  { group: 'Inline Style', labelId: 'fmt-group-inline' },
-  { label: 'Bold',       btnId: 'btn-bold' },
-  { label: 'Italic',     btnId: 'btn-italic' },
-  { label: 'Underline',  btnId: 'btn-underline' },
-  { label: 'Link',       btnId: 'btn-link' },
-  { group: 'Font', labelId: 'fmt-group-font' },
-  { label: 'Default',         btnId: 'btn-font-default' },
-  { label: 'Georgia',         btnId: 'btn-font-georgia' },
-  { label: 'Franklin Gothic', btnId: 'btn-font-franklin' },
-  { label: 'Verdana',         btnId: 'btn-font-verdana' },
-];
-
-function getHiddenItems(pane) {
-  try { var v = localStorage.getItem('tvs:hidden:' + pane); return new Set(v ? JSON.parse(v) : []); } catch(e) { return new Set(); }
-}
-function setItemHidden(pane, label, hidden) {
-  var set = getHiddenItems(pane);
-  if (hidden) set.add(label); else set.delete(label);
-  try { localStorage.setItem('tvs:hidden:' + pane, JSON.stringify(Array.from(set))); } catch(e) {}
-  if (pane === 'text') buildTextPaneButtons();
-  if (pane === 'format') applyFormatPaneVisibility();
-}
-
-function applyFormatPaneVisibility() {
-  var hidden = getHiddenItems('format');
-  var groupLabelId = null;
-  var groupHasVisible = false;
-  FORMAT_PANE_ITEMS.forEach(function(item) {
-    if (item.group) {
-      if (groupLabelId) document.getElementById(groupLabelId).style.display = groupHasVisible ? '' : 'none';
-      groupLabelId = item.labelId;
-      groupHasVisible = false;
-    } else {
-      var isHidden = hidden.has(item.label);
-      document.getElementById(item.btnId).style.display = isHidden ? 'none' : '';
-      if (!isHidden) groupHasVisible = true;
-    }
-  });
-  if (groupLabelId) document.getElementById(groupLabelId).style.display = groupHasVisible ? '' : 'none';
-}
-
-function buildTextPaneButtons() {
-  var body = document.getElementById('text-pane-body');
-  if (!body) return;
-  body.innerHTML = '';
-  var hidden = getHiddenItems('text');
-  var pendingGroupName = null;
-  var currentWrapper = null;
-  INSERT_MENU_ITEMS.forEach(function(item) {
-    if (item.group) {
-      pendingGroupName = item.group;
-      currentWrapper = null;
-    } else {
-      if (hidden.has(item.label)) return;
-      if (pendingGroupName !== null) {
-        var key = 'tvs:grp:text:' + pendingGroupName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-        var saved; try { saved = localStorage.getItem(key); } catch(e) {}
-        var isOpen = saved !== '0'; // default open
-        var lbl = document.createElement('div');
-        lbl.className = 'ctrl-group-label ctrl-group-collapsible';
-        var arw = document.createElement('span'); arw.className = 'ctrl-group-arrow';
-        arw.innerHTML = isOpen ? '&#9660;' : '&#9654;';
-        lbl.appendChild(arw); lbl.appendChild(document.createTextNode(pendingGroupName));
-        var wrapper = document.createElement('div');
-        wrapper.className = 'ctrl-group-body';
-        wrapper.style.display = isOpen ? '' : 'none';
-        (function(l, w, k, open) {
-          l.addEventListener('click', function() {
-            open = !open;
-            l.querySelector('.ctrl-group-arrow').innerHTML = open ? '&#9660;' : '&#9654;';
-            w.style.display = open ? '' : 'none';
-            try { localStorage.setItem(k, open ? '1' : '0'); } catch(e) {}
-          });
-        })(lbl, wrapper, key, isOpen);
-        body.appendChild(lbl); body.appendChild(wrapper);
-        currentWrapper = wrapper; pendingGroupName = null;
-      }
-      if (!currentWrapper) return;
-      var btn = document.createElement('button');
-      btn.className = 'ctrl-btn';
-      btn.innerHTML = '<span class="ctrl-btn-icon">' + esc(item.icon) + '</span>' + esc(item.label);
-      btn.addEventListener('click', function() { item.action(lastFocusedTextBlockId || null); });
-      currentWrapper.appendChild(btn);
-    }
-  });
-}
-// Inject an expand/collapse-all button into the pane header (always visible, non-scrolling).
-// Must be called after groups are in the DOM (post-initCollapsibleGroups / buildTextPaneButtons).
-function wireExpandAllBtn(bodyEl) {
-  var groups = Array.from(bodyEl.querySelectorAll('.ctrl-group-collapsible'));
-  if (groups.length < 2) return;
-
-  var content = bodyEl.closest('.ctrl-pane-content');
-  if (!content) return;
-  content.style.position = 'relative';
-
-  // Remove any existing button (e.g. on rebuild)
-  var existing = content.querySelector('.pane-expand-all-btn');
-  if (existing) existing.remove();
-
-  var btn = document.createElement('button');
-  btn.className = 'pane-expand-all-btn';
-
-  function allOpen() {
-    return groups.every(function(lbl) {
-      var body = lbl.nextElementSibling;
-      return body && body.classList.contains('ctrl-group-body') && body.style.display !== 'none';
-    });
-  }
-  function syncBtn() {
-    if (allOpen()) {
-      btn.title = 'Collapse all groups';
-      btn.textContent = '▾▾';
-    } else {
-      btn.title = 'Expand all groups';
-      btn.textContent = '▸▸';
-    }
-  }
-  syncBtn();
-
-  btn.addEventListener('click', function(e) {
-    e.stopPropagation();
-    var expand = !allOpen();
-    groups.forEach(function(lbl) {
-      var body = lbl.nextElementSibling;
-      if (!body || !body.classList.contains('ctrl-group-body')) return;
-      var isOpen = body.style.display !== 'none';
-      if (expand !== isOpen) lbl.click(); // reuse existing toggle logic
-    });
-    syncBtn();
-  });
-
-  // Keep button state in sync when individual groups are toggled
-  groups.forEach(function(lbl) {
-    lbl.addEventListener('click', function() {
-      setTimeout(syncBtn, 0); // after the click handler updates display
-    });
-  });
-
-  content.appendChild(btn);
-}
-
-function initCollapsibleGroups(bodyEl, lsPrefix) {
-  var children = Array.from(bodyEl.children);
-  var groups = [], current = null;
-  children.forEach(function(el) {
-    if (el.classList.contains('ctrl-group-label')) {
-      if (current) groups.push(current);
-      current = { label: el, items: [] };
-    } else if (current) {
-      current.items.push(el);
-    }
-  });
-  if (current) groups.push(current);
-  groups.forEach(function(group) {
-    var labelEl = group.label;
-    var groupName = labelEl.textContent.trim();
-    var key = lsPrefix + ':' + groupName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    var saved; try { saved = localStorage.getItem(key); } catch(e) {}
-    var isOpen = saved !== '0'; // default open
-    var wrapper = document.createElement('div');
-    wrapper.className = 'ctrl-group-body';
-    wrapper.style.display = isOpen ? '' : 'none';
-    labelEl.insertAdjacentElement('afterend', wrapper);
-    group.items.forEach(function(el) { wrapper.appendChild(el); });
-    labelEl.classList.add('ctrl-group-collapsible');
-    var arw = document.createElement('span'); arw.className = 'ctrl-group-arrow';
-    arw.innerHTML = isOpen ? '&#9660;' : '&#9654;';
-    labelEl.insertBefore(arw, labelEl.firstChild);
-    (function(l, w, k, open) {
-      l.addEventListener('click', function() {
-        open = !open;
-        l.querySelector('.ctrl-group-arrow').innerHTML = open ? '&#9660;' : '&#9654;';
-        w.style.display = open ? '' : 'none';
-        try { localStorage.setItem(k, open ? '1' : '0'); } catch(e) {}
-      });
-    })(labelEl, wrapper, key, isOpen);
-  });
-}
-
-buildTextPaneButtons();
-applyFormatPaneVisibility();
-initCollapsibleGroups(document.querySelector('#format-pane .ctrl-pane-body'), 'tvs:grp:format');
-initCollapsibleGroups(document.querySelector('#form-pane .ctrl-pane-body'), 'tvs:grp:form');
-wireExpandAllBtn(document.querySelector('#text-pane .ctrl-pane-body'));
-wireExpandAllBtn(document.querySelector('#format-pane .ctrl-pane-body'));
-wireExpandAllBtn(document.querySelector('#form-pane .ctrl-pane-body'));
-
-// Form pane field-insert buttons
-document.querySelectorAll('#form-pane .ctrl-btn[data-insert-field]').forEach(function(btn) {
-  btn.addEventListener('click', function() {
-    insertField(btn.dataset.insertField, lastFocusedTextBlockId || null);
-  });
-});
-
-
-// ── 2.4 Toolbar UI upgrade ─────────────────────────────────────────────────
+// ── Toolbar UI upgrade ─────────────────────────────────────────────────
 (function initToolbarUI() {
   // Upgrade undo/redo to icon-only tui-btn--icon
   var undoBtn = document.getElementById('btn-undo');
@@ -1860,180 +1532,6 @@ document.getElementById('btn-indent-less').addEventListener('click', function() 
   if (wrap) wrap.style.paddingLeft = b.indent ? (b.indent * 24) + 'px' : '';
   markUnsaved();
 });
-function isBlockLevelFormatting() {
-  try { return localStorage.getItem('tvs:opts:block-fmt') === '1'; } catch(e) { return false; }
-}
-
-// If block-level formatting is on, expand the selection to cover the whole
-// contenteditable of the focused block before the caller applies a format.
-function maybeExpandSelToBlock() {
-  if (!isBlockLevelFormatting()) return;
-  var ce = null;
-  if (lastFocusedTextBlockId) {
-    var wrap = document.querySelector('[data-block-id="' + lastFocusedTextBlockId + '"]');
-    if (wrap) ce = wrap.querySelector('[contenteditable]');
-  }
-  if (!ce) {
-    // Fall back: find the contenteditable that contains the current selection
-    var sel = window.getSelection();
-    if (sel && sel.rangeCount) {
-      var node = sel.anchorNode;
-      if (node && node.nodeType === 3) node = node.parentNode;
-      if (node) ce = node.closest('[contenteditable]');
-    }
-  }
-  if (!ce) return;
-  var range = document.createRange();
-  range.selectNodeContents(ce);
-  var sel = window.getSelection();
-  sel.removeAllRanges();
-  sel.addRange(range);
-}
-
-document.getElementById('btn-bold').addEventListener('click', function() { maybeExpandSelToBlock(); document.execCommand('bold'); updateInlineFormatState(); });
-document.getElementById('btn-italic').addEventListener('click', function() { maybeExpandSelToBlock(); document.execCommand('italic'); updateInlineFormatState(); });
-document.getElementById('btn-underline').addEventListener('click', function() { maybeExpandSelToBlock(); document.execCommand('underline'); updateInlineFormatState(); });
-
-document.getElementById('btn-link').addEventListener('click', function() {
-  var sel = window.getSelection();
-  var existingLink = null;
-  if (sel && sel.rangeCount) {
-    var node = sel.anchorNode;
-    if (node && node.nodeType === 3) node = node.parentNode;
-    existingLink = node ? node.closest('a') : null;
-  }
-  if (existingLink) {
-    // Toggle off: unwrap the anchor
-    var parent = existingLink.parentNode;
-    while (existingLink.firstChild) parent.insertBefore(existingLink.firstChild, existingLink);
-    parent.removeChild(existingLink);
-    updateInlineFormatState();
-    return;
-  }
-  if (!sel || sel.isCollapsed) { setStatus('Select text first to add a link'); return; }
-  var url = window.prompt('Enter URL:', 'https://');
-  if (!url || !url.trim()) return;
-  document.execCommand('createLink', false, url.trim());
-  // Make link open in new tab
-  var range = sel.getRangeAt(0);
-  var anchor = range.commonAncestorContainer;
-  if (anchor.nodeType === 3) anchor = anchor.parentNode;
-  var a = anchor.closest ? anchor.closest('a') : null;
-  if (!a) a = anchor.querySelector ? anchor.querySelector('a') : null;
-  if (a) { a.target = '_blank'; a.rel = 'noopener'; }
-  updateInlineFormatState();
-});
-
-function applyFontFamily(family) {
-  maybeExpandSelToBlock();
-  var sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
-  var range = sel.getRangeAt(0);
-  var frag = range.extractContents();
-  var span = document.createElement('span');
-  span.style.fontFamily = family;
-  span.appendChild(frag);
-  range.insertNode(span);
-  // Restore selection over the newly inserted span
-  var newRange = document.createRange();
-  newRange.selectNodeContents(span);
-  sel.removeAllRanges();
-  sel.addRange(newRange);
-  var blockWrap = span.closest('[data-block-id]');
-  if (blockWrap) {
-    var b = getBlock(blockWrap.dataset.blockId);
-    if (b && (b.type === 'paragraph' || b.type === 'list')) {
-      var ce = blockWrap.querySelector('[contenteditable]');
-      if (ce) { b.text = ce.innerHTML; markUnsaved(); }
-    }
-  }
-}
-
-document.getElementById('btn-font-default').addEventListener('click', function() { applyFontFamily('inherit'); updateInlineFormatState(); });
-document.getElementById('btn-font-georgia').addEventListener('click', function() { applyFontFamily('Georgia, serif'); updateInlineFormatState(); });
-document.getElementById('btn-font-franklin').addEventListener('click', function() { applyFontFamily("'Franklin Gothic Book', sans-serif"); updateInlineFormatState(); });
-document.getElementById('btn-font-verdana').addEventListener('click', function() { applyFontFamily('Verdana, sans-serif'); updateInlineFormatState(); });
-
-function getSelCharOffsets(el) {
-  var sel = window.getSelection();
-  if (!sel || !sel.rangeCount) return null;
-  var range = sel.getRangeAt(0);
-  if (!el.contains(range.commonAncestorContainer)) return null;
-  var pre = range.cloneRange();
-  pre.selectNodeContents(el);
-  pre.setEnd(range.startContainer, range.startOffset);
-  var start = pre.toString().length;
-  return { start: start, end: start + range.toString().length };
-}
-
-function restoreSelCharOffsets(el, offsets) {
-  if (!offsets) return;
-  var sel = window.getSelection();
-  var range = document.createRange();
-  var charCount = 0, startNode, startOff = 0, endNode, endOff = 0;
-  (function walk(node) {
-    if (startNode && endNode) return;
-    if (node.nodeType === 3) {
-      var len = node.nodeValue.length;
-      if (!startNode && charCount + len >= offsets.start) { startNode = node; startOff = offsets.start - charCount; }
-      if (!endNode   && charCount + len >= offsets.end)   { endNode   = node; endOff   = offsets.end   - charCount; }
-      charCount += len;
-    } else { for (var i = 0; i < node.childNodes.length; i++) walk(node.childNodes[i]); }
-  })(el);
-  if (!startNode) { startNode = el; startOff = 0; }
-  if (!endNode)   { endNode = startNode; endOff = startOff; }
-  try { range.setStart(startNode, startOff); range.setEnd(endNode, endOff); sel.removeAllRanges(); sel.addRange(range); } catch(e) {}
-}
-
-function convertFocusedBlock(newType, level) {
-  if (!lastFocusedTextBlockId) return;
-  var b = getBlock(lastFocusedTextBlockId);
-  if (!b) return;
-
-  // Heading level change — purely in-place, no DOM replacement
-  if (newType === 'heading' && b.type === 'heading') {
-    b.level = level;
-    var blockWrap = document.querySelector('[data-block-id="' + b.id + '"]');
-    if (blockWrap) {
-      var hEl = blockWrap.querySelector('.block-heading');
-      if (hEl) hEl.className = 'block-heading h' + level;
-      blockWrap.querySelectorAll('.hl-btn').forEach(function(btn, i) {
-        btn.classList.toggle('active', i + 1 === level);
-      });
-    }
-    updateToolbarState(b);
-    markUnsaved();
-    return;
-  }
-
-  // Type conversion — swap inner element, preserve selection via char offsets
-  var oldCe = document.querySelector('[data-block-id="' + b.id + '"] [contenteditable]');
-  var savedSel = oldCe ? getSelCharOffsets(oldCe) : null;
-
-  if (newType === 'heading') {
-    b.type = 'heading'; b.level = level;
-    b.text = (b.text || '').replace(/<[^>]+>/g, '') || 'Heading';
-  } else {
-    b.type = 'paragraph';
-    if (b.text === undefined) b.text = '';
-  }
-
-  var wrap = document.querySelector('[data-block-id="' + b.id + '"]');
-  if (wrap) {
-    var inner = wrap.querySelector('.block-inner');
-    if (inner) {
-      inner.innerHTML = '';
-      if (b.type === 'heading') inner.appendChild(createHeadingEl(b));
-      else inner.appendChild(createParaEl(b));
-    }
-  }
-
-  updateToolbarState(b);
-  markUnsaved();
-
-  var newCe = document.querySelector('[data-block-id="' + b.id + '"] [contenteditable]');
-  if (newCe) { newCe.focus(); if (savedSel) restoreSelCharOffsets(newCe, savedSel); }
-}
 
 document.getElementById('btn-preview').addEventListener('click', function() {
   if (document.getElementById('preview-modal').classList.contains('show')) {
@@ -2042,10 +1540,6 @@ document.getElementById('btn-preview').addEventListener('click', function() {
     showPreview();
   }
 });
-function closePreview() {
-  document.getElementById('preview-modal').classList.remove('show');
-  document.getElementById('btn-preview').classList.remove('active');
-}
 document.getElementById('preview-close').addEventListener('click', closePreview);
 
 document.addEventListener('keydown', function(e) {
@@ -2060,6 +1554,20 @@ document.addEventListener('keydown', function(e) {
     closeAllDropdowns();
     closePreview();
   }
+});
+
+initInlineFormat({
+  getLastFocusedTextBlockId: function() { return lastFocusedTextBlockId; },
+  getBlock:        getBlock,
+  markUnsaved:     markUnsaved,
+  createHeadingEl: createHeadingEl,
+  createParaEl:    createParaEl,
+});
+
+initPaneBuilder({
+  insertMenuItems:            INSERT_MENU_ITEMS,
+  getLastFocusedTextBlockId:  function() { return lastFocusedTextBlockId; },
+  insertField:                insertField,
 });
 
 loadDraft();
