@@ -3898,12 +3898,15 @@ var TesselCompiler = (function() {
     '.tc-picker-nav:hover{border-color:var(--accent);color:var(--accent);}',
     '.tc-picker-title{flex:1;background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);font-weight:600;font-size:12px;padding:4px 8px;text-align:center;}',
     '.tc-picker-title:hover{border-color:var(--accent);color:var(--accent);}',
+    '.tc-picker-mo-sel{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;font-weight:600;padding:4px 6px;}',
+    '.tc-picker-yr-inp{width:65px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;font-weight:600;padding:4px 6px;}',
+    '.tc-picker-yr-inp::-webkit-inner-spin-button,.tc-picker-yr-inp::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}',
     '.tc-picker-close-btn{background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:16px;line-height:1;padding:2px 7px;display:flex;align-items:center;}',
     '.tc-picker-close-btn:hover{border-color:var(--red,#e06c75);color:var(--red,#e06c75);}',
     '.tc-picker-cal{padding:8px 10px;}',
     '.tc-picker-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;}',
     '.tc-picker-wd{text-align:center;font-size:10px;font-weight:600;color:var(--muted);padding:2px 0;}',
-    '.tc-picker-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}',
+    '.tc-picker-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;min-height:160px;align-content:start;}',
     '.tc-picker-day{text-align:center;padding:5px 2px;border-radius:4px;cursor:pointer;font-size:12px;border:1px solid transparent;}',
     '.tc-picker-day:hover{border-color:var(--accent);color:var(--accent);}',
     '.tc-picker-day.tc-picker-day-other{color:var(--muted);opacity:.45;}',
@@ -4157,7 +4160,8 @@ var TesselCompiler = (function() {
     '  p.innerHTML=',
     '    \'<div class="tc-picker-header">\'',
     '    +\'<button class="tc-picker-nav" id="tc-pcr-prev">&#8249;</button>\'',
-    '    +\'<button class="tc-picker-title" id="tc-pcr-title"></button>\'',
+    '    +\'<select class="tc-picker-mo-sel" id="tc-pcr-month"><option value="0">January</option><option value="1">February</option><option value="2">March</option><option value="3">April</option><option value="4">May</option><option value="5">June</option><option value="6">July</option><option value="7">August</option><option value="8">September</option><option value="9">October</option><option value="10">November</option><option value="11">December</option></select>\'',
+    '    +\'<input class="tc-picker-yr-inp" id="tc-pcr-year" type="number" min="1900" max="2200">\'',
     '    +\'<button class="tc-picker-nav" id="tc-pcr-next">&#8250;</button>\'',
     '    +\'<button class="tc-picker-close-btn" id="tc-pcr-close">&#215;</button>\'',
     '    +\'</div>\'',
@@ -4227,6 +4231,10 @@ var TesselCompiler = (function() {
     '  function _pToggleFmt(){_p12=!_p12;try{localStorage.setItem("tc:picker12hr",_p12?"1":"0");}catch(e){}_pSyncTime();}',
     '  document.getElementById("tc-pcr-fmt12").addEventListener("click",_pToggleFmt);',
     '  document.getElementById("tc-pcr-fmt24").addEventListener("click",_pToggleFmt);',
+    '  var pcrMoSel=document.getElementById("tc-pcr-month");',
+    '  if(pcrMoSel)pcrMoSel.addEventListener("change",function(){_pMonth=parseInt(this.value,10);_renderCal();});',
+    '  var pcrYrInp=document.getElementById("tc-pcr-year");',
+    '  if(pcrYrInp)pcrYrInp.addEventListener("change",function(){var y=parseInt(this.value,10);if(!isNaN(y)&&y>0){_pYear=y;_renderCal();}});',
     '  document.addEventListener("mousedown",function(e){',
     '    var pk=document.getElementById("tc-picker");',
     '    if(pk&&pk.style.display!=="none"&&!pk.contains(e.target)){',
@@ -4238,8 +4246,10 @@ var TesselCompiler = (function() {
     '}',
     'function _renderCal(){',
     '  var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];',
-    '  var title=document.getElementById("tc-pcr-title");',
-    '  if(title)title.textContent=MONTHS[_pMonth]+" "+_pYear;',
+    '  var pcrMoSel=document.getElementById("tc-pcr-month");',
+    '  var pcrYrInp=document.getElementById("tc-pcr-year");',
+    '  if(pcrMoSel)pcrMoSel.value=String(_pMonth);',
+    '  if(pcrYrInp)pcrYrInp.value=String(_pYear);',
     '  var days=document.getElementById("tc-pcr-days");',
     '  if(!days)return;',
     '  days.innerHTML="";',
@@ -7962,13 +7972,14 @@ function dockPanel(panelId, zone) {
     p.innerHTML =
       '<div style="display:flex;align-items:center;gap:4px;padding:8px 10px;border-bottom:1px solid var(--border);">'
       + '<button id="ep-prev" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:16px;line-height:1;padding:2px 8px;">&#8249;</button>'
-      + '<button id="ep-title" style="flex:1;background:none;border:1px solid var(--border);border-radius:4px;cursor:default;color:var(--text);font-weight:600;font-size:12px;padding:4px 8px;text-align:center;"></button>'
+      + '<select id="ep-month" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;font-weight:600;padding:4px 6px;"><option value="0">January</option><option value="1">February</option><option value="2">March</option><option value="3">April</option><option value="4">May</option><option value="5">June</option><option value="6">July</option><option value="7">August</option><option value="8">September</option><option value="9">October</option><option value="10">November</option><option value="11">December</option></select>'
+      + '<input id="ep-year" type="number" min="1900" max="2200" style="width:65px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;font-weight:600;padding:4px 6px;">'
       + '<button id="ep-next" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:16px;line-height:1;padding:2px 8px;">&#8250;</button>'
       + '<button id="ep-close" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:16px;line-height:1;padding:2px 7px;">&#215;</button>'
       + '</div>'
       + '<div style="padding:8px 10px;">'
       + '<div id="ep-wds" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;"></div>'
-      + '<div id="ep-days" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>'
+      + '<div id="ep-days" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;min-height:160px;align-content:start;"></div>'
       + '</div>'
       // ── Time section ──────────────────────────────────────────
       // Outer flex: vertical "Time" label left, controls fill remainder
@@ -8048,7 +8059,8 @@ function dockPanel(panelId, zone) {
     // Kill webkit number-input spinners (can't be done with inline styles)
     var _epStyle = document.createElement('style');
     _epStyle.textContent = '#ep-hr::-webkit-inner-spin-button,#ep-hr::-webkit-outer-spin-button,'
-      + '#ep-mn::-webkit-inner-spin-button,#ep-mn::-webkit-outer-spin-button'
+      + '#ep-mn::-webkit-inner-spin-button,#ep-mn::-webkit-outer-spin-button,'
+      + '#ep-year::-webkit-inner-spin-button,#ep-year::-webkit-outer-spin-button'
       + '{-webkit-appearance:none;margin:0;}';
     document.head.appendChild(_epStyle);
 
@@ -8092,6 +8104,17 @@ function dockPanel(panelId, zone) {
     document.getElementById('ep-fmt-12').addEventListener('click', _epToggleFmt);
     document.getElementById('ep-fmt-24').addEventListener('click', _epToggleFmt);
 
+    var epMoSel = document.getElementById('ep-month');
+    if (epMoSel) epMoSel.addEventListener('change', function() {
+      _epMonth = parseInt(this.value, 10);
+      _epRender();
+    });
+    var epYrInp = document.getElementById('ep-year');
+    if (epYrInp) epYrInp.addEventListener('change', function() {
+      var y = parseInt(this.value, 10);
+      if (!isNaN(y) && y > 0) { _epYear = y; _epRender(); }
+    });
+
     document.addEventListener('mousedown', function(e) {
       var pk = document.getElementById('ed-picker');
       if (pk && pk.style.display !== 'none' && !pk.contains(e.target) && e.target !== _epInp) _epClose();
@@ -8100,8 +8123,10 @@ function dockPanel(panelId, zone) {
 
   function _epRender() {
     var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    var title = document.getElementById('ep-title');
-    if (title) title.textContent = MONTHS[_epMonth] + ' ' + _epYear;
+    var epMoSel = document.getElementById('ep-month');
+    var epYrInp = document.getElementById('ep-year');
+    if (epMoSel) epMoSel.value = String(_epMonth);
+    if (epYrInp) epYrInp.value = String(_epYear);
     var days = document.getElementById('ep-days');
     if (!days) return;
     days.innerHTML = '';
