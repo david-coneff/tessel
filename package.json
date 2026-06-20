@@ -1,0 +1,17 @@
+{
+  "name": "tessel",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node tools/rollup.js && vite build",
+    "build:bundle": "node tools/rollup.js",
+    "build:studio": "vite build",
+    "dev": "vite",
+    "watch:bundle": "node tools/rollup.js --watch"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0",
+    "vite-plugin-singlefile": "^2.0.1"
+  }
+}
