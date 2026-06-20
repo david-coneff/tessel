@@ -666,8 +666,25 @@ select.prop-input { cursor: pointer; }
   color: var(--muted); padding: 2px 5px; font-size: 13px; line-height: 1;
   border-radius: 5px; flex-shrink: 0; margin-left: 2px;
 }
+.dock-float .ctrl-pane-pip-btn { display: inline-flex; align-items: center; }
 .ctrl-pane-pip-btn:hover { background: var(--surface2); border-color: var(--accent); color: var(--text); }
 .ctrl-pane-pip-btn.pip-active { border-color: var(--accent); color: var(--accent); }
+
+/* satellite window layout */
+body.satellite-mode { margin: 0; overflow: hidden; }
+.satellite-pane {
+  position: fixed !important;
+  left: 0 !important; top: 0 !important;
+  width: 100% !important; height: 100% !important;
+  max-height: none !important;
+  border: none !important; border-radius: 0 !important;
+  box-shadow: none !important; z-index: 1 !important;
+  display: flex !important; flex-direction: column !important;
+}
+.satellite-pane .ctrl-pane-float-btn,
+.satellite-pane .ctrl-pane-pip-btn,
+.satellite-pane .pane-resize-handle,
+.satellite-pane .pane-width-handle { display: none !important; }
 
 /* pane filling the pip window */
 [data-pip-out] {

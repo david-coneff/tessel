@@ -116,6 +116,28 @@ export function initDockSystem() {
       }).catch(function() {});
     }
 
+    function openSatellite(panelId) {
+      var panel = document.getElementById(panelId);
+      if (!panel || !panel.classList.contains('dock-float')) return;
+      if (pipPanels[panelId]) return;
+      var w = Math.round(parseFloat(panel.style.width)  || FLOAT_W);
+      var h = Math.round(parseFloat(panel.style.height) || FLOAT_H);
+      var url = location.href.split('?')[0] + '?satellite=' + encodeURIComponent(panelId);
+      var winRef = window.open(url, '_blank', 'width='+w+',height='+h+',popup=1');
+      if (!winRef) return;
+      var pb = document.querySelector('[data-pane-pip-btn="'+panelId+'"]');
+      if (pb) pb.classList.add('pip-active');
+      pipPanels[panelId] = { pipWin: winRef, isSatellite: true };
+      var iv = setInterval(function() {
+        if (winRef.closed) {
+          clearInterval(iv);
+          delete pipPanels[panelId];
+          var pb2 = document.querySelector('[data-pane-pip-btn="'+panelId+'"]');
+          if (pb2) pb2.classList.remove('pip-active');
+        }
+      }, 500);
+    }
+
     function curZoneOf(panel) {
       if (panel.classList.contains('dock-left'))   return 'left';
       if (panel.classList.contains('dock-right'))  return 'right';
@@ -148,8 +170,6 @@ export function initDockSystem() {
       });
       var fb = document.querySelector('[data-pane-float-btn="'+panelId+'"]');
       if (fb) { fb.innerHTML='&#8601;'; fb.title='Dock panel'; }
-      var pb = document.querySelector('[data-pane-pip-btn="'+panelId+'"]');
-      if (pb) pb.style.display = 'inline-flex';
       panel.classList.remove('off');
       var bdg = document.querySelector('[data-badge-pane="'+panelId+'"]') || document.getElementById('badge-'+panelId.replace(/-pane$/,'').replace(/-panel$/,''));
       if (bdg) bdg.classList.add('active');
@@ -164,8 +184,6 @@ export function initDockSystem() {
         parseFloat(panel.style.width)||FLOAT_W, parseFloat(panel.style.height)||FLOAT_H);
       panel.style.left=panel.style.top=panel.style.width=panel.style.height=panel.style.zIndex='';
       panel.classList.remove('off');
-      var pb2 = document.querySelector('[data-pane-pip-btn="'+panelId+'"]');
-      if (pb2) pb2.style.display = 'none';
       dockPanel(panelId, lastZone[panelId]||PANE_DEF[panelId]||'left');
     }
 
@@ -187,20 +205,29 @@ export function initDockSystem() {
       });
       hdr.appendChild(btn);
 
-      if (window.documentPictureInPicture) {
+      (function(pid) {
         var pipBtn = document.createElement('button');
         pipBtn.className = 'ctrl-pane-pip-btn';
-        pipBtn.setAttribute('data-pane-pip-btn', panelId);
+        pipBtn.setAttribute('data-pane-pip-btn', pid);
         pipBtn.innerHTML = '&#10697;';
-        pipBtn.title = 'Pop out to separate window (Chrome only)';
-        pipBtn.style.display = 'none';
+        pipBtn.title = window.documentPictureInPicture
+          ? 'Pop out to separate window'
+          : 'Pop out to separate window (BroadcastChannel fallback)';
         pipBtn.addEventListener('click', function(e) {
           e.stopPropagation();
-          if (pipPanels[panelId]) pipPanels[panelId].pipWin.close();
-          else popOutToPip(panelId);
+          if (pipPanels[pid]) {
+            try { pipPanels[pid].pipWin.close(); } catch(ex) {}
+            if (pipPanels[pid].isSatellite) {
+              delete pipPanels[pid];
+              pipBtn.classList.remove('pip-active');
+            }
+          } else {
+            if (window.documentPictureInPicture) popOutToPip(pid);
+            else openSatellite(pid);
+          }
         });
         hdr.appendChild(pipBtn);
-      }
+      })(panelId);
     });
 
     var DIRS = ['n','ne','e','se','s','sw','w','nw'];
