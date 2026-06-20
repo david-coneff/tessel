@@ -1,5 +1,6 @@
 import { slugify } from './utils.js';
 import { serializeBlocks, serializeBlock } from './blocks.js';
+import { parseMd } from './TesselCompiler.js';
 
 var _deps = {
   getBlocks: null, setBlocks: null,
@@ -192,7 +193,7 @@ export function openZip(file) {
       if (!mdEntry) { _deps.setStatus('No .md file found in ZIP'); return; }
 
       var mdText = new TextDecoder('utf-8').decode(fileMap[mdEntry]);
-      var parsed = TesselCompiler.parseMd(mdText);
+      var parsed = parseMd(mdText);
 
       function toDataUrl(bytes, mimeType) {
         var binary = '';
