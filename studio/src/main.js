@@ -1325,6 +1325,19 @@ function mkPropRow(label) {
 function mkInput(val, onChange) {
   var wrap = makeTextInput({ value: val, onChange: onChange });
   wrap.input.className += ' prop-input';
+  Object.defineProperty(wrap, 'value', {
+    get: function() { return wrap.input.value; },
+    set: function(v) { wrap.input.value = v; }
+  });
+  Object.defineProperty(wrap, 'readOnly', {
+    get: function() { return wrap.input.readOnly; },
+    set: function(v) { wrap.input.readOnly = v; }
+  });
+  Object.defineProperty(wrap, 'tabIndex', {
+    get: function() { return wrap.input.tabIndex; },
+    set: function(v) { wrap.input.tabIndex = v; }
+  });
+  wrap.focus = function() { wrap.input.focus(); };
   return wrap;
 }
 
