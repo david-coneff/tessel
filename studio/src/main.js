@@ -155,7 +155,8 @@ import { uid, esc, slugify } from './lib/utils.js';
 import { FIELD_TYPES } from './lib/metadata.js';
 import { serializeBlocks, serializeBlock, astToBlocks, nodeToBlock } from './lib/blocks.js';
 import { initUndo, pushUndo, inputPushUndo, undo, redo, updateUndoButtons,
-         clearUndoHistory, saveUndoHistory, loadUndoHistory, trimUndoStack, cancelUndoDebounce } from './lib/undo.js';
+         clearUndoHistory, saveUndoHistory, loadUndoHistory, trimUndoStack, cancelUndoDebounce,
+         getUndoDepth, getUndoGranularity, getUndoTimeWindow } from './lib/undo.js';
 import { icon, makeSeparator, makeTextInput, makeToggle } from './tessel-ui/index.js';
 
 (function() {

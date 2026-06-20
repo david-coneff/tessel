@@ -8,14 +8,14 @@ export function initUndo(deps) {
   _deps = deps;
 }
 
-function getUndoDepth() {
+export function getUndoDepth() {
   try { var v = parseInt(localStorage.getItem('tvs:opts:undo-depth'), 10); if (v > 0) return v; } catch(e) {}
   return 100;
 }
-function getUndoGranularity() {
+export function getUndoGranularity() {
   try { return localStorage.getItem('tvs:opts:undo-granularity') || 'action'; } catch(e) { return 'action'; }
 }
-function getUndoTimeWindow() {
+export function getUndoTimeWindow() {
   try { var v = parseInt(localStorage.getItem('tvs:opts:undo-time-window'), 10); if (v > 0) return v; } catch(e) {}
   return 1000;
 }
