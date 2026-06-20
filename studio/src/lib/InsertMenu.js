@@ -44,7 +44,9 @@ export function buildInsertMenuContent(container, getAfterId) {
 }
 
 export function buildInsertMenuHTML() {
-  buildInsertMenuContent(document.getElementById('dm-insert'), function() { return null; });
+  var el = document.getElementById('dm-insert');
+  if (!el) return;
+  buildInsertMenuContent(el, function() { return null; });
 }
 
 export function showInsertFloat(afterId, anchorEl) {

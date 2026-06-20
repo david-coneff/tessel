@@ -2,7 +2,7 @@ import { FIELD_TYPES } from './metadata.js';
 import { uid, slugify } from './utils.js';
 import { inputPushUndo } from './undo.js';
 import { icon } from '../tessel-ui/index.js';
-import { deleteBlock, selectBlock, insertBlock } from './BlockOps.js';
+import { deleteBlock, selectBlock, insertBlock, setupDragDrop } from './BlockOps.js';
 import { showInsertFloat } from './InsertMenu.js';
 import { markUnsaved, flatBlockList } from './FileOps.js';
 import { updateOutline } from './PropsPanel.js';
@@ -259,7 +259,7 @@ export function createFieldEl(b) {
     b.label = labelEl.textContent;
     if (!b.meta._idManuallySet) b.meta.id = slugify(b.label);
     markUnsaved();
-    if (_deps.getSelectedBlockId() === b.id) renderProps();
+    if (_deps.getSelectedBlockId() === b.id) _deps.renderProps();
   });
   labelEl.addEventListener('click', function(e) { e.stopPropagation(); selectBlock(b.id); });
   card.appendChild(labelEl);
