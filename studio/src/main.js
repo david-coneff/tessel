@@ -151,7 +151,7 @@
  *   block-level property linking a block group to a specific field block's value
  *   or option selection
  */
-import { uid, esc, slugify } from './lib/utils.js';
+import { uid } from './lib/utils.js';
 import { FIELD_TYPES } from './lib/metadata.js';
 import { serializeBlocks, serializeBlock, astToBlocks, nodeToBlock } from './lib/blocks.js';
 import { initUndo, pushUndo, inputPushUndo, undo, redo, updateUndoButtons,
@@ -175,6 +175,9 @@ import { initFileOps, initFileOpsListeners, setStatus, markUnsaved, isPersistUnd
          saveDraft, loadDraft, openMd, openHtml, getCompiledHtml, saveFile,
          closeAllDropdowns, showPreview, flatBlockList } from './lib/FileOps.js';
 import { initToolbarWiring } from './lib/ToolbarWiring.js';
+import { initBlockOps, insertBlock, insertBlockInSections, deleteBlock, deleteBlockFromSections,
+         getBlock, selectBlock, selectAll, reorderBlock, setupDragDrop } from './lib/BlockOps.js';
+import { INSERT_MENU_ITEMS, insertField, buildInsertMenuHTML, showInsertFloat } from './lib/InsertMenu.js';
 import { parseMd as TesselParseMd, blocksToHtml, buildPage as TesselBuildPage } from './lib/TesselCompiler.js';
 import { icon, makeSeparator, makeTextInput, makeToggle } from './tessel-ui/index.js';
 
@@ -220,109 +223,18 @@ initFileOps({
   renderProps:       renderProps,
 });
 initFileOpsListeners();
+initBlockOps({
+  getBlocks:           function() { return blocks; },
+  getSelectedBlockId:  function() { return selectedBlockId; },
+  setSelectedBlockId:  function(v) { selectedBlockId = v; },
+  renderCanvas:        renderCanvas,
+  renderProps:         renderProps,
+  markUnsaved:         markUnsaved,
+});
 var _filename = 'document';
 
 // Undo/Redo
 
-
-var INSERT_MENU_ITEMS = [
-  { group: 'Text Content' },
-  { label: 'Heading 1', icon: 'H1', action: function(aid) { insertBlock({ type:'heading', level:1, text:'Heading', id:uid() }, aid); } },
-  { label: 'Heading 2', icon: 'H2', action: function(aid) { insertBlock({ type:'heading', level:2, text:'Heading', id:uid() }, aid); } },
-  { label: 'Heading 3', icon: 'H3', action: function(aid) { insertBlock({ type:'heading', level:3, text:'Heading', id:uid() }, aid); } },
-  { label: 'Paragraph', icon: '¶',  action: function(aid) { insertBlock({ type:'paragraph', text:'', id:uid() }, aid); } },
-  { label: 'Divider',       icon: '—',  action: function(aid) { insertBlock({ type:'hr', id:uid() }, aid); } },
-  { label: 'Bulleted List', icon: '•',  action: function(aid) { insertBlock({ type:'list', ordered:false, items:[''], id:uid() }, aid); } },
-  { label: 'Ordered List',  icon: '1.', action: function(aid) { insertBlock({ type:'list', ordered:true,  items:[''], id:uid() }, aid); } },
-  { group: 'Structure' },
-  { label: 'Collapsible Section', icon: '▶',  action: function(aid) { insertBlock({ type:'section', title:'Section Title', children:[], id:uid() }, aid); } },
-  { label: 'Code Block',          icon: '</>',action: function(aid) { insertBlock({ type:'codeblock', lang:'bash', code:'', id:uid() }, aid); } },
-  { label: 'Attachment (author)', icon: '📎', action: function(aid) { insertBlock({ type:'attachment', files:[], id:uid() }, aid); } },
-];
-
-function insertField(ft, afterId) {
-  var b = { type:'field', fieldType:ft, label:'Label', options:[], meta:{}, id:uid() };
-  b.meta.id = slugify(b.label);
-  insertBlock(b, afterId);
-}
-
-function insertBlock(block, afterId) {
-  pushUndo();
-  if (!afterId) {
-    blocks.push(block);
-  } else {
-    var idx = blocks.findIndex(function(b){ return b.id === afterId; });
-    if (idx >= 0) {
-      blocks.splice(idx + 1, 0, block);
-    } else if (!insertBlockInSections(block, afterId, blocks)) {
-      blocks.push(block);
-    }
-  }
-  renderCanvas();
-  markUnsaved();
-  setTimeout(function() {
-    var el = document.querySelector('[data-block-id="' + block.id + '"]');
-    if (el) {
-      var editable = el.querySelector('[contenteditable]');
-      if (editable) { editable.focus(); selectAll(editable); }
-      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    }
-    if (block.type === 'field') selectBlock(block.id);
-  }, 30);
-}
-
-function insertBlockInSections(block, afterId, arr) {
-  for (var i = 0; i < arr.length; i++) {
-    if (arr[i].type === 'section') {
-      var children = arr[i].children || [];
-      var idx = children.findIndex(function(b){ return b.id === afterId; });
-      if (idx >= 0) { children.splice(idx + 1, 0, block); return true; }
-      if (insertBlockInSections(block, afterId, children)) return true;
-    }
-  }
-  return false;
-}
-
-function deleteBlock(id) {
-  pushUndo();
-  var idx = blocks.findIndex(function(b){ return b.id === id; });
-  if (idx >= 0) { blocks.splice(idx, 1); }
-  else { deleteBlockFromSections(id, blocks); }
-  if (selectedBlockId === id) { selectedBlockId = null; renderProps(); }
-  renderCanvas();
-  markUnsaved();
-}
-
-function deleteBlockFromSections(id, arr) {
-  for (var i = 0; i < arr.length; i++) {
-    if (arr[i].type === 'section') {
-      var children = arr[i].children || [];
-      var idx = children.findIndex(function(b){ return b.id === id; });
-      if (idx >= 0) { children.splice(idx, 1); return true; }
-      if (deleteBlockFromSections(id, children)) return true;
-    }
-  }
-  return false;
-}
-
-function getBlock(id) {
-  function search(arr) {
-    for (var i = 0; i < arr.length; i++) {
-      if (arr[i].id === id) return arr[i];
-      if (arr[i].type === 'section' && arr[i].children) { var r = search(arr[i].children); if (r) return r; }
-    }
-    return null;
-  }
-  return search(blocks);
-}
-
-function selectAll(el) {
-  var range = document.createRange();
-  range.selectNodeContents(el);
-  var sel = window.getSelection();
-  sel.removeAllRanges();
-  sel.addRange(range);
-}
 
 function renderCanvas() {
   var root = document.getElementById('blocks-root');
@@ -893,65 +805,6 @@ function createAttachmentEl(b) {
   return wrap;
 }
 
-var dragSrcId = null;
-
-function setupDragDrop(wrap, b, arr) {
-  wrap.addEventListener('dragstart', function(e) {
-    dragSrcId = b.id;
-    wrap.classList.add('dragging');
-    e.dataTransfer.effectAllowed = 'move';
-  });
-  wrap.addEventListener('dragend', function() {
-    dragSrcId = null;
-    wrap.classList.remove('dragging');
-    document.querySelectorAll('.drag-over-top,.drag-over-bottom').forEach(function(el) {
-      el.classList.remove('drag-over-top','drag-over-bottom');
-    });
-  });
-  wrap.addEventListener('dragover', function(e) {
-    if (!dragSrcId || dragSrcId === b.id) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    var rect = wrap.getBoundingClientRect();
-    document.querySelectorAll('.drag-over-top,.drag-over-bottom').forEach(function(el) {
-      el.classList.remove('drag-over-top','drag-over-bottom');
-    });
-    wrap.classList.add(e.clientY < rect.top + rect.height / 2 ? 'drag-over-top' : 'drag-over-bottom');
-  });
-  wrap.addEventListener('dragleave', function() {
-    wrap.classList.remove('drag-over-top','drag-over-bottom');
-  });
-  wrap.addEventListener('drop', function(e) {
-    if (!dragSrcId || dragSrcId === b.id) return;
-    e.preventDefault();
-    var rect = wrap.getBoundingClientRect();
-    var before = e.clientY < rect.top + rect.height / 2;
-    reorderBlock(dragSrcId, b.id, before, arr);
-    wrap.classList.remove('drag-over-top','drag-over-bottom');
-  });
-}
-
-function reorderBlock(srcId, targetId, insertBefore, arr) {
-  pushUndo();
-  var srcIdx = arr.findIndex(function(b){ return b.id === srcId; });
-  if (srcIdx < 0) return;
-  var src = arr.splice(srcIdx, 1)[0];
-  var tgtIdx = arr.findIndex(function(b){ return b.id === targetId; });
-  if (tgtIdx < 0) arr.push(src);
-  else arr.splice(insertBefore ? tgtIdx : tgtIdx + 1, 0, src);
-  renderCanvas();
-  markUnsaved();
-}
-
-function selectBlock(id) {
-  selectedBlockId = id;
-  document.querySelectorAll('.field-card').forEach(function(el) { el.classList.remove('selected'); });
-  if (id) {
-    var card = document.querySelector('[data-block-id="' + id + '"] .field-card');
-    if (card) card.classList.add('selected');
-  }
-  renderProps();
-}
 
 function renderProps() {
   var body = document.getElementById('props-body');
@@ -1216,41 +1069,7 @@ function updateOutline() {
   });
 }
 
-var insertFloatAfter = null;
-
-function buildInsertMenuContent(container, getAfterId) {
-  container.innerHTML = '';
-  INSERT_MENU_ITEMS.forEach(function(item) {
-    if (item.group) {
-      var g = document.createElement('div'); g.className = 'dm-group'; g.textContent = item.group;
-      container.appendChild(g);
-    } else {
-      var d = document.createElement('div'); d.className = 'dm-item';
-      d.innerHTML = '<span class="dm-icon">' + esc(item.icon) + '</span>' + esc(item.label);
-      d.addEventListener('click', function() {
-        closeAllDropdowns();
-        item.action(getAfterId ? getAfterId() : null);
-      });
-      container.appendChild(d);
-    }
-  });
-}
-
-function buildInsertMenuHTML() {
-  buildInsertMenuContent(document.getElementById('dm-insert'), function() { return null; });
-}
-
-function showInsertFloat(afterId, anchorEl) {
-  insertFloatAfter = afterId;
-  var fl = document.getElementById('insert-float');
-  buildInsertMenuContent(fl, function() { return insertFloatAfter; });
-  var rect = anchorEl.getBoundingClientRect();
-  fl.style.top = (rect.bottom + 4) + 'px';
-  fl.style.left = rect.left + 'px';
-  fl.classList.add('show');
-}
-
-
+buildInsertMenuHTML();
 
 makeDockablePane({ paneId: 'format-pane', badgeId: 'badge-format', lsKey: 'tvs:format-pane-state' });
 makeDockablePane({ paneId: 'text-pane',   badgeId: 'badge-text',   lsKey: 'tvs:text-pane-state' });
