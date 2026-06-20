@@ -89,11 +89,15 @@ export function initDockSystem() {
         panel.style.height = saved.height;
         panel.style.zIndex = saved.zIndex || String(zCounter++);
         var fc = document.getElementById('dock-float');
-        if (fc) fc.appendChild(panel);
+        if (fc) fc.appendChild(panel); // move back to main document first
         panel.classList.add('dock-float');
         clampFloatPanel(panel);
       } else {
-        dockPanel(panelId, saved.zone || PANE_DEF[panelId] || 'left');
+        var zone = saved.zone || PANE_DEF[panelId] || 'left';
+        // Move back to main document before dockPanel queries getElementById
+        var zoneEl = document.getElementById('dock-' + zone) || document.body;
+        zoneEl.appendChild(panel);
+        dockPanel(panelId, zone);
       }
     }
 

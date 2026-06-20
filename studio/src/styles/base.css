@@ -697,7 +697,9 @@ body.satellite-mode { margin: 0; overflow: hidden; }
 }
 [data-pip-out] .pane-resize-handle,
 [data-pip-out] .pane-width-handle,
-[data-pip-out] .pane-h-resize-handle { display: none; }
+[data-pip-out] .pane-h-resize-handle,
+[data-pip-out] .ctrl-pane-pip-btn,
+[data-pip-out] .ctrl-pane-float-btn { display: none; }
 
 .pane-resize-handle { position: absolute; z-index: 10; pointer-events: none; }
 .dock-float .pane-resize-handle { pointer-events: all; }
