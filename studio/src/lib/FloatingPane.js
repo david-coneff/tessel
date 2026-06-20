@@ -16,6 +16,30 @@
  *   pane.open();             // show + restore/clamp position
  *   pane.close();            // hide + persist open state
  */
+
+/**
+ * Clamp an element to the viewport, staying below the toolbar.
+ * margin=0 (default): element fully contained — no edge can exceed viewport.
+ * margin=N: element allowed to slide N px off any edge (partial-visibility mode).
+ * Returns {x, y} — does NOT mutate el.style; caller applies the result.
+ */
+export function clampToViewport(el, opts) {
+  var margin = (opts && opts.margin) || 0;
+  var w  = (opts && opts.w  != null) ? opts.w  : el.offsetWidth;
+  var h  = (opts && opts.h  != null) ? opts.h  : el.offsetHeight;
+  var x  = (opts && opts.x  != null) ? opts.x  : parseFloat(el.style.left) || 0;
+  var y  = (opts && opts.y  != null) ? opts.y  : parseFloat(el.style.top)  || 0;
+  var tb = document.getElementById('toolbar');
+  var tbH = tb ? tb.getBoundingClientRect().bottom : 0;
+  var xMin = margin ? margin - w : 0;
+  var xMax = margin ? window.innerWidth  - margin : window.innerWidth  - w;
+  var yMax = margin ? window.innerHeight - margin : window.innerHeight - h;
+  return {
+    x: Math.max(xMin, Math.min(xMax, x)),
+    y: Math.max(tbH,  Math.min(yMax, y)),
+  };
+}
+
 export class FloatingPane {
   constructor(el, opts) {
     opts = opts || {};
@@ -45,8 +69,6 @@ export class FloatingPane {
   }
 
   clamp() {
-    var tb = document.getElementById('toolbar');
-    var tbH = tb ? tb.getBoundingClientRect().bottom : 0;
     // Resolve CSS-transform-based centering to explicit coords before clamping
     if (this.el.style.transform && this.el.style.transform !== 'none') {
       var r = this.el.getBoundingClientRect();
@@ -54,13 +76,9 @@ export class FloatingPane {
       this.el.style.top  = r.top  + 'px';
       this.el.style.transform = 'none';
     }
-    var x = parseFloat(this.el.style.left) || 0;
-    var y = parseFloat(this.el.style.top)  || 0;
-    var w = this.el.offsetWidth, h = this.el.offsetHeight;
-    x = Math.max(0, Math.min(window.innerWidth  - w, x));
-    y = Math.max(tbH, Math.min(window.innerHeight - h, y));
-    this.el.style.left = x + 'px';
-    this.el.style.top  = y + 'px';
+    var pos = clampToViewport(this.el);
+    this.el.style.left = pos.x + 'px';
+    this.el.style.top  = pos.y + 'px';
   }
 
   restoreSize() {
@@ -101,11 +119,9 @@ export class FloatingPane {
       self.el.style.transform = 'none';
       self.el._fpDragged = true;
       function onMove(ev) {
-        var tb = document.getElementById('toolbar');
-        var tbH = tb ? tb.getBoundingClientRect().bottom : 0;
-        var w = self.el.offsetWidth, h = self.el.offsetHeight;
-        self.el.style.left = Math.max(0, Math.min(window.innerWidth  - w, ev.clientX - startX)) + 'px';
-        self.el.style.top  = Math.max(tbH, Math.min(window.innerHeight - h, ev.clientY - startY)) + 'px';
+        var pos = clampToViewport(self.el, { x: ev.clientX - startX, y: ev.clientY - startY });
+        self.el.style.left = pos.x + 'px';
+        self.el.style.top  = pos.y + 'px';
       }
       function onUp() {
         document.removeEventListener('mousemove', onMove);

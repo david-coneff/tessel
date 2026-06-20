@@ -157,7 +157,7 @@ import { serializeBlocks, serializeBlock, astToBlocks, nodeToBlock } from './lib
 import { initUndo, pushUndo, inputPushUndo, undo, redo, updateUndoButtons,
          clearUndoHistory, saveUndoHistory, loadUndoHistory, trimUndoStack, cancelUndoDebounce,
          getUndoDepth, getUndoGranularity, getUndoTimeWindow } from './lib/undo.js';
-import { FloatingPane } from './lib/FloatingPane.js';
+import { FloatingPane, clampToViewport } from './lib/FloatingPane.js';
 import { icon, makeSeparator, makeTextInput, makeToggle } from './tessel-ui/index.js';
 
 (function() {
@@ -4540,18 +4540,15 @@ function dockPanel(panelId, zone) {
 
   function clampFloatPanel(panel) {
     if (!panel || !panel.classList.contains('dock-float')) return;
-    var w = parseFloat(panel.style.width)  || FLOAT_W;
-    var h = parseFloat(panel.style.height) || FLOAT_H;
-    var x = parseFloat(panel.style.left)   || 0;
-    var y = parseFloat(panel.style.top)    || 0;
-    // Keep at least 60px of panel visible on each axis; never slide above toolbar
-    var MARGIN = 60;
-    var tb = document.getElementById('toolbar');
-    var tbBottom = tb ? tb.getBoundingClientRect().bottom : 0;
-    x = Math.max(MARGIN - w, Math.min(window.innerWidth  - MARGIN, x));
-    y = Math.max(tbBottom,   Math.min(window.innerHeight - MARGIN, y));
-    panel.style.left = x + 'px';
-    panel.style.top  = y + 'px';
+    var pos = clampToViewport(panel, {
+      w: parseFloat(panel.style.width)  || FLOAT_W,
+      h: parseFloat(panel.style.height) || FLOAT_H,
+      x: parseFloat(panel.style.left)   || 0,
+      y: parseFloat(panel.style.top)    || 0,
+      margin: 60,
+    });
+    panel.style.left = pos.x + 'px';
+    panel.style.top  = pos.y + 'px';
   }
 
   window._clampFloatPanel = clampFloatPanel;
@@ -4669,11 +4666,14 @@ function dockPanel(panelId, zone) {
 
   document.addEventListener('mousemove', function(e) {
     if (fd) {
-      var w=parseFloat(fd.style.width)||FLOAT_W, h=parseFloat(fd.style.height)||FLOAT_H;
-      var tb=document.getElementById('toolbar');
-      var tbBottom=tb?tb.getBoundingClientRect().bottom:0;
-      fd.style.left=Math.max(0,Math.min(window.innerWidth-w,  fdPX+(e.clientX-fdSX)))+'px';
-      fd.style.top =Math.max(tbBottom,Math.min(window.innerHeight-h, fdPY+(e.clientY-fdSY)))+'px';
+      var pos = clampToViewport(fd, {
+        w: parseFloat(fd.style.width) || FLOAT_W,
+        h: parseFloat(fd.style.height) || FLOAT_H,
+        x: fdPX + (e.clientX - fdSX),
+        y: fdPY + (e.clientY - fdSY),
+      });
+      fd.style.left = pos.x + 'px';
+      fd.style.top  = pos.y + 'px';
     }
     if (rd) {
       var dx=e.clientX-rdSX, dy=e.clientY-rdSY, dir=rdDir;
