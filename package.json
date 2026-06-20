@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node tools/rollup.js && vite build",
-    "build:bundle": "node tools/rollup.js",
+    "build": "node tools/rollup.cjs && vite build",
+    "build:bundle": "node tools/rollup.cjs",
     "build:studio": "vite build",
     "dev": "vite",
-    "watch:bundle": "node tools/rollup.js --watch"
+    "watch:bundle": "node tools/rollup.cjs --watch"
   },
   "devDependencies": {
     "vite": "^5.4.0",
