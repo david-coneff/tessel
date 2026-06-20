@@ -158,6 +158,7 @@ import { initUndo, pushUndo, inputPushUndo, undo, redo, updateUndoButtons,
          clearUndoHistory, saveUndoHistory, loadUndoHistory, trimUndoStack, cancelUndoDebounce,
          getUndoDepth, getUndoGranularity, getUndoTimeWindow } from './lib/undo.js';
 import { FloatingPane, clampToViewport } from './lib/FloatingPane.js';
+import { makeDockablePane, sidePanelArrowSync, sidePanelOpenFn } from './lib/PaneFactory.js';
 import { icon, makeSeparator, makeTextInput, makeToggle } from './tessel-ui/index.js';
 
 (function() {
@@ -3785,95 +3786,10 @@ function setupDropdown(btnId, menuId) {
 
 setupDropdown('btn-file-dd', 'dm-file');
 
-// ── Ctrl pane factory (text-pane, form-pane) ────────────────────────────────
-// Each pane has 3 states: open | collapsed (tab strip) | off (hidden)
-// cfg: { paneId, badgeId, lsKey }
-var _sidePanelArrowSync = {};
-var _sidePanelOpenFn   = {};
-function makeCtrlPane(cfg) {
-  var pane        = document.getElementById(cfg.paneId);
-  var badge       = document.getElementById(cfg.badgeId);
-  var collapseBtn = pane.querySelector('.ctrl-pane-collapse-btn');
-  var tabEl       = pane.querySelector('.ctrl-pane-tab');
-  var tabArrow    = pane.querySelector('.panel-tab-arrow');
-
-  function ls(k)   { try { return localStorage.getItem(k); } catch(e) { return null; } }
-  function lss(k,v){ try { localStorage.setItem(k, v); } catch(e) {} }
-
-  function arrowDir(isOpen) {
-    var onRight = pane.classList.contains('dock-right');
-    if (onRight) return isOpen ? '›' : '‹';
-    return isOpen ? '‹' : '›';
-  }
-  function syncArrow() {
-    var isOpen = !pane.classList.contains('collapsed') && !pane.classList.contains('off');
-    var ch = arrowDir(isOpen);
-    collapseBtn.textContent = ch;
-    tabArrow.innerHTML = ch;
-  }
-  _sidePanelArrowSync[cfg.paneId] = syncArrow;
-  _sidePanelOpenFn[cfg.paneId]   = function() { open(); };
-
-  function _restorePaneW() {
-    try { var w = localStorage.getItem('tvs:pane-w:' + cfg.paneId); if (w) pane.style.width = parseInt(w, 10) + 'px'; } catch(e) {}
-  }
-  function open() {
-    pane.classList.remove('collapsed', 'off');
-    _restorePaneW();
-    var ch = arrowDir(true);
-    collapseBtn.textContent = ch;
-    tabArrow.innerHTML = ch;
-    badge.classList.add('active');
-    lss(cfg.lsKey, 'open');
-    _lastActiveState = 'open';
-  }
-  function collapse() {
-    pane.classList.remove('off');
-    pane.style.width = '';
-    pane.classList.add('collapsed');
-    var ch = arrowDir(false);
-    collapseBtn.textContent = ch;
-    tabArrow.innerHTML = ch;
-    badge.classList.add('active');
-    lss(cfg.lsKey, 'collapsed');
-    _lastActiveState = 'collapsed';
-  }
-  function hide() {
-    pane.classList.remove('collapsed');
-    pane.style.width = '';
-    pane.classList.add('off');
-    badge.classList.remove('active');
-    lss(cfg.lsKey, 'off');
-  }
-  function toggle() {
-    if (pane.classList.contains('collapsed')) { open(); } else { collapse(); }
-  }
-
-  collapseBtn.addEventListener('click', toggle);
-  tabEl.addEventListener('click', toggle);
-  badge.addEventListener('click', function(e) {
-    e.stopPropagation();
-    if (pane.classList.contains('dock-float')) {
-      if (pane.classList.contains('off')) {
-        pane.classList.remove('off'); badge.classList.add('active');
-        if (window._clampFloatPanel) window._clampFloatPanel(pane);
-      } else { pane.classList.add('off'); badge.classList.remove('active'); }
-    } else {
-      if (badge.classList.contains('active')) { hide(); }
-      else { if (_lastActiveState === 'collapsed') collapse(); else open(); }
-    }
-  });
-
-  var _lastActiveState = 'open';
-  var state = ls(cfg.lsKey);
-  if (state === 'off')            { hide(); }
-  else if (state === 'collapsed') { _lastActiveState = 'collapsed'; collapse(); }
-  else                            { open(); }
-}
-
-makeCtrlPane({ paneId: 'format-pane', badgeId: 'badge-format', lsKey: 'tvs:format-pane-state' });
-makeCtrlPane({ paneId: 'text-pane',   badgeId: 'badge-text',   lsKey: 'tvs:text-pane-state' });
-makeCtrlPane({ paneId: 'form-pane',   badgeId: 'badge-form',   lsKey: 'tvs:form-pane-state' });
+// ── Dockable pane factory ────────────────────────────────────────────────────
+makeDockablePane({ paneId: 'format-pane', badgeId: 'badge-format', lsKey: 'tvs:format-pane-state' });
+makeDockablePane({ paneId: 'text-pane',   badgeId: 'badge-text',   lsKey: 'tvs:text-pane-state' });
+makeDockablePane({ paneId: 'form-pane',   badgeId: 'badge-form',   lsKey: 'tvs:form-pane-state' });
 
 var FORMAT_PANE_ITEMS = [
   { group: 'Block Type', labelId: 'fmt-group-blocktype' },
@@ -4392,101 +4308,13 @@ updateUndoButtons();
 
 // ── Side panel factory (outline + props) ────────────────────────────────────
 // States: open (full) | collapsed (tab strip) | off (fully hidden, badge only)
-function makeSidePanel(cfg) {
-  // cfg: { panelId, tabId, arrowId, badgeId, lsKey }
-  var panel    = document.getElementById(cfg.panelId);
-  var tab      = document.getElementById(cfg.tabId);
-  var arrow    = document.getElementById(cfg.arrowId);
-  var badge    = document.getElementById(cfg.badgeId);
-  var tabArrow = tab ? tab.querySelector('.panel-tab-arrow') : null;
-
-  function ls(v)  { try { return localStorage.getItem(v); } catch(e) { return null; } }
-  function lss(k,v){ try { localStorage.setItem(k, v); } catch(e) {} }
-
-  function arrowDir(isOpen) {
-    var onRight = panel.classList.contains('dock-right');
-    if (onRight) return isOpen ? '&#8250;' : '&#8249;';
-    return isOpen ? '&#8249;' : '&#8250;';
-  }
-  function setArrows(isOpen) {
-    var ch = arrowDir(isOpen);
-    if (arrow)    arrow.innerHTML    = ch;
-    if (tabArrow) tabArrow.innerHTML = ch;
-  }
-  function syncArrow() {
-    var isOpen = !panel.classList.contains('collapsed') && !panel.classList.contains('off');
-    setArrows(isOpen);
-  }
-  _sidePanelArrowSync[cfg.panelId] = syncArrow;
-  _sidePanelOpenFn[cfg.panelId]   = function() { open(); };
-
-  function _restorePanelW() {
-    try { var w = localStorage.getItem('tvs:pane-w:' + cfg.panelId); if (w) panel.style.width = parseInt(w, 10) + 'px'; } catch(e) {}
-  }
-  function open() {
-    panel.classList.remove('collapsed', 'off');
-    _restorePanelW();
-    setArrows(true);
-    badge.classList.add('active');
-    lss(cfg.lsKey, 'open');
-    _lastActiveState = 'open';
-  }
-  function collapse() {
-    panel.classList.remove('off');
-    panel.style.width = '';
-    panel.classList.add('collapsed');
-    setArrows(false);
-    badge.classList.add('active'); // badge stays on when collapsed
-    lss(cfg.lsKey, 'collapsed');
-    _lastActiveState = 'collapsed';
-  }
-  function hide() {
-    panel.classList.remove('collapsed');
-    panel.style.width = '';
-    panel.classList.add('off');
-    badge.classList.remove('active');
-    lss(cfg.lsKey, 'off');
-  }
-
-  // Tab strip and content arrow both toggle open ↔ collapsed
-  function toggleOpenCollapse() {
-    if (panel.classList.contains('collapsed')) { open(); } else { collapse(); }
-  }
-  tab.addEventListener('click', toggleOpenCollapse);
-  if (arrow) arrow.addEventListener('click', function(e) { e.stopPropagation(); toggleOpenCollapse(); });
-
-  // Badge: off→on restores last active state; on→off hides completely
-  badge.addEventListener('click', function(e) {
-    e.stopPropagation();
-    if (panel.classList.contains('dock-float')) {
-      if (panel.classList.contains('off')) {
-        panel.classList.remove('off'); badge.classList.add('active');
-        if (window._clampFloatPanel) window._clampFloatPanel(panel);
-      } else { panel.classList.add('off'); badge.classList.remove('active'); }
-    } else {
-      if (badge.classList.contains('active')) { hide(); }
-      else { if (_lastActiveState === 'collapsed') collapse(); else open(); }
-    }
-  });
-
-  var _lastActiveState = 'open';
-  // Restore
-  var state = ls(cfg.lsKey);
-  if (state === 'off')            { hide(); }
-  else if (state === 'collapsed') { _lastActiveState = 'collapsed'; collapse(); }
-  else                            { open(); }
-}
-
-makeSidePanel({
-  panelId: 'outline-panel', tabId: 'outline-tab', arrowId: 'btn-outline-collapse',
-  badgeId: 'badge-outline',
-  lsKey: 'tvs:outline-state'
+makeDockablePane({
+  paneId: 'outline-panel', tabId: 'outline-tab', collapseId: 'btn-outline-collapse',
+  badgeId: 'badge-outline', lsKey: 'tvs:outline-state',
 });
-
-makeSidePanel({
-  panelId: 'props-panel', tabId: 'props-tab', arrowId: 'btn-props-collapse',
-  badgeId: 'badge-props',
-  lsKey: 'tvs:props-state'
+makeDockablePane({
+  paneId: 'props-panel', tabId: 'props-tab', collapseId: 'btn-props-collapse',
+  badgeId: 'badge-props', lsKey: 'tvs:props-state',
 });
 
 // Forward declaration — assigned by the float IIFE below
@@ -4514,10 +4342,10 @@ function dockPanel(panelId, zone) {
     panel.classList.add('pane-h');
     // Collapsed in horizontal mode is invisible — auto-open if pane is on
     if (panel.classList.contains('collapsed') && !panel.classList.contains('off')) {
-      if (_sidePanelOpenFn[panelId]) _sidePanelOpenFn[panelId]();
+      if (sidePanelOpenFn[panelId]) sidePanelOpenFn[panelId]();
     }
   }
-  if (_sidePanelArrowSync[panelId]) _sidePanelArrowSync[panelId]();
+  if (sidePanelArrowSync[panelId]) sidePanelArrowSync[panelId]();
 
   // Sync Options dialog dock buttons
   document.querySelectorAll('.opts-dock-btns[data-dock-panel="' + panelId + '"] .opts-dock-btn').forEach(function(b) {
@@ -5020,10 +4848,10 @@ function dockPanel(panelId, zone) {
           if (zone === 'top' || zone === 'bottom') {
             panel.classList.add('pane-h');
             if (panel.classList.contains('collapsed') && !panel.classList.contains('off')) {
-              if (_sidePanelOpenFn[id]) _sidePanelOpenFn[id]();
+              if (sidePanelOpenFn[id]) sidePanelOpenFn[id]();
             }
           }
-          if (_sidePanelArrowSync[id]) _sidePanelArrowSync[id]();
+          if (sidePanelArrowSync[id]) sidePanelArrowSync[id]();
         }
       }
     });
