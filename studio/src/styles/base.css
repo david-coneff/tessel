@@ -666,7 +666,7 @@ select.prop-input { cursor: pointer; }
   color: var(--muted); padding: 2px 5px; font-size: 13px; line-height: 1;
   border-radius: 5px; flex-shrink: 0; margin-left: 2px;
 }
-.dock-float .ctrl-pane-pip-btn { display: inline-flex; align-items: center; }
+.ctrl-pane-pip-btn { display: inline-flex; align-items: center; }
 .ctrl-pane-pip-btn:hover { background: var(--surface2); border-color: var(--accent); color: var(--text); }
 .ctrl-pane-pip-btn.pip-active { border-color: var(--accent); color: var(--accent); }
 

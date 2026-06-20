@@ -80,33 +80,42 @@ export function initDockSystem() {
       var panel = saved.panel;
       delete pipPanels[panelId];
       panel.removeAttribute('data-pip-out');
-      panel.style.left    = saved.left;
-      panel.style.top     = saved.top;
-      panel.style.width   = saved.width;
-      panel.style.height  = saved.height;
-      panel.style.zIndex  = saved.zIndex || String(zCounter++);
-      var fc = document.getElementById('dock-float');
-      if (fc) fc.appendChild(panel);
       var pb = document.querySelector('[data-pane-pip-btn="' + panelId + '"]');
       if (pb) pb.classList.remove('pip-active');
-      clampFloatPanel(panel);
+      if (saved.wasFloat) {
+        panel.style.left   = saved.left;
+        panel.style.top    = saved.top;
+        panel.style.width  = saved.width;
+        panel.style.height = saved.height;
+        panel.style.zIndex = saved.zIndex || String(zCounter++);
+        var fc = document.getElementById('dock-float');
+        if (fc) fc.appendChild(panel);
+        panel.classList.add('dock-float');
+        clampFloatPanel(panel);
+      } else {
+        dockPanel(panelId, saved.zone || PANE_DEF[panelId] || 'left');
+      }
     }
 
     function popOutToPip(panelId) {
       if (!window.documentPictureInPicture) return;
       var panel = document.getElementById(panelId);
-      if (!panel || !panel.classList.contains('dock-float')) return;
+      if (!panel) return;
       if (pipPanels[panelId]) return;
-      var w = Math.round(parseFloat(panel.style.width)  || FLOAT_W);
-      var h = Math.round(parseFloat(panel.style.height) || FLOAT_H);
+      var wasFloat = panel.classList.contains('dock-float');
+      var w = Math.round(wasFloat ? (parseFloat(panel.style.width)  || FLOAT_W) : panel.offsetWidth  || FLOAT_W);
+      var h = Math.round(wasFloat ? (parseFloat(panel.style.height) || FLOAT_H) : panel.offsetHeight || FLOAT_H);
       window.documentPictureInPicture.requestWindow({ width: w, height: h }).then(function(pipWin) {
         copyStylesToPip(pipWin);
         pipPanels[panelId] = {
           panel: panel, pipWin: pipWin,
+          wasFloat: wasFloat,
+          zone: curZoneOf(panel),
           left: panel.style.left, top: panel.style.top,
           width: panel.style.width, height: panel.style.height,
           zIndex: panel.style.zIndex,
         };
+        panel.classList.remove('dock-left','dock-right','dock-top','dock-bottom','dock-float','pane-h');
         panel.style.left = panel.style.top = panel.style.width = panel.style.height = panel.style.zIndex = '';
         panel.setAttribute('data-pip-out', '1');
         pipWin.document.body.appendChild(panel);
@@ -118,7 +127,7 @@ export function initDockSystem() {
 
     function openSatellite(panelId) {
       var panel = document.getElementById(panelId);
-      if (!panel || !panel.classList.contains('dock-float')) return;
+      if (!panel) return;
       if (pipPanels[panelId]) return;
       var w = Math.round(parseFloat(panel.style.width)  || FLOAT_W);
       var h = Math.round(parseFloat(panel.style.height) || FLOAT_H);
