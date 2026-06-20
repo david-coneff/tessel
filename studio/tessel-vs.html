@@ -3918,10 +3918,9 @@ var TesselCompiler = (function() {
     '.tc-picker-time-lbl{writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;color:var(--muted);padding:10px 6px;border-right:1px solid var(--border);display:flex;align-items:center;justify-content:center;letter-spacing:.04em;}',
     '.tc-picker-time-inner{flex:1;display:flex;align-items:center;justify-content:center;padding:10px;gap:8px;}',
     '.tc-picker-time-cols{display:flex;flex-direction:column;gap:3px;flex:1;}',
-    '.tc-picker-hrfmt{display:flex;border:1px solid var(--border);border-radius:4px;overflow:hidden;width:80px;}',
-    '.tc-picker-hrfmt-div{width:1px;background:var(--border);flex-shrink:0;}',
-    '.tc-picker-hrfmt-btn{background:var(--surface2);border:none;cursor:pointer;font-size:11px;font-weight:600;padding:0 10px;color:var(--muted);flex:1;display:flex;align-items:center;justify-content:center;height:100%;transition:background 0.18s ease,color 0.18s ease;}',
-    '.tc-picker-hrfmt-btn.active{background:var(--accent);color:#fff;}',
+    '.tc-picker-pill{position:relative;width:80px;border:1px solid var(--border);border-radius:5px;cursor:pointer;overflow:hidden;display:flex;align-self:stretch;}',
+    '.tc-picker-pill-thumb{position:absolute;top:2px;left:2px;width:calc(50% - 2px);height:calc(100% - 4px);border-radius:3px;background:var(--accent);transition:transform 0.18s ease;z-index:0;will-change:transform;}',
+    '.tc-picker-pill-lbl{flex:1;position:relative;z-index:1;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;pointer-events:none;}',
     '.tc-picker-step-row{display:flex;align-items:center;gap:4px;}',
     '.tc-picker-step-spc{width:14px;flex-shrink:0;}',
     '.tc-picker-step{width:100%;box-sizing:border-box;background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:12px;line-height:1;padding:3px 0;text-align:center;display:block;}',
@@ -3931,10 +3930,7 @@ var TesselCompiler = (function() {
     '.tc-picker-time-inp::-webkit-inner-spin-button,.tc-picker-time-inp::-webkit-outer-spin-button{-webkit-appearance:none!important;margin:0;}',
     '.tc-picker-time-inp:focus{border-color:var(--accent);}',
     '.tc-picker-time-sep{font-weight:700;font-size:16px;color:var(--muted);width:22px;text-align:center;align-self:center;line-height:1;}',
-    '.tc-picker-ampm{display:none;flex-direction:row;border:1px solid var(--border);border-radius:4px;overflow:hidden;align-self:stretch;width:80px;}',
-    '.tc-picker-ampm-btn{background:var(--surface2);border:none;cursor:pointer;font-size:11px;font-weight:600;padding:0 10px;color:var(--muted);flex:1;display:flex;align-items:center;justify-content:center;height:100%;transition:background 0.18s ease,color 0.18s ease;}',
-    '.tc-picker-ampm-btn.active{background:var(--accent);color:#fff;}',
-    '.tc-picker-ampm-div{width:1px;background:var(--border);flex-shrink:0;}',
+    '.tc-picker-ampm{display:none;}',
     '.tc-picker-footer{display:flex;align-items:stretch;border-top:1px solid var(--border);padding:8px 10px;gap:0;}',
     '.tc-picker-foot-btn{background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);font-size:11px;padding:4px 10px;line-height:1.4;}',
     '.tc-picker-foot-btn:hover{border-color:var(--accent);color:var(--accent);}',
@@ -4142,16 +4138,21 @@ var TesselCompiler = (function() {
     'function _pSyncTime(){',
     '  var hi=document.getElementById("tc-pcr-hr");',
     '  var aw=document.getElementById("tc-pcr-ampm-wrap");',
+    '  var at=document.getElementById("tc-pcr-ampm-thumb");',
     '  var am=document.getElementById("tc-pcr-am");',
     '  var pm=document.getElementById("tc-pcr-pm");',
+    '  var ft=document.getElementById("tc-pcr-hrfmt-thumb");',
     '  var f12=document.getElementById("tc-pcr-fmt12");',
     '  var f24=document.getElementById("tc-pcr-fmt24");',
     '  if(hi){hi.value=_pHrDisp(_pHr);hi.setAttribute("max",_p12?"12":"23");hi.setAttribute("min",_p12?"1":"0");}',
     '  if(aw){aw.style.opacity=_p12?"1":"0.3";aw.style.pointerEvents=_p12?"":"none";}',
-    '  if(am)am.style.cssText=(_pHr<12?_PA:_PI);',
-    '  if(pm)pm.style.cssText=(_pHr>=12?_PA:_PI);',
-    '  if(f12)f12.className="tc-picker-hrfmt-btn"+(_p12?" active":"");',
-    '  if(f24)f24.className="tc-picker-hrfmt-btn"+(!_p12?" active":"");',
+    '  var ia=_pHr<12;',
+    '  if(at)at.style.transform=ia?"translateX(0)":"translateX(100%)";',
+    '  if(am)am.style.color=ia?"#fff":"var(--muted)";',
+    '  if(pm)pm.style.color=ia?"var(--muted)":"#fff";',
+    '  if(ft)ft.style.transform=_p12?"translateX(0)":"translateX(100%)";',
+    '  if(f12)f12.style.color=_p12?"#fff":"var(--muted)";',
+    '  if(f24)f24.style.color=_p12?"var(--muted)":"#fff";',
     '}',
     'function _createPicker(){',
     '  if(document.getElementById("tc-picker"))return;',
@@ -4184,11 +4185,11 @@ var TesselCompiler = (function() {
     '    +\'<span style="display:block;width:22px;"></span>\'',
     '    +\'<button class="tc-picker-step" id="tc-pcr-mn-dn" style="margin-left:4px;">&#8722;</button>\'',
     '    +\'</div>\'',
-    // AM/PM always visible; dimmed in 24h mode via _pSyncTime
-    '    +\'<div class="tc-picker-ampm" id="tc-pcr-ampm-wrap" style="display:flex;">\'',
-    '    +\'<button class="tc-picker-ampm-btn active" id="tc-pcr-am">AM</button>\'',
-    '    +\'<div class="tc-picker-ampm-div"></div>\'',
-    '    +\'<button class="tc-picker-ampm-btn" id="tc-pcr-pm">PM</button>\'',
+    // AM/PM sliding pill — always in DOM; dimmed in 24h mode via _pSyncTime
+    '    +\'<div class="tc-picker-pill" id="tc-pcr-ampm-wrap">\'',
+    '    +\'<div class="tc-picker-pill-thumb" id="tc-pcr-ampm-thumb"></div>\'',
+    '    +\'<span class="tc-picker-pill-lbl" id="tc-pcr-am" style="color:#fff;">AM</span>\'',
+    '    +\'<span class="tc-picker-pill-lbl" id="tc-pcr-pm" style="color:var(--muted);">PM</span>\'',
     '    +\'</div></div>\'',
     '    +\'</div>\'',
     // Footer mirrors time grid: [Done+Clear:1fr] [22px] [Now:1fr] [gap] [12h/24h pill]
@@ -4201,10 +4202,10 @@ var TesselCompiler = (function() {
     '    +\'</div>\'',
     '    +\'<span style="width:22px;flex-shrink:0;"></span>\'',
     '    +\'<button class="tc-picker-foot-btn tc-picker-today-btn" id="tc-pcr-today" style="flex:1;">Today</button>\'',
-    '    +\'<div id="tc-pcr-hrfmt-wrap" style="display:none;margin-left:8px;border:1px solid var(--border);border-radius:4px;overflow:hidden;align-self:stretch;">\'',
-    '    +\'<button class="tc-picker-hrfmt-btn" id="tc-pcr-fmt12" style="height:100%;">12h</button>\'',
-    '    +\'<div class="tc-picker-hrfmt-div"></div>\'',
-    '    +\'<button class="tc-picker-hrfmt-btn active" id="tc-pcr-fmt24" style="height:100%;">24h</button>\'',
+    '    +\'<div class="tc-picker-pill" id="tc-pcr-hrfmt-wrap" style="display:none;margin-left:8px;">\'',
+    '    +\'<div class="tc-picker-pill-thumb" id="tc-pcr-hrfmt-thumb" style="transform:translateX(100%);"></div>\'',
+    '    +\'<span class="tc-picker-pill-lbl" id="tc-pcr-fmt12" style="color:var(--muted);">12h</span>\'',
+    '    +\'<span class="tc-picker-pill-lbl" id="tc-pcr-fmt24" style="color:#fff;">24h</span>\'',
     '    +\'</div></div>\'',
     '    +\'</div>\';',
     '  var wds=p.querySelector(".tc-picker-weekdays");',
@@ -4227,11 +4228,9 @@ var TesselCompiler = (function() {
     '    if(_p12){_pHr=_pHrFrom12(this.value,_pHr>=12);}else{var v=parseInt(this.value,10);_pHr=isNaN(v)?0:Math.max(0,Math.min(23,v));}_pSyncTime();});',
     '  document.getElementById("tc-pcr-mn").addEventListener("change",function(){var v=parseInt(this.value,10);if(isNaN(v))v=0;_pMn=Math.max(0,Math.min(59,v));this.value=_pad(_pMn);});',
     '  function _pToggleAmPm(){_pHr=(_pHr+12)%24;_pSyncTime();}',
-    '  document.getElementById("tc-pcr-am").addEventListener("click",_pToggleAmPm);',
-    '  document.getElementById("tc-pcr-pm").addEventListener("click",_pToggleAmPm);',
+    '  document.getElementById("tc-pcr-ampm-wrap").addEventListener("click",_pToggleAmPm);',
     '  function _pToggleFmt(){_p12=!_p12;try{localStorage.setItem("tc:picker12hr",_p12?"1":"0");}catch(e){}_pSyncTime();}',
-    '  document.getElementById("tc-pcr-fmt12").addEventListener("click",_pToggleFmt);',
-    '  document.getElementById("tc-pcr-fmt24").addEventListener("click",_pToggleFmt);',
+    '  document.getElementById("tc-pcr-hrfmt-wrap").addEventListener("click",_pToggleFmt);',
     '  var pcrMoSel=document.getElementById("tc-pcr-month");',
     '  if(pcrMoSel)pcrMoSel.addEventListener("change",function(){_pMonth=parseInt(this.value,10);_renderCal();});',
     '  var pcrYrInp=document.getElementById("tc-pcr-year");',
@@ -7943,25 +7942,28 @@ function dockPanel(panelId, zone) {
   function _epSyncTimeUi() {
     var hrInp    = document.getElementById('ep-hr');
     var amWrap   = document.getElementById('ep-ampm-wrap');
-    var amBtn    = document.getElementById('ep-am');
-    var pmBtn    = document.getElementById('ep-pm');
-    var fmt12Btn = document.getElementById('ep-fmt-12');
-    var fmt24Btn = document.getElementById('ep-fmt-24');
+    var amThumb  = document.getElementById('ep-ampm-thumb');
+    var amLbl    = document.getElementById('ep-am');
+    var pmLbl    = document.getElementById('ep-pm');
+    var fmtThumb = document.getElementById('ep-hrfmt-thumb');
+    var fmt12Lbl = document.getElementById('ep-fmt-12');
+    var fmt24Lbl = document.getElementById('ep-fmt-24');
     if (hrInp) {
       hrInp.value = _epHrDisplay(_epHr);
       hrInp.setAttribute('max', _ep12 ? '12' : '23');
       hrInp.setAttribute('min', _ep12 ? '1' : '0');
     }
-    // AM/PM always takes space; dimmed + non-interactive in 24h mode
     if (amWrap) {
       amWrap.style.opacity = _ep12 ? '1' : '0.3';
       amWrap.style.pointerEvents = _ep12 ? '' : 'none';
     }
-    if (amBtn) amBtn.style.cssText = (_epHr < 12 ? _EP_PILL_ACTIVE : _EP_PILL_BASE) + 'flex:1;padding:0 10px;height:100%;display:flex;align-items:center;justify-content:center;';
-    if (pmBtn) pmBtn.style.cssText = (_epHr >= 12 ? _EP_PILL_ACTIVE : _EP_PILL_BASE) + 'flex:1;padding:0 10px;height:100%;display:flex;align-items:center;justify-content:center;';
-    // 12h/24h: active = currently selected; inactive = the option you'd switch TO
-    if (fmt12Btn) fmt12Btn.style.cssText = (_ep12 ? _EP_PILL_ACTIVE : _EP_PILL_BASE) + 'flex:1;padding:0 10px;height:100%;display:flex;align-items:center;justify-content:center;';
-    if (fmt24Btn) fmt24Btn.style.cssText = (!_ep12 ? _EP_PILL_ACTIVE : _EP_PILL_BASE) + 'flex:1;padding:0 10px;height:100%;display:flex;align-items:center;justify-content:center;';
+    var isAm = _epHr < 12;
+    if (amThumb)  amThumb.style.transform  = isAm ? 'translateX(0)' : 'translateX(100%)';
+    if (amLbl)    amLbl.style.color        = isAm ? '#fff' : 'var(--muted)';
+    if (pmLbl)    pmLbl.style.color        = isAm ? 'var(--muted)' : '#fff';
+    if (fmtThumb) fmtThumb.style.transform = _ep12 ? 'translateX(0)' : 'translateX(100%)';
+    if (fmt12Lbl) fmt12Lbl.style.color     = _ep12 ? '#fff' : 'var(--muted)';
+    if (fmt24Lbl) fmt24Lbl.style.color     = _ep12 ? 'var(--muted)' : '#fff';
   }
 
   function _epCreate() {
@@ -7998,11 +8000,11 @@ function dockPanel(panelId, zone) {
       +       '<span style="display:block;width:22px;"></span>'
       +       '<button id="ep-mn-dn" style="' + _EP_STEP_STYLE + 'margin-left:4px;">&#8722;</button>'
       +     '</div>'
-      //     AM/PM horizontal pill — always rendered; dimmed when 24h
-      +     '<div id="ep-ampm-wrap" style="display:flex;flex-direction:row;border:1px solid var(--border);border-radius:4px;overflow:hidden;align-self:stretch;width:80px;">'
-      +       '<button id="ep-am" style="' + _EP_PILL_ACTIVE + 'flex:1;padding:0 10px;height:100%;display:flex;align-items:center;justify-content:center;">AM</button>'
-      +       '<div style="width:1px;background:var(--border);flex-shrink:0;"></div>'
-      +       '<button id="ep-pm" style="' + _EP_PILL_BASE + 'flex:1;padding:0 10px;height:100%;display:flex;align-items:center;justify-content:center;">PM</button>'
+      //     AM/PM sliding pill — always in DOM; thumb slides; dimmed in 24h mode
+      +     '<div id="ep-ampm-wrap" style="position:relative;width:80px;align-self:stretch;border:1px solid var(--border);border-radius:5px;cursor:pointer;overflow:hidden;display:flex;">'
+      +       '<div id="ep-ampm-thumb" style="position:absolute;top:2px;left:2px;width:calc(50% - 2px);height:calc(100% - 4px);border-radius:3px;background:var(--accent);transition:transform 0.18s ease;z-index:0;will-change:transform;"></div>'
+      +       '<span id="ep-am" style="flex:1;position:relative;z-index:1;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;pointer-events:none;color:#fff;">AM</span>'
+      +       '<span id="ep-pm" style="flex:1;position:relative;z-index:1;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;pointer-events:none;color:var(--muted);">PM</span>'
       +     '</div>'
       +   '</div>'
       + '</div>'
@@ -8021,11 +8023,11 @@ function dockPanel(panelId, zone) {
       +     '<span style="width:22px;flex-shrink:0;"></span>'
       //     Right zone (under mn column): Now — full width of the mn column
       +     '<button id="ep-today" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);font-size:11px;padding:4px 6px;">Today</button>'
-      //     Gap + 12h/24h pill (same slot as AM/PM pill)
-      +     '<div id="ep-hrfmt-wrap" style="display:none;margin-left:8px;border:1px solid var(--border);border-radius:4px;overflow:hidden;align-self:stretch;width:80px;">'
-      +       '<button id="ep-fmt-12" style="' + _EP_PILL_BASE + 'flex:1;padding:0 10px;height:100%;display:flex;align-items:center;justify-content:center;">12h</button>'
-      +       '<div style="width:1px;background:var(--border);flex-shrink:0;"></div>'
-      +       '<button id="ep-fmt-24" style="' + _EP_PILL_ACTIVE + 'flex:1;padding:0 10px;height:100%;display:flex;align-items:center;justify-content:center;">24h</button>'
+      //     Gap + 12h/24h sliding pill (same slot as AM/PM pill)
+      +     '<div id="ep-hrfmt-wrap" style="display:none;position:relative;margin-left:8px;width:80px;align-self:stretch;border:1px solid var(--border);border-radius:5px;cursor:pointer;overflow:hidden;">'
+      +       '<div id="ep-hrfmt-thumb" style="position:absolute;top:2px;left:2px;width:calc(50% - 2px);height:calc(100% - 4px);border-radius:3px;background:var(--accent);transition:transform 0.18s ease;z-index:0;will-change:transform;"></div>'
+      +       '<span id="ep-fmt-12" style="flex:1;position:relative;z-index:1;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;pointer-events:none;color:var(--muted);">12h</span>'
+      +       '<span id="ep-fmt-24" style="flex:1;position:relative;z-index:1;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;pointer-events:none;color:#fff;">24h</span>'
       +     '</div>'
       +   '</div>'
       + '</div>';
@@ -8040,9 +8042,7 @@ function dockPanel(panelId, zone) {
     });
 
     // Hover on nav/step/footer buttons only (pill buttons manage their own styling)
-    var _EP_PILL_IDS = {
-      'ep-fmt-12': true, 'ep-fmt-24': true, 'ep-am': true, 'ep-pm': true
-    };
+    var _EP_PILL_IDS = {};
     p.addEventListener('mouseover', function(e) {
       var btn = e.target.closest('button');
       if (!btn || !p.contains(btn) || _EP_PILL_IDS[btn.id]) return;
@@ -8096,14 +8096,12 @@ function dockPanel(panelId, zone) {
     document.getElementById('ep-mn').addEventListener('change', function() { var v = parseInt(this.value, 10); _epMn = isNaN(v) ? 0 : Math.max(0, Math.min(59, v)); this.value = _epPad(_epMn); });
 
     function _epToggleAmPm() { _epHr = (_epHr + 12) % 24; _epSyncTimeUi(); }
-    document.getElementById('ep-am').addEventListener('click', _epToggleAmPm);
-    document.getElementById('ep-pm').addEventListener('click', _epToggleAmPm);
+    document.getElementById('ep-ampm-wrap').addEventListener('click', _epToggleAmPm);
 
     function _epToggleFmt() {
       _ep12 = !_ep12; try { localStorage.setItem('tvs:picker12hr', _ep12 ? '1' : '0'); } catch(e) {} _epSyncTimeUi();
     }
-    document.getElementById('ep-fmt-12').addEventListener('click', _epToggleFmt);
-    document.getElementById('ep-fmt-24').addEventListener('click', _epToggleFmt);
+    document.getElementById('ep-hrfmt-wrap').addEventListener('click', _epToggleFmt);
 
     var epMoSel = document.getElementById('ep-month');
     if (epMoSel) epMoSel.addEventListener('change', function() {
