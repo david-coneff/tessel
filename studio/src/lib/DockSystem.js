@@ -40,6 +40,7 @@ export function initDockSystem() {
     var PANE_DEF = {'format-pane':'left','text-pane':'left','form-pane':'left','outline-panel':'left','props-panel':'right'};
     var lastZone = {};
     var zCounter = 201;
+    var pipPanels = {};
 
     function loadState(id) { try { return JSON.parse(localStorage.getItem('tvs:float:'+id))||null; } catch(e) { return null; } }
     function saveState(id,x,y,w,h) { try { localStorage.setItem('tvs:float:'+id, JSON.stringify({x:x,y:y,w:w,h:h})); } catch(e) {} }
@@ -58,6 +59,62 @@ export function initDockSystem() {
     }
 
     window._clampFloatPanel = clampFloatPanel;
+
+    function copyStylesToPip(pipWin) {
+      var css = '';
+      for (var i = 0; i < document.styleSheets.length; i++) {
+        try {
+          var rules = document.styleSheets[i].cssRules;
+          for (var j = 0; j < rules.length; j++) css += rules[j].cssText + '\n';
+        } catch(e) {}
+      }
+      css += '\nbody{margin:0;overflow:hidden;background:var(--bg,#1e1e1e);}';
+      var style = pipWin.document.createElement('style');
+      style.textContent = css;
+      pipWin.document.head.appendChild(style);
+    }
+
+    function returnFromPip(panelId) {
+      var saved = pipPanels[panelId];
+      if (!saved) return;
+      var panel = saved.panel;
+      delete pipPanels[panelId];
+      panel.removeAttribute('data-pip-out');
+      panel.style.left    = saved.left;
+      panel.style.top     = saved.top;
+      panel.style.width   = saved.width;
+      panel.style.height  = saved.height;
+      panel.style.zIndex  = saved.zIndex || String(zCounter++);
+      var fc = document.getElementById('dock-float');
+      if (fc) fc.appendChild(panel);
+      var pb = document.querySelector('[data-pane-pip-btn="' + panelId + '"]');
+      if (pb) pb.classList.remove('pip-active');
+      clampFloatPanel(panel);
+    }
+
+    function popOutToPip(panelId) {
+      if (!window.documentPictureInPicture) return;
+      var panel = document.getElementById(panelId);
+      if (!panel || !panel.classList.contains('dock-float')) return;
+      if (pipPanels[panelId]) return;
+      var w = Math.round(parseFloat(panel.style.width)  || FLOAT_W);
+      var h = Math.round(parseFloat(panel.style.height) || FLOAT_H);
+      window.documentPictureInPicture.requestWindow({ width: w, height: h }).then(function(pipWin) {
+        copyStylesToPip(pipWin);
+        pipPanels[panelId] = {
+          panel: panel, pipWin: pipWin,
+          left: panel.style.left, top: panel.style.top,
+          width: panel.style.width, height: panel.style.height,
+          zIndex: panel.style.zIndex,
+        };
+        panel.style.left = panel.style.top = panel.style.width = panel.style.height = panel.style.zIndex = '';
+        panel.setAttribute('data-pip-out', '1');
+        pipWin.document.body.appendChild(panel);
+        var pb = document.querySelector('[data-pane-pip-btn="' + panelId + '"]');
+        if (pb) pb.classList.add('pip-active');
+        pipWin.addEventListener('pagehide', function() { returnFromPip(panelId); });
+      }).catch(function() {});
+    }
 
     function curZoneOf(panel) {
       if (panel.classList.contains('dock-left'))   return 'left';
@@ -91,6 +148,8 @@ export function initDockSystem() {
       });
       var fb = document.querySelector('[data-pane-float-btn="'+panelId+'"]');
       if (fb) { fb.innerHTML='&#8601;'; fb.title='Dock panel'; }
+      var pb = document.querySelector('[data-pane-pip-btn="'+panelId+'"]');
+      if (pb) pb.style.display = 'inline-flex';
       panel.classList.remove('off');
       var bdg = document.querySelector('[data-badge-pane="'+panelId+'"]') || document.getElementById('badge-'+panelId.replace(/-pane$/,'').replace(/-panel$/,''));
       if (bdg) bdg.classList.add('active');
@@ -105,6 +164,8 @@ export function initDockSystem() {
         parseFloat(panel.style.width)||FLOAT_W, parseFloat(panel.style.height)||FLOAT_H);
       panel.style.left=panel.style.top=panel.style.width=panel.style.height=panel.style.zIndex='';
       panel.classList.remove('off');
+      var pb2 = document.querySelector('[data-pane-pip-btn="'+panelId+'"]');
+      if (pb2) pb2.style.display = 'none';
       dockPanel(panelId, lastZone[panelId]||PANE_DEF[panelId]||'left');
     }
 
@@ -125,6 +186,21 @@ export function initDockSystem() {
         else floatPanel(panelId);
       });
       hdr.appendChild(btn);
+
+      if (window.documentPictureInPicture) {
+        var pipBtn = document.createElement('button');
+        pipBtn.className = 'ctrl-pane-pip-btn';
+        pipBtn.setAttribute('data-pane-pip-btn', panelId);
+        pipBtn.innerHTML = '&#10697;';
+        pipBtn.title = 'Pop out to separate window (Chrome only)';
+        pipBtn.style.display = 'none';
+        pipBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          if (pipPanels[panelId]) pipPanels[panelId].pipWin.close();
+          else popOutToPip(panelId);
+        });
+        hdr.appendChild(pipBtn);
+      }
     });
 
     var DIRS = ['n','ne','e','se','s','sw','w','nw'];

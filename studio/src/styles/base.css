@@ -658,6 +658,30 @@ select.prop-input { cursor: pointer; }
 .ctrl-pane-float-btn:hover { background: var(--surface2); border-color: var(--accent); color: var(--text); }
 #outline-content h3 .ctrl-pane-float-btn,
 #props-content h3 .ctrl-pane-float-btn { margin-left: 2px; }
+
+/* pip-out button — only shown when pane is dock-float */
+.ctrl-pane-pip-btn {
+  display: none;
+  background: none; border: 1px solid var(--border); cursor: pointer;
+  color: var(--muted); padding: 2px 5px; font-size: 13px; line-height: 1;
+  border-radius: 5px; flex-shrink: 0; margin-left: 2px;
+}
+.ctrl-pane-pip-btn:hover { background: var(--surface2); border-color: var(--accent); color: var(--text); }
+.ctrl-pane-pip-btn.pip-active { border-color: var(--accent); color: var(--accent); }
+
+/* pane filling the pip window */
+[data-pip-out] {
+  position: fixed !important;
+  left: 0 !important; top: 0 !important;
+  width: 100% !important; height: 100% !important;
+  max-height: none !important;
+  border: none !important; border-radius: 0 !important;
+  box-shadow: none !important; z-index: 1 !important;
+}
+[data-pip-out] .pane-resize-handle,
+[data-pip-out] .pane-width-handle,
+[data-pip-out] .pane-h-resize-handle { display: none; }
+
 .pane-resize-handle { position: absolute; z-index: 10; pointer-events: none; }
 .dock-float .pane-resize-handle { pointer-events: all; }
 .pane-resize-handle-n  { top: -3px;    left: 12px; right: 12px; height: 6px;  cursor: n-resize; }
