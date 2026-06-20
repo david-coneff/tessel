@@ -4118,7 +4118,18 @@ var TesselCompiler = (function() {
     'var _pInited=false,_pInp=null,_pFmt=null,_pTz=null,_pIsDatetime=false;',
     'var _pYear=0,_pMonth=0,_pSelDate=null;',
     'var _pHr=12,_pMn=0;',
+    'var _p12=false;try{_p12=localStorage.getItem("tc:picker12hr")==="1";}catch(e){}',
     'function _pad(n){return n<10?"0"+n:""+n;}',
+    'function _pHrDisp(h){if(!_p12)return _pad(h);var d=h%12;return _pad(d===0?12:d);}',
+    'function _pHrFrom12(v,isPm){v=parseInt(v,10);if(isNaN(v))return 0;v=Math.max(1,Math.min(12,v));return isPm?(v===12?12:v+12):(v===12?0:v);}',
+    'function _pSyncTime(){',
+    '  var hi=document.getElementById("tc-pcr-hr");',
+    '  var ab=document.getElementById("tc-pcr-ampm");',
+    '  var fb=document.getElementById("tc-pcr-hrfmt");',
+    '  if(hi){hi.value=_pHrDisp(_pHr);hi.setAttribute("max",_p12?"12":"23");hi.setAttribute("min",_p12?"1":"0");}',
+    '  if(ab){ab.style.display=_p12?"":"none";ab.textContent=_pHr>=12?"PM":"AM";}',
+    '  if(fb)fb.textContent=_p12?"12h":"24h";',
+    '}',
     'function _createPicker(){',
     '  if(document.getElementById("tc-picker"))return;',
     '  var p=document.createElement("div");',
@@ -4147,6 +4158,10 @@ var TesselCompiler = (function() {
     '    +\'<input class="tc-picker-time-inp" id="tc-pcr-mn" type="number" min="0" max="59" value="0">\'',
     '    +\'<button class="tc-picker-step" id="tc-pcr-mn-dn">&#8722;</button>\'',
     '    +\'</div>\'',
+    '    +\'<div class="tc-picker-time-col" style="margin-left:2px">\'',
+    '    +\'<button class="tc-picker-step" id="tc-pcr-ampm" style="display:none;font-weight:600;min-width:36px;">AM</button>\'',
+    '    +\'<button class="tc-picker-step" id="tc-pcr-hrfmt" style="font-size:10px;min-width:36px;">24h</button>\'',
+    '    +\'</div>\'',
     '    +\'</div>\'',
     '    +\'<div class="tc-picker-footer">\'',
     '    +\'<button class="tc-picker-foot-btn tc-picker-today-btn" id="tc-pcr-today">Today</button>\'',
@@ -4162,15 +4177,19 @@ var TesselCompiler = (function() {
     '  document.getElementById("tc-pcr-prev").addEventListener("click",function(){_pMonth--;if(_pMonth<0){_pMonth=11;_pYear--;}_renderCal();});',
     '  document.getElementById("tc-pcr-next").addEventListener("click",function(){_pMonth++;if(_pMonth>11){_pMonth=0;_pYear++;}_renderCal();});',
     '  document.getElementById("tc-pcr-close").addEventListener("click",_closePicker);',
-    '  document.getElementById("tc-pcr-today").addEventListener("click",function(){var n=new Date();_pSelDate=new Date(n.getFullYear(),n.getMonth(),n.getDate());_pYear=_pSelDate.getFullYear();_pMonth=_pSelDate.getMonth();_renderCal();if(!_pIsDatetime)_commitAndClose();});',
+    '  document.getElementById("tc-pcr-today").addEventListener("click",function(){var n=new Date();if(_pIsDatetime){_pHr=n.getHours();_pMn=n.getMinutes();_pSyncTime();document.getElementById("tc-pcr-mn").value=_pad(_pMn);}',
+    '    _pSelDate=new Date(n.getFullYear(),n.getMonth(),n.getDate());_pYear=_pSelDate.getFullYear();_pMonth=_pSelDate.getMonth();_renderCal();if(!_pIsDatetime)_commitAndClose();});',
     '  document.getElementById("tc-pcr-clear").addEventListener("click",function(){if(!_pInp)return;_pInp.value="";_pInp.removeAttribute("data-iso-value");_pInp.dispatchEvent(new Event("input",{bubbles:true}));_closePicker();});',
     '  document.getElementById("tc-pcr-done").addEventListener("click",_commitAndClose);',
-    '  document.getElementById("tc-pcr-hr-dn").addEventListener("click",function(){_pHr=(_pHr-1+24)%24;document.getElementById("tc-pcr-hr").value=_pad(_pHr);});',
-    '  document.getElementById("tc-pcr-hr-up").addEventListener("click",function(){_pHr=(_pHr+1)%24;document.getElementById("tc-pcr-hr").value=_pad(_pHr);});',
+    '  document.getElementById("tc-pcr-hr-dn").addEventListener("click",function(){_pHr=(_pHr-1+24)%24;_pSyncTime();});',
+    '  document.getElementById("tc-pcr-hr-up").addEventListener("click",function(){_pHr=(_pHr+1)%24;_pSyncTime();});',
     '  document.getElementById("tc-pcr-mn-dn").addEventListener("click",function(){_pMn=(_pMn-5+60)%60;document.getElementById("tc-pcr-mn").value=_pad(_pMn);});',
     '  document.getElementById("tc-pcr-mn-up").addEventListener("click",function(){_pMn=(_pMn+5)%60;document.getElementById("tc-pcr-mn").value=_pad(_pMn);});',
-    '  document.getElementById("tc-pcr-hr").addEventListener("change",function(){var v=parseInt(this.value,10);if(isNaN(v))v=0;_pHr=Math.max(0,Math.min(23,v));this.value=_pad(_pHr);});',
+    '  document.getElementById("tc-pcr-hr").addEventListener("change",function(){',
+    '    if(_p12){_pHr=_pHrFrom12(this.value,_pHr>=12);}else{var v=parseInt(this.value,10);_pHr=isNaN(v)?0:Math.max(0,Math.min(23,v));}_pSyncTime();});',
     '  document.getElementById("tc-pcr-mn").addEventListener("change",function(){var v=parseInt(this.value,10);if(isNaN(v))v=0;_pMn=Math.max(0,Math.min(59,v));this.value=_pad(_pMn);});',
+    '  document.getElementById("tc-pcr-ampm").addEventListener("click",function(){_pHr=(_pHr+12)%24;_pSyncTime();});',
+    '  document.getElementById("tc-pcr-hrfmt").addEventListener("click",function(){_p12=!_p12;try{localStorage.setItem("tc:picker12hr",_p12?"1":"0");}catch(e){}_pSyncTime();});',
     '  document.addEventListener("mousedown",function(e){',
     '    var pk=document.getElementById("tc-picker");',
     '    if(pk&&pk.style.display!=="none"&&!pk.contains(e.target)){',
@@ -4273,10 +4292,9 @@ var TesselCompiler = (function() {
     '  _pMn=initDate.getMinutes();',
     '  var timeRow=document.getElementById("tc-pcr-time");',
     '  if(timeRow)timeRow.style.display=_pIsDatetime?"":"none";',
-    '  var hrInp=document.getElementById("tc-pcr-hr");',
     '  var mnInp=document.getElementById("tc-pcr-mn");',
-    '  if(hrInp)hrInp.value=_pad(_pHr);',
     '  if(mnInp)mnInp.value=_pad(_pMn);',
+    '  _pSyncTime();',
     '  var todayBtn=document.getElementById("tc-pcr-today");',
     '  if(todayBtn)todayBtn.textContent=_pIsDatetime?"Now":"Today";',
     '  _renderCal();',
@@ -7844,8 +7862,41 @@ function dockPanel(panelId, zone) {
 (function() {
   var _epInp = null, _epIsDatetime = false, _epCb = null;
   var _epYear = 0, _epMonth = 0, _epSelDate = null, _epHr = 0, _epMn = 0;
+  // _epHr is always 0-23 internally; display adapts to _ep12
+  var _ep12 = false;
+  try { _ep12 = localStorage.getItem('tvs:picker12hr') === '1'; } catch(e) {}
 
   function _epPad(n) { return n < 10 ? '0' + n : '' + n; }
+
+  // Convert internal 0-23 hour to display value in current mode
+  function _epHrDisplay(h24) {
+    if (!_ep12) return _epPad(h24);
+    var h = h24 % 12; return _epPad(h === 0 ? 12 : h);
+  }
+  // Parse typed hour back to 0-23; needs current AM/PM to resolve
+  function _epHrFrom12(dispVal, isPm) {
+    var v = parseInt(dispVal, 10);
+    if (isNaN(v)) return 0;
+    v = Math.max(1, Math.min(12, v));
+    if (isPm) return v === 12 ? 12 : v + 12;
+    return v === 12 ? 0 : v;
+  }
+
+  function _epSyncTimeUi() {
+    var hrInp = document.getElementById('ep-hr');
+    var ampmBtn = document.getElementById('ep-ampm');
+    var fmtBtn = document.getElementById('ep-hrfmt');
+    if (hrInp) {
+      hrInp.value = _epHrDisplay(_epHr);
+      hrInp.setAttribute('max', _ep12 ? '12' : '23');
+      hrInp.setAttribute('min', _ep12 ? '1' : '0');
+    }
+    if (ampmBtn) {
+      ampmBtn.style.display = _ep12 ? '' : 'none';
+      ampmBtn.textContent = _epHr >= 12 ? 'PM' : 'AM';
+    }
+    if (fmtBtn) fmtBtn.textContent = _ep12 ? '12h' : '24h';
+  }
 
   function _epCreate() {
     if (document.getElementById('ed-picker')) return;
@@ -7877,6 +7928,10 @@ function dockPanel(panelId, zone) {
       +     '<input id="ep-mn" type="number" min="0" max="59" style="width:44px;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:14px;padding:5px 4px;-moz-appearance:textfield;outline:none;">'
       +     '<button id="ep-mn-dn" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:11px;line-height:1;padding:2px 9px;">&#8722;</button>'
       +   '</div>'
+      +   '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;margin-left:2px;">'
+      +     '<button id="ep-ampm" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);font-size:11px;font-weight:600;line-height:1;padding:3px 7px;min-width:36px;text-align:center;">AM</button>'
+      +     '<button id="ep-hrfmt" style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:10px;line-height:1;padding:3px 7px;min-width:36px;text-align:center;">24h</button>'
+      +   '</div>'
       + '</div>'
       + '</div>'
       + '<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;border-top:1px solid var(--border);">'
@@ -7895,16 +7950,16 @@ function dockPanel(panelId, zone) {
       wds.appendChild(s);
     });
 
-    // Hover effects on step/nav buttons
+    // Hover effects on step/nav buttons (skip ep-ampm which has its own active styling)
     p.addEventListener('mouseover', function(e) {
       var btn = e.target.closest('button');
-      if (!btn || !p.contains(btn)) return;
+      if (!btn || !p.contains(btn) || btn.id === 'ep-ampm') return;
       btn.style.borderColor = 'var(--accent)';
       btn.style.color = 'var(--accent)';
     });
     p.addEventListener('mouseout', function(e) {
       var btn = e.target.closest('button');
-      if (!btn || !p.contains(btn)) return;
+      if (!btn || !p.contains(btn) || btn.id === 'ep-ampm') return;
       btn.style.borderColor = '';
       btn.style.color = '';
     });
@@ -7916,19 +7971,48 @@ function dockPanel(panelId, zone) {
     document.getElementById('ep-close').addEventListener('click', _epClose);
     document.getElementById('ep-today').addEventListener('click', function() {
       var n = new Date();
-      if (_epIsDatetime) { _epHr = n.getHours(); _epMn = n.getMinutes(); document.getElementById('ep-hr').value = _epPad(_epHr); document.getElementById('ep-mn').value = _epPad(_epMn); }
+      if (_epIsDatetime) { _epHr = n.getHours(); _epMn = n.getMinutes(); _epSyncTimeUi(); document.getElementById('ep-mn').value = _epPad(_epMn); }
       _epSelDate = new Date(n.getFullYear(), n.getMonth(), n.getDate());
       _epYear = _epSelDate.getFullYear(); _epMonth = _epSelDate.getMonth();
       _epRender(); if (!_epIsDatetime) _epCommit();
     });
     document.getElementById('ep-clear').addEventListener('click', function() { _epClose(); if (_epCb) _epCb(null); });
     document.getElementById('ep-done').addEventListener('click', _epCommit);
-    document.getElementById('ep-hr-dn').addEventListener('click', function() { _epHr = (_epHr - 1 + 24) % 24; document.getElementById('ep-hr').value = _epPad(_epHr); });
-    document.getElementById('ep-hr-up').addEventListener('click', function() { _epHr = (_epHr + 1) % 24; document.getElementById('ep-hr').value = _epPad(_epHr); });
+
+    document.getElementById('ep-hr-dn').addEventListener('click', function() {
+      if (_ep12) { var isPm = _epHr >= 12; var disp = (_epHrFrom12(document.getElementById('ep-hr').value, isPm) + 23) % 24; _epHr = ((_epHr - 1) + 24) % 24; }
+      else { _epHr = (_epHr - 1 + 24) % 24; }
+      _epSyncTimeUi();
+    });
+    document.getElementById('ep-hr-up').addEventListener('click', function() {
+      _epHr = (_epHr + 1) % 24; _epSyncTimeUi();
+    });
     document.getElementById('ep-mn-dn').addEventListener('click', function() { _epMn = (_epMn - 5 + 60) % 60; document.getElementById('ep-mn').value = _epPad(_epMn); });
     document.getElementById('ep-mn-up').addEventListener('click', function() { _epMn = (_epMn + 5) % 60; document.getElementById('ep-mn').value = _epPad(_epMn); });
-    document.getElementById('ep-hr').addEventListener('change', function() { var v = parseInt(this.value, 10); _epHr = isNaN(v) ? 0 : Math.max(0, Math.min(23, v)); this.value = _epPad(_epHr); });
+
+    document.getElementById('ep-hr').addEventListener('change', function() {
+      if (_ep12) {
+        var isPm = _epHr >= 12;
+        _epHr = _epHrFrom12(this.value, isPm);
+      } else {
+        var v = parseInt(this.value, 10);
+        _epHr = isNaN(v) ? 0 : Math.max(0, Math.min(23, v));
+      }
+      _epSyncTimeUi();
+    });
     document.getElementById('ep-mn').addEventListener('change', function() { var v = parseInt(this.value, 10); _epMn = isNaN(v) ? 0 : Math.max(0, Math.min(59, v)); this.value = _epPad(_epMn); });
+
+    document.getElementById('ep-ampm').addEventListener('click', function() {
+      // Toggle AM/PM by flipping 12 hours
+      _epHr = (_epHr + 12) % 24; _epSyncTimeUi();
+    });
+
+    document.getElementById('ep-hrfmt').addEventListener('click', function() {
+      _ep12 = !_ep12;
+      try { localStorage.setItem('tvs:picker12hr', _ep12 ? '1' : '0'); } catch(e) {}
+      _epSyncTimeUi();
+    });
+
     document.addEventListener('mousedown', function(e) {
       var pk = document.getElementById('ed-picker');
       if (pk && pk.style.display !== 'none' && !pk.contains(e.target) && e.target !== _epInp) _epClose();
@@ -8005,8 +8089,9 @@ function dockPanel(panelId, zone) {
     _epHr = init.getHours(); _epMn = init.getMinutes();
     var timeRow = document.getElementById('ep-time');
     if (timeRow) timeRow.style.display = isDatetime ? 'flex' : 'none';
-    var hrInp = document.getElementById('ep-hr'); var mnInp = document.getElementById('ep-mn');
-    if (hrInp) hrInp.value = _epPad(_epHr); if (mnInp) mnInp.value = _epPad(_epMn);
+    var mnInp = document.getElementById('ep-mn');
+    if (mnInp) mnInp.value = _epPad(_epMn);
+    _epSyncTimeUi();
     var todayBtn = document.getElementById('ep-today');
     if (todayBtn) todayBtn.textContent = isDatetime ? 'Now' : 'Today';
     _epRender();
