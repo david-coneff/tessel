@@ -3911,26 +3911,29 @@ var TesselCompiler = (function() {
     '.tc-picker-day.tc-picker-day-sel{background:var(--accent);color:#fff;border-color:var(--accent);}',
     '.tc-picker-day.tc-picker-day-sel:hover{background:var(--accent);color:#fff;}',
     '.tc-picker-day.tc-picker-day-empty{cursor:default;}',
-    '.tc-picker-time{display:none;padding:10px 12px;border-top:1px solid var(--border);}',
-    '.tc-picker-time-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}',
-    '.tc-picker-time-lbl{font-size:11px;color:var(--muted);}',
+    '.tc-picker-time{display:none;border-top:1px solid var(--border);flex-direction:row;align-items:stretch;}',
+    '.tc-picker-time-lbl{writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;color:var(--muted);padding:10px 6px;border-right:1px solid var(--border);display:flex;align-items:center;justify-content:center;letter-spacing:.04em;}',
+    '.tc-picker-time-inner{flex:1;display:flex;align-items:center;justify-content:center;padding:10px;gap:8px;}',
+    '.tc-picker-time-cols{display:flex;flex-direction:column;gap:3px;flex:1;}',
     '.tc-picker-hrfmt{display:flex;border:1px solid var(--border);border-radius:4px;overflow:hidden;}',
     '.tc-picker-hrfmt-div{width:1px;background:var(--border);flex-shrink:0;}',
     '.tc-picker-hrfmt-btn{background:var(--surface2);border:none;cursor:pointer;font-size:11px;font-weight:600;padding:3px 9px;color:var(--muted);}',
     '.tc-picker-hrfmt-btn.active{background:var(--accent);color:#fff;}',
-    '.tc-picker-step-row{display:flex;align-items:center;gap:6px;}',
+    '.tc-picker-step-row{display:flex;align-items:center;gap:4px;}',
     '.tc-picker-step-spc{width:14px;flex-shrink:0;}',
     '.tc-picker-step{width:48px;box-sizing:border-box;background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:12px;line-height:1;padding:3px 0;text-align:center;display:block;}',
+    '.tc-picker-step.tc-picker-step-flex{width:auto;flex:1;}',
     '.tc-picker-step:hover{border-color:var(--accent);color:var(--accent);}',
-    '.tc-picker-time-row{display:flex;align-items:center;gap:6px;margin:3px 0;}',
+    '.tc-picker-time-row{display:flex;align-items:center;gap:4px;margin:3px 0;}',
     '.tc-picker-time-inp{width:48px;box-sizing:border-box;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:14px;padding:5px 0;-moz-appearance:textfield;outline:none;display:block;}',
+    '.tc-picker-time-inp.tc-picker-inp-flex{width:auto;flex:1;}',
     '.tc-picker-time-inp::-webkit-inner-spin-button,.tc-picker-time-inp::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}',
     '.tc-picker-time-inp:focus{border-color:var(--accent);}',
     '.tc-picker-time-sep{font-weight:700;font-size:16px;color:var(--muted);flex-shrink:0;}',
-    '.tc-picker-ampm{display:none;flex-direction:column;border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-left:4px;align-self:stretch;}',
-    '.tc-picker-ampm-btn{background:var(--surface2);border:none;cursor:pointer;font-size:11px;font-weight:600;padding:3px 9px;color:var(--muted);flex:1;text-align:center;}',
+    '.tc-picker-ampm{display:none;flex-direction:row;border:1px solid var(--border);border-radius:4px;overflow:hidden;align-self:stretch;}',
+    '.tc-picker-ampm-btn{background:var(--surface2);border:none;cursor:pointer;font-size:11px;font-weight:600;padding:0 10px;color:var(--muted);flex:1;text-align:center;height:100%;}',
     '.tc-picker-ampm-btn.active{background:var(--accent);color:#fff;}',
-    '.tc-picker-ampm-div{height:1px;background:var(--border);flex-shrink:0;}',
+    '.tc-picker-ampm-div{width:1px;background:var(--border);flex-shrink:0;}',
     '.tc-picker-footer{display:flex;align-items:center;gap:6px;padding:8px 10px;border-top:1px solid var(--border);}',
     '.tc-picker-foot-btn{background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);font-size:11px;padding:4px 10px;line-height:1.4;}',
     '.tc-picker-foot-btn:hover{border-color:var(--accent);color:var(--accent);}',
@@ -4165,26 +4168,28 @@ var TesselCompiler = (function() {
     '    +\'<div class="tc-picker-days" id="tc-pcr-days"></div>\'',
     '    +\'</div>\'',
     '    +\'<div class="tc-picker-time" id="tc-pcr-time">\'',
-    '    +\'<div style="text-align:center;font-size:11px;color:var(--muted);margin-bottom:8px;">Time</div>\'',
-    '    +\'<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">\'',
+    '    +\'<div class="tc-picker-time-lbl">Time</div>\'',
+    '    +\'<div class="tc-picker-time-inner">\'',
+    '    +\'<div class="tc-picker-time-cols">\'',
     '    +\'<div class="tc-picker-step-row">\'',
-    '    +\'<button class="tc-picker-step" id="tc-pcr-hr-up">&#43;</button>\'',
+    '    +\'<button class="tc-picker-step tc-picker-step-flex" id="tc-pcr-hr-up">&#43;</button>\'',
     '    +\'<span class="tc-picker-step-spc"></span>\'',
-    '    +\'<button class="tc-picker-step" id="tc-pcr-mn-up">&#43;</button>\'',
+    '    +\'<button class="tc-picker-step tc-picker-step-flex" id="tc-pcr-mn-up">&#43;</button>\'',
     '    +\'</div>\'',
     '    +\'<div class="tc-picker-time-row">\'',
-    '    +\'<input class="tc-picker-time-inp" id="tc-pcr-hr" type="number" min="0" max="23" value="12">\'',
+    '    +\'<input class="tc-picker-time-inp tc-picker-inp-flex" id="tc-pcr-hr" type="number" min="0" max="23" value="12">\'',
     '    +\'<span class="tc-picker-time-sep">:</span>\'',
-    '    +\'<input class="tc-picker-time-inp" id="tc-pcr-mn" type="number" min="0" max="59" value="0">\'',
+    '    +\'<input class="tc-picker-time-inp tc-picker-inp-flex" id="tc-pcr-mn" type="number" min="0" max="59" value="0">\'',
+    '    +\'</div>\'',
+    '    +\'<div class="tc-picker-step-row">\'',
+    '    +\'<button class="tc-picker-step tc-picker-step-flex" id="tc-pcr-hr-dn">&#8722;</button>\'',
+    '    +\'<span class="tc-picker-step-spc"></span>\'',
+    '    +\'<button class="tc-picker-step tc-picker-step-flex" id="tc-pcr-mn-dn">&#8722;</button>\'',
+    '    +\'</div></div>\'',
     '    +\'<div class="tc-picker-ampm" id="tc-pcr-ampm-wrap">\'',
     '    +\'<button class="tc-picker-ampm-btn active" id="tc-pcr-am">AM</button>\'',
     '    +\'<div class="tc-picker-ampm-div"></div>\'',
     '    +\'<button class="tc-picker-ampm-btn" id="tc-pcr-pm">PM</button>\'',
-    '    +\'</div></div>\'',
-    '    +\'<div class="tc-picker-step-row">\'',
-    '    +\'<button class="tc-picker-step" id="tc-pcr-hr-dn">&#8722;</button>\'',
-    '    +\'<span class="tc-picker-step-spc"></span>\'',
-    '    +\'<button class="tc-picker-step" id="tc-pcr-mn-dn">&#8722;</button>\'',
     '    +\'</div></div>\'',
     '    +\'</div>\'',
     '    +\'<div class="tc-picker-footer">\'',
@@ -4323,7 +4328,7 @@ var TesselCompiler = (function() {
     '  _pHr=initDate.getHours();',
     '  _pMn=initDate.getMinutes();',
     '  var timeRow=document.getElementById("tc-pcr-time");',
-    '  if(timeRow)timeRow.style.display=_pIsDatetime?"block":"none";',
+    '  if(timeRow)timeRow.style.display=_pIsDatetime?"flex":"none";',
     '  var fmtWrap=document.getElementById("tc-pcr-hrfmt-wrap");',
     '  var footSpc=document.getElementById("tc-pcr-foot-spc");',
     '  if(fmtWrap)fmtWrap.style.display=_pIsDatetime?"flex":"none";',
@@ -7962,32 +7967,34 @@ function dockPanel(panelId, zone) {
       + '<div id="ep-days" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>'
       + '</div>'
       // ── Time section ──────────────────────────────────────────
-      + '<div id="ep-time" style="display:none;padding:10px 12px;border-top:1px solid var(--border);">'
-      //   Header: centered "Time" label
-      +   '<div style="text-align:center;font-size:11px;color:var(--muted);margin-bottom:8px;">Time</div>'
-      //   Controls centered in a flex column
-      +   '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">'
-      //     + buttons row
-      +     '<div style="display:flex;align-items:center;gap:6px;">'
-      +       '<button id="ep-hr-up" style="' + _EP_STEP_STYLE + '">&#43;</button>'
-      +       '<span style="width:14px;flex-shrink:0;"></span>'
-      +       '<button id="ep-mn-up" style="' + _EP_STEP_STYLE + '">&#43;</button>'
-      +     '</div>'
-      //     input row + AM/PM pill
-      +     '<div style="display:flex;align-items:center;gap:6px;">'
-      +       '<input id="ep-hr" type="number" min="0" max="23" style="' + _EP_INP_STYLE + '">'
-      +       '<span style="font-weight:700;font-size:16px;color:var(--muted);flex-shrink:0;">:</span>'
-      +       '<input id="ep-mn" type="number" min="0" max="59" style="' + _EP_INP_STYLE + '">'
-      +       '<div id="ep-ampm-wrap" style="display:none;flex-direction:column;border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-left:4px;align-self:stretch;">'
-      +         '<button id="ep-am" style="' + _EP_PILL_ACTIVE + 'flex:1;border-bottom:1px solid var(--border);">AM</button>'
-      +         '<button id="ep-pm" style="' + _EP_PILL_BASE + 'flex:1;">PM</button>'
+      // Outer flex row: vertical "Time" label flush left, then controls fill remaining width
+      + '<div id="ep-time" style="display:none;border-top:1px solid var(--border);display:flex;align-items:stretch;">'
+      //   Vertical "Time" label pinned to left border
+      +   '<div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;color:var(--muted);padding:10px 6px;border-right:1px solid var(--border);display:flex;align-items:center;justify-content:center;letter-spacing:.04em;">Time</div>'
+      //   Controls area fills remaining width
+      +   '<div style="flex:1;display:flex;align-items:center;justify-content:center;padding:10px 10px;gap:8px;">'
+      //     hr+mn column stack
+      +     '<div style="display:flex;flex-direction:column;gap:3px;flex:1;">'
+      +       '<div style="display:flex;gap:4px;">'
+      +         '<button id="ep-hr-up" style="' + _EP_STEP_STYLE + 'flex:1;">&#43;</button>'
+      +         '<span style="width:14px;flex-shrink:0;"></span>'
+      +         '<button id="ep-mn-up" style="' + _EP_STEP_STYLE + 'flex:1;">&#43;</button>'
+      +       '</div>'
+      +       '<div style="display:flex;align-items:center;gap:4px;">'
+      +         '<input id="ep-hr" type="number" min="0" max="23" style="' + _EP_INP_STYLE + 'flex:1;">'
+      +         '<span style="font-weight:700;font-size:16px;color:var(--muted);flex-shrink:0;">:</span>'
+      +         '<input id="ep-mn" type="number" min="0" max="59" style="' + _EP_INP_STYLE + 'flex:1;">'
+      +       '</div>'
+      +       '<div style="display:flex;gap:4px;">'
+      +         '<button id="ep-hr-dn" style="' + _EP_STEP_STYLE + 'flex:1;">&#8722;</button>'
+      +         '<span style="width:14px;flex-shrink:0;"></span>'
+      +         '<button id="ep-mn-dn" style="' + _EP_STEP_STYLE + 'flex:1;">&#8722;</button>'
       +       '</div>'
       +     '</div>'
-      //     − buttons row
-      +     '<div style="display:flex;align-items:center;gap:6px;">'
-      +       '<button id="ep-hr-dn" style="' + _EP_STEP_STYLE + '">&#8722;</button>'
-      +       '<span style="width:14px;flex-shrink:0;"></span>'
-      +       '<button id="ep-mn-dn" style="' + _EP_STEP_STYLE + '">&#8722;</button>'
+      //     AM/PM horizontal pill — hidden until 12h mode; stretches to full stack height
+      +     '<div id="ep-ampm-wrap" style="display:none;flex-direction:row;border:1px solid var(--border);border-radius:4px;overflow:hidden;align-self:stretch;">'
+      +       '<button id="ep-am" style="' + _EP_PILL_ACTIVE + 'padding:0 10px;height:100%;border-right:1px solid var(--border);">AM</button>'
+      +       '<button id="ep-pm" style="' + _EP_PILL_BASE + 'padding:0 10px;height:100%;">PM</button>'
       +     '</div>'
       +   '</div>'
       + '</div>'
@@ -8149,7 +8156,7 @@ function dockPanel(panelId, zone) {
     _epYear = _epSelDate.getFullYear(); _epMonth = _epSelDate.getMonth();
     _epHr = init.getHours(); _epMn = init.getMinutes();
     var timeRow = document.getElementById('ep-time');
-    if (timeRow) timeRow.style.display = isDatetime ? 'block' : 'none';
+    if (timeRow) timeRow.style.display = isDatetime ? 'flex' : 'none';
     var fmtWrap = document.getElementById('ep-hrfmt-wrap');
     var fmtSpacer = document.getElementById('ep-footer-spacer');
     if (fmtWrap) fmtWrap.style.display = isDatetime ? 'flex' : 'none';
