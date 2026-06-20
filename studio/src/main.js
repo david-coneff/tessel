@@ -151,12 +151,15 @@
  *   block-level property linking a block group to a specific field block's value
  *   or option selection
  */
+import { uid, esc, slugify } from './lib/utils.js';
+import { FIELD_TYPES } from './lib/metadata.js';
+import { serializeBlocks, serializeBlock, astToBlocks, nodeToBlock } from './lib/blocks.js';
+import { initUndo, pushUndo, inputPushUndo, undo, redo, updateUndoButtons,
+         clearUndoHistory, saveUndoHistory, loadUndoHistory, trimUndoStack, cancelUndoDebounce } from './lib/undo.js';
+
 (function() {
 'use strict';
 
-function uid() { return Math.random().toString(36).slice(2, 8); }
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function slugify(s) { return (s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,48)||'field'; }
 var DATE_FMT_DEFAULTS = {
   date:     ['YYYY-MM-DD', 'MM/DD/YYYY', 'DD/MM/YYYY', 'DD MMM YYYY', 'MMM DD, YYYY', 'MMMM DD, YYYY'],
   datetime: ['YYYY-MM-DD HH:mm', 'YYYY-MM-DD HH:mm:ss', 'MM/DD/YYYY h:mm A', 'MM/DD/YYYY HH:mm', 'DD/MM/YYYY HH:mm', 'MMM DD, YYYY h:mm A', 'MMMM DD, YYYY h:mm A']
@@ -366,108 +369,19 @@ var blocks = [];
 var selectedBlockId = null;
 var lastFocusedTextBlockId = null;
 var _unsaved = false;
+
+initUndo({
+  getBlocks: function() { return blocks; },
+  setBlocks: function(v) { blocks = v; },
+  setSelectedBlockId: function(v) { selectedBlockId = v; },
+  renderCanvas: renderCanvas,
+  renderProps: renderProps,
+  setStatus: setStatus,
+});
 var _filename = 'document';
 
 // Undo/Redo
-var undoStack = [], redoStack = [];
 
-function getUndoDepth() {
-  try { var v = parseInt(localStorage.getItem('tvs:opts:undo-depth'), 10); if (v > 0) return v; } catch(e) {}
-  return 100;
-}
-function getUndoGranularity() {
-  try { return localStorage.getItem('tvs:opts:undo-granularity') || 'action'; } catch(e) { return 'action'; }
-}
-function getUndoTimeWindow() {
-  try { var v = parseInt(localStorage.getItem('tvs:opts:undo-time-window'), 10); if (v > 0) return v; } catch(e) {}
-  return 1000;
-}
-
-var _undoDebounceTimer = null;
-var _undoPendingSnapshot = null;
-// Called BEFORE the mutation so blocks still holds the pre-change state.
-// Action mode: push immediately. Time mode: snapshot now, push after the quiet window.
-function inputPushUndo() {
-  if (getUndoGranularity() === 'action') {
-    pushUndo();
-  } else {
-    if (_undoDebounceTimer === null) {
-      // First keystroke of this burst — capture pre-burst state now
-      _undoPendingSnapshot = JSON.stringify(blocks);
-    }
-    clearTimeout(_undoDebounceTimer);
-    _undoDebounceTimer = setTimeout(function() {
-      _undoDebounceTimer = null;
-      if (_undoPendingSnapshot !== null) {
-        undoStack.push(_undoPendingSnapshot);
-        _undoPendingSnapshot = null;
-        var depth = getUndoDepth();
-        while (undoStack.length > depth) undoStack.shift();
-        redoStack = [];
-        updateUndoButtons();
-      }
-    }, getUndoTimeWindow());
-  }
-}
-
-function pushUndo() {
-  undoStack.push(JSON.stringify(blocks));
-  var depth = getUndoDepth();
-  while (undoStack.length > depth) undoStack.shift();
-  redoStack = [];
-  updateUndoButtons();
-}
-
-function undo() {
-  if (!undoStack.length) return;
-  redoStack.push(JSON.stringify(blocks));
-  blocks = JSON.parse(undoStack.pop());
-  selectedBlockId = null;
-  renderCanvas();
-  renderProps();
-  updateUndoButtons();
-  setStatus('Undo');
-}
-
-function redo() {
-  if (!redoStack.length) return;
-  undoStack.push(JSON.stringify(blocks));
-  blocks = JSON.parse(redoStack.pop());
-  selectedBlockId = null;
-  renderCanvas();
-  renderProps();
-  updateUndoButtons();
-  setStatus('Redo');
-}
-
-function updateUndoButtons() {
-  document.getElementById('btn-undo').disabled = undoStack.length === 0;
-  document.getElementById('btn-redo').disabled = redoStack.length === 0;
-}
-
-var FIELD_TYPES = {
-  text:       { icon: 'T',   badge: 'Text Field',    hasOptions: false },
-  area:       { icon: '📄',  badge: 'Text Area',     hasOptions: false },
-  date:       { icon: '📅',  badge: 'Date',          hasOptions: false },
-  radio:      { icon: '⊙',  badge: 'Radio Buttons',  hasOptions: true  },
-  check:      { icon: '☑',  badge: 'Checkboxes',     hasOptions: true  },
-  select:     { icon: '▾',   badge: 'Dropdown',      hasOptions: true  },
-  credential: { icon: '🔑',  badge: 'Credential',    hasOptions: false },
-  totp:       { icon: '🔐',  badge: 'TOTP Code',     hasOptions: false },
-  filename:   { icon: '📂',  badge: 'Filename',      hasOptions: false },
-  dir:        { icon: '🗂',  badge: 'Directory',     hasOptions: false },
-  parse:      { icon: '🔍',  badge: 'Parse',         hasOptions: false },
-  number:     { icon: '#',   badge: 'Number',        hasOptions: false },
-  email:      { icon: '@',   badge: 'Email',         hasOptions: false },
-  phone:      { icon: '☎',  badge: 'Phone',          hasOptions: false },
-  url:        { icon: '🔗', badge: 'URL',             hasOptions: false },
-  datetime:   { icon: '🕐', badge: 'DateTime',       hasOptions: false },
-  image:      { icon: '🖼', badge: 'Image',           hasOptions: false, hasSrc: true },
-  richtext:   { icon: '✍',  badge: 'Rich Text',      hasOptions: false },
-  computed:   { icon: '⚡', badge: 'Computed',       hasOptions: false, hasExpr: true },
-  signature:  { icon: '✒',  badge: 'Signature',      hasOptions: false },
-  attachment: { icon: '📎', badge: 'Attachment',     hasOptions: false },
-};
 
 var INSERT_MENU_ITEMS = [
   { group: 'Text Content' },
@@ -488,77 +402,6 @@ function insertField(ft, afterId) {
   var b = { type:'field', fieldType:ft, label:'Label', options:[], meta:{}, id:uid() };
   b.meta.id = slugify(b.label);
   insertBlock(b, afterId);
-}
-
-function serializeBlocks(blks) {
-  return blks.map(serializeBlock).filter(function(s){ return s !== null && s !== undefined && s !== ''; }).join('\n\n');
-}
-
-function serializeBlock(b) {
-  if (b.type === 'heading') return '#'.repeat(b.level) + ' ' + (b.text||'');
-  if (b.type === 'paragraph') return (b.text||'').replace(/<br\s*\/?>/gi,'\n').replace(/<[^>]+>/g,'');
-  if (b.type === 'hr') return '---';
-  if (b.type === 'list') return (b.items || ['']).map(function(item, i) {
-    var text = item.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '');
-    return (b.ordered ? (i + 1) + '. ' : '- ') + text;
-  }).join('\n');
-  if (b.type === 'codeblock') return '```' + (b.lang||'') + '\n' + (b.code||'') + '\n```';
-  if (b.type === 'section') return '@section ' + (b.title||'Section') + '\n\n' + serializeBlocks(b.children||[]) + '\n\n@endsection';
-  if (b.type === 'field') {
-    var lines = [];
-    var ft = b.fieldType;
-    var hasOptions = FIELD_TYPES[ft] && FIELD_TYPES[ft].hasOptions;
-    if (hasOptions && b.options && b.options.length) {
-      lines.push('@' + ft + ' ' + (b.label||'Label') + ': ' + b.options.join(', '));
-    } else {
-      lines.push('@' + ft + ' ' + (b.label||'Label'));
-    }
-    var metaLines = [];
-    if (b.meta.id) metaLines.push('  id = ' + b.meta.id);
-    if (b.meta.required) metaLines.push('  required = true');
-    if (b.meta.required_if) metaLines.push('  required_if = ' + b.meta.required_if);
-    if (b.meta.visible_if) metaLines.push('  visible_if = ' + b.meta.visible_if);
-    if (b.meta.validate) metaLines.push('  validate = ' + b.meta.validate);
-    if (b.meta.warning_message) metaLines.push('  warning_message = ' + b.meta.warning_message);
-    if (ft === 'image' && b.meta.src) metaLines.push('  src = ' + b.meta.src);
-    if (ft === 'computed' && b.meta.expr) metaLines.push('  expr = ' + b.meta.expr);
-    if (metaLines.length) { lines.push('{'); metaLines.forEach(function(m){ lines.push(m); }); lines.push('}'); }
-    return lines.join('\n');
-  }
-  return '';
-}
-
-function astToBlocks(ast) {
-  return (ast.blocks || ast.body || []).map(nodeToBlock).filter(Boolean);
-}
-
-function nodeToBlock(n) {
-  if (!n) return null;
-  if (n.type === 'heading') return { type:'heading', level:n.level, text:n.text||'', id:uid() };
-  if (n.type === 'paragraph') return { type:'paragraph', text:(n.html||n.text||''), id:uid() };
-  if (n.type === 'hr') return { type:'hr', id:uid() };
-  if (n.type === 'code_block') return { type:'codeblock', lang:n.lang||'', code:n.content||n.code||'', id:uid() };
-  if (n.type === 'section' || n.type === 'subsection') {
-    return { type:'section', title:n.title||'', children:(n.blocks||[]).map(nodeToBlock).filter(Boolean), id:uid() };
-  }
-  var fieldMap = {
-    text_field:'text', area_field:'area', date_field:'date',
-    radio_field:'radio', check_field:'check', select_field:'select',
-    credential_field:'credential', totp_field:'totp',
-    filename_field:'filename', dir_field:'dir', parse_field:'parse',
-    number_field:'number', email_field:'email', phone_field:'phone',
-    url_field:'url', datetime_field:'datetime', image_field:'image',
-    richtext_field:'richtext', computed_field:'computed', signature_field:'signature'
-  };
-  if (fieldMap[n.type]) {
-    var opts = (n.options||[]).map(function(o){ return typeof o === 'string' ? o : (o.label||''); });
-    var m = n.meta || {};
-    return { type:'field', fieldType:fieldMap[n.type], label:n.label||'', options:opts,
-      meta:{ id:m.id||n.id, required:m.required, required_if:m.required_if,
-             visible_if:m.visible_if, validate:m.validate, warning_message:m.warning_message,
-             src:m.src, expr:m.expr }, id:uid() };
-  }
-  return null;
 }
 
 function insertBlock(block, afterId) {
@@ -1693,7 +1536,7 @@ function isPersistUndo() {
 function saveDraft() {
   try {
     var payload = { blocks: blocks };
-    if (isPersistUndo()) { payload.undoStack = undoStack; payload.redoStack = redoStack; }
+    if (isPersistUndo()) { var _uh = saveUndoHistory(); payload.undoStack = _uh.undoStack; payload.redoStack = _uh.redoStack; }
     localStorage.setItem('tvs:draft', JSON.stringify(payload));
   } catch(e) {}
   _unsaved = false;
@@ -1710,7 +1553,7 @@ function loadDraft() {
       blocks = payload;
     } else {
       blocks = payload.blocks || [];
-      if (payload.undoStack) { undoStack = payload.undoStack; redoStack = payload.redoStack || []; }
+      if (payload.undoStack) { loadUndoHistory(payload.undoStack, payload.redoStack); }
     }
     renderCanvas();
     updateUndoButtons();
@@ -4234,7 +4077,7 @@ document.getElementById('btn-new').addEventListener('click', function() {
   closeAllDropdowns();
   if (_unsaved && !confirm('Discard unsaved changes?')) return;
   blocks = []; selectedBlockId = null;
-  undoStack = []; redoStack = [];
+  clearUndoHistory();
   updateUndoButtons();
   renderCanvas(); renderProps();
   _filename = 'document';
@@ -5422,7 +5265,7 @@ function dockPanel(panelId, zone) {
   function applyUndoDepth(depth) {
     depth = Math.max(1, Math.min(10000, depth));
     try { localStorage.setItem('tvs:opts:undo-depth', depth); } catch(e) {}
-    while (undoStack.length > depth) undoStack.shift();
+    trimUndoStack(depth);
     updateUndoButtons();
   }
 
@@ -5518,7 +5361,7 @@ function dockPanel(panelId, zone) {
   for (var _gi = 0; _gi < granRadios.length; _gi++) {
     granRadios[_gi].addEventListener('change', function() {
       try { localStorage.setItem('tvs:opts:undo-granularity', getGranPillValue()); } catch(e) {}
-      clearTimeout(_undoDebounceTimer);
+      cancelUndoDebounce();
       syncWindowRowActive();
       syncGranSlider();
     });
