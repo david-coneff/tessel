@@ -3911,15 +3911,26 @@ var TesselCompiler = (function() {
     '.tc-picker-day.tc-picker-day-sel{background:var(--accent);color:#fff;border-color:var(--accent);}',
     '.tc-picker-day.tc-picker-day-sel:hover{background:var(--accent);color:#fff;}',
     '.tc-picker-day.tc-picker-day-empty{cursor:default;}',
-    '.tc-picker-time{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--border);}',
-    '.tc-picker-time-lbl{font-size:11px;color:var(--muted);min-width:30px;}',
-    '.tc-picker-time-col{display:flex;flex-direction:column;align-items:center;gap:3px;}',
-    '.tc-picker-step{background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:11px;line-height:1;padding:2px 9px;}',
+    '.tc-picker-time{display:none;padding:10px 12px;border-top:1px solid var(--border);}',
+    '.tc-picker-time-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}',
+    '.tc-picker-time-lbl{font-size:11px;color:var(--muted);}',
+    '.tc-picker-hrfmt{display:flex;border:1px solid var(--border);border-radius:4px;overflow:hidden;}',
+    '.tc-picker-hrfmt-div{width:1px;background:var(--border);flex-shrink:0;}',
+    '.tc-picker-hrfmt-btn{background:var(--surface2);border:none;cursor:pointer;font-size:11px;font-weight:600;padding:3px 9px;color:var(--muted);}',
+    '.tc-picker-hrfmt-btn.active{background:var(--accent);color:#fff;}',
+    '.tc-picker-step-row{display:flex;align-items:center;gap:6px;}',
+    '.tc-picker-step-spc{width:14px;flex-shrink:0;}',
+    '.tc-picker-step{width:48px;box-sizing:border-box;background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:12px;line-height:1;padding:3px 0;text-align:center;display:block;}',
     '.tc-picker-step:hover{border-color:var(--accent);color:var(--accent);}',
-    '.tc-picker-time-inp{width:44px;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:14px;padding:5px 4px;-moz-appearance:textfield;outline:none;}',
+    '.tc-picker-time-row{display:flex;align-items:center;gap:6px;margin:3px 0;}',
+    '.tc-picker-time-inp{width:48px;box-sizing:border-box;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:14px;padding:5px 0;-moz-appearance:textfield;outline:none;display:block;}',
     '.tc-picker-time-inp::-webkit-inner-spin-button,.tc-picker-time-inp::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}',
     '.tc-picker-time-inp:focus{border-color:var(--accent);}',
-    '.tc-picker-time-sep{font-weight:700;font-size:16px;color:var(--muted);margin-bottom:1px;}',
+    '.tc-picker-time-sep{font-weight:700;font-size:16px;color:var(--muted);flex-shrink:0;}',
+    '.tc-picker-ampm{display:none;flex-direction:column;border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-left:4px;align-self:stretch;}',
+    '.tc-picker-ampm-btn{background:var(--surface2);border:none;cursor:pointer;font-size:11px;font-weight:600;padding:3px 9px;color:var(--muted);flex:1;text-align:center;}',
+    '.tc-picker-ampm-btn.active{background:var(--accent);color:#fff;}',
+    '.tc-picker-ampm-div{height:1px;background:var(--border);flex-shrink:0;}',
     '.tc-picker-footer{display:flex;align-items:center;gap:6px;padding:8px 10px;border-top:1px solid var(--border);}',
     '.tc-picker-foot-btn{background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);font-size:11px;padding:4px 10px;line-height:1.4;}',
     '.tc-picker-foot-btn:hover{border-color:var(--accent);color:var(--accent);}',
@@ -4122,13 +4133,21 @@ var TesselCompiler = (function() {
     'function _pad(n){return n<10?"0"+n:""+n;}',
     'function _pHrDisp(h){if(!_p12)return _pad(h);var d=h%12;return _pad(d===0?12:d);}',
     'function _pHrFrom12(v,isPm){v=parseInt(v,10);if(isNaN(v))return 0;v=Math.max(1,Math.min(12,v));return isPm?(v===12?12:v+12):(v===12?0:v);}',
+    'var _PA="background:var(--accent);border:none;cursor:pointer;font-size:11px;font-weight:600;padding:3px 9px;color:#fff;flex:1;text-align:center;";',
+    'var _PI="background:var(--surface2);border:none;cursor:pointer;font-size:11px;font-weight:600;padding:3px 9px;color:var(--muted);flex:1;text-align:center;";',
     'function _pSyncTime(){',
     '  var hi=document.getElementById("tc-pcr-hr");',
-    '  var ab=document.getElementById("tc-pcr-ampm");',
-    '  var fb=document.getElementById("tc-pcr-hrfmt");',
+    '  var aw=document.getElementById("tc-pcr-ampm-wrap");',
+    '  var am=document.getElementById("tc-pcr-am");',
+    '  var pm=document.getElementById("tc-pcr-pm");',
+    '  var f12=document.getElementById("tc-pcr-fmt12");',
+    '  var f24=document.getElementById("tc-pcr-fmt24");',
     '  if(hi){hi.value=_pHrDisp(_pHr);hi.setAttribute("max",_p12?"12":"23");hi.setAttribute("min",_p12?"1":"0");}',
-    '  if(ab){ab.style.display=_p12?"":"none";ab.textContent=_pHr>=12?"PM":"AM";}',
-    '  if(fb)fb.textContent=_p12?"12h":"24h";',
+    '  if(aw)aw.style.display=_p12?"flex":"none";',
+    '  if(am)am.style.cssText=(_pHr<12?_PA:_PI);',
+    '  if(pm)pm.style.cssText=(_pHr>=12?_PA:_PI);',
+    '  if(f12)f12.className="tc-picker-hrfmt-btn"+(_p12?" active":"");',
+    '  if(f24)f24.className="tc-picker-hrfmt-btn"+(!_p12?" active":"");',
     '}',
     'function _createPicker(){',
     '  if(document.getElementById("tc-picker"))return;',
@@ -4145,27 +4164,38 @@ var TesselCompiler = (function() {
     '    +\'<div class="tc-picker-weekdays"></div>\'',
     '    +\'<div class="tc-picker-days" id="tc-pcr-days"></div>\'',
     '    +\'</div>\'',
-    '    +\'<div class="tc-picker-time" id="tc-pcr-time" style="display:none">\'',
-    '    +\'<span class="tc-picker-time-lbl">Time</span>\'',
-    '    +\'<div class="tc-picker-time-col">\'',
+    '    +\'<div class="tc-picker-time" id="tc-pcr-time">\'',
+    '    +\'<div style="text-align:center;font-size:11px;color:var(--muted);margin-bottom:8px;">Time</div>\'',
+    '    +\'<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">\'',
+    '    +\'<div class="tc-picker-step-row">\'',
     '    +\'<button class="tc-picker-step" id="tc-pcr-hr-up">&#43;</button>\'',
-    '    +\'<input class="tc-picker-time-inp" id="tc-pcr-hr" type="number" min="0" max="23" value="12">\'',
-    '    +\'<button class="tc-picker-step" id="tc-pcr-hr-dn">&#8722;</button>\'',
-    '    +\'</div>\'',
-    '    +\'<span class="tc-picker-time-sep">:</span>\'',
-    '    +\'<div class="tc-picker-time-col">\'',
+    '    +\'<span class="tc-picker-step-spc"></span>\'',
     '    +\'<button class="tc-picker-step" id="tc-pcr-mn-up">&#43;</button>\'',
+    '    +\'</div>\'',
+    '    +\'<div class="tc-picker-time-row">\'',
+    '    +\'<input class="tc-picker-time-inp" id="tc-pcr-hr" type="number" min="0" max="23" value="12">\'',
+    '    +\'<span class="tc-picker-time-sep">:</span>\'',
     '    +\'<input class="tc-picker-time-inp" id="tc-pcr-mn" type="number" min="0" max="59" value="0">\'',
+    '    +\'<div class="tc-picker-ampm" id="tc-pcr-ampm-wrap">\'',
+    '    +\'<button class="tc-picker-ampm-btn active" id="tc-pcr-am">AM</button>\'',
+    '    +\'<div class="tc-picker-ampm-div"></div>\'',
+    '    +\'<button class="tc-picker-ampm-btn" id="tc-pcr-pm">PM</button>\'',
+    '    +\'</div></div>\'',
+    '    +\'<div class="tc-picker-step-row">\'',
+    '    +\'<button class="tc-picker-step" id="tc-pcr-hr-dn">&#8722;</button>\'',
+    '    +\'<span class="tc-picker-step-spc"></span>\'',
     '    +\'<button class="tc-picker-step" id="tc-pcr-mn-dn">&#8722;</button>\'',
-    '    +\'</div>\'',
-    '    +\'<div class="tc-picker-time-col" style="margin-left:2px">\'',
-    '    +\'<button class="tc-picker-step" id="tc-pcr-ampm" style="display:none;font-weight:600;min-width:36px;">AM</button>\'',
-    '    +\'<button class="tc-picker-step" id="tc-pcr-hrfmt" style="font-size:10px;min-width:36px;">24h</button>\'',
-    '    +\'</div>\'',
+    '    +\'</div></div>\'',
     '    +\'</div>\'',
     '    +\'<div class="tc-picker-footer">\'',
     '    +\'<button class="tc-picker-foot-btn tc-picker-today-btn" id="tc-pcr-today">Today</button>\'',
-    '    +\'<span style="flex:1"></span>\'',
+    '    +\'<div id="tc-pcr-hrfmt-wrap" style="display:none;flex:1;justify-content:center;">\'',
+    '    +\'<div class="tc-picker-hrfmt">\'',
+    '    +\'<button class="tc-picker-hrfmt-btn" id="tc-pcr-fmt12">12h</button>\'',
+    '    +\'<div class="tc-picker-hrfmt-div"></div>\'',
+    '    +\'<button class="tc-picker-hrfmt-btn active" id="tc-pcr-fmt24">24h</button>\'',
+    '    +\'</div></div>\'',
+    '    +\'<span id="tc-pcr-foot-spc" style="flex:1"></span>\'',
     '    +\'<button class="tc-picker-foot-btn tc-picker-clear-btn" id="tc-pcr-clear">Clear</button>\'',
     '    +\'<button class="tc-picker-foot-btn tc-picker-done-btn" id="tc-pcr-done">Done</button>\'',
     '    +\'</div>\';',
@@ -4188,8 +4218,10 @@ var TesselCompiler = (function() {
     '  document.getElementById("tc-pcr-hr").addEventListener("change",function(){',
     '    if(_p12){_pHr=_pHrFrom12(this.value,_pHr>=12);}else{var v=parseInt(this.value,10);_pHr=isNaN(v)?0:Math.max(0,Math.min(23,v));}_pSyncTime();});',
     '  document.getElementById("tc-pcr-mn").addEventListener("change",function(){var v=parseInt(this.value,10);if(isNaN(v))v=0;_pMn=Math.max(0,Math.min(59,v));this.value=_pad(_pMn);});',
-    '  document.getElementById("tc-pcr-ampm").addEventListener("click",function(){_pHr=(_pHr+12)%24;_pSyncTime();});',
-    '  document.getElementById("tc-pcr-hrfmt").addEventListener("click",function(){_p12=!_p12;try{localStorage.setItem("tc:picker12hr",_p12?"1":"0");}catch(e){}_pSyncTime();});',
+    '  document.getElementById("tc-pcr-am").addEventListener("click",function(){if(_pHr>=12){_pHr-=12;_pSyncTime();}});',
+    '  document.getElementById("tc-pcr-pm").addEventListener("click",function(){if(_pHr<12){_pHr+=12;_pSyncTime();}});',
+    '  document.getElementById("tc-pcr-fmt12").addEventListener("click",function(){_p12=true;try{localStorage.setItem("tc:picker12hr","1");}catch(e){}_pSyncTime();});',
+    '  document.getElementById("tc-pcr-fmt24").addEventListener("click",function(){_p12=false;try{localStorage.setItem("tc:picker12hr","0");}catch(e){}_pSyncTime();});',
     '  document.addEventListener("mousedown",function(e){',
     '    var pk=document.getElementById("tc-picker");',
     '    if(pk&&pk.style.display!=="none"&&!pk.contains(e.target)){',
@@ -4291,7 +4323,11 @@ var TesselCompiler = (function() {
     '  _pHr=initDate.getHours();',
     '  _pMn=initDate.getMinutes();',
     '  var timeRow=document.getElementById("tc-pcr-time");',
-    '  if(timeRow)timeRow.style.display=_pIsDatetime?"":"none";',
+    '  if(timeRow)timeRow.style.display=_pIsDatetime?"block":"none";',
+    '  var fmtWrap=document.getElementById("tc-pcr-hrfmt-wrap");',
+    '  var footSpc=document.getElementById("tc-pcr-foot-spc");',
+    '  if(fmtWrap)fmtWrap.style.display=_pIsDatetime?"flex":"none";',
+    '  if(footSpc)footSpc.style.display=_pIsDatetime?"none":"";',
     '  var mnInp=document.getElementById("tc-pcr-mn");',
     '  if(mnInp)mnInp.value=_pad(_pMn);',
     '  _pSyncTime();',
@@ -7882,27 +7918,38 @@ function dockPanel(panelId, zone) {
     return v === 12 ? 0 : v;
   }
 
+  // Pill button base style (inactive)
+  var _EP_PILL_BASE = 'background:var(--surface2);border:none;cursor:pointer;font-size:11px;font-weight:600;padding:3px 9px;color:var(--muted);';
+  var _EP_PILL_ACTIVE = 'background:var(--accent);border:none;cursor:pointer;font-size:11px;font-weight:600;padding:3px 9px;color:#fff;';
+  // Input + step button shared width
+  var _EP_CELL_W = '48px';
+  var _EP_INP_STYLE = 'width:' + _EP_CELL_W + ';box-sizing:border-box;text-align:center;vertical-align:middle;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:14px;padding:5px 0;-moz-appearance:textfield;outline:none;display:block;';
+  var _EP_STEP_STYLE = 'width:' + _EP_CELL_W + ';box-sizing:border-box;background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:12px;line-height:1;padding:3px 0;text-align:center;display:block;';
+
   function _epSyncTimeUi() {
     var hrInp = document.getElementById('ep-hr');
-    var ampmBtn = document.getElementById('ep-ampm');
-    var fmtBtn = document.getElementById('ep-hrfmt');
+    var amWrap = document.getElementById('ep-ampm-wrap');
+    var amBtn  = document.getElementById('ep-am');
+    var pmBtn  = document.getElementById('ep-pm');
+    var fmt12Btn = document.getElementById('ep-fmt-12');
+    var fmt24Btn = document.getElementById('ep-fmt-24');
     if (hrInp) {
       hrInp.value = _epHrDisplay(_epHr);
       hrInp.setAttribute('max', _ep12 ? '12' : '23');
       hrInp.setAttribute('min', _ep12 ? '1' : '0');
     }
-    if (ampmBtn) {
-      ampmBtn.style.display = _ep12 ? '' : 'none';
-      ampmBtn.textContent = _epHr >= 12 ? 'PM' : 'AM';
-    }
-    if (fmtBtn) fmtBtn.textContent = _ep12 ? '12h' : '24h';
+    if (amWrap) amWrap.style.display = _ep12 ? 'flex' : 'none';
+    if (amBtn) amBtn.style.cssText = (_epHr < 12 ? _EP_PILL_ACTIVE : _EP_PILL_BASE);
+    if (pmBtn) pmBtn.style.cssText = (_epHr >= 12 ? _EP_PILL_ACTIVE : _EP_PILL_BASE);
+    if (fmt12Btn) fmt12Btn.style.cssText = (_ep12 ? _EP_PILL_ACTIVE : _EP_PILL_BASE);
+    if (fmt24Btn) fmt24Btn.style.cssText = (!_ep12 ? _EP_PILL_ACTIVE : _EP_PILL_BASE);
   }
 
   function _epCreate() {
     if (document.getElementById('ed-picker')) return;
     var p = document.createElement('div');
     p.id = 'ed-picker';
-    p.style.cssText = 'display:none;position:fixed;z-index:99999;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.32);min-width:260px;font-size:13px;color:var(--text);user-select:none;';
+    p.style.cssText = 'display:none;position:fixed;z-index:99999;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.32);min-width:280px;font-size:13px;color:var(--text);user-select:none;';
     p.innerHTML =
       '<div style="display:flex;align-items:center;gap:4px;padding:8px 10px;border-bottom:1px solid var(--border);">'
       + '<button id="ep-prev" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:16px;line-height:1;padding:2px 8px;">&#8249;</button>'
@@ -7914,29 +7961,48 @@ function dockPanel(panelId, zone) {
       + '<div id="ep-wds" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;"></div>'
       + '<div id="ep-days" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>'
       + '</div>'
-      + '<div id="ep-time" style="display:none;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--border);">'
-      + '<span style="font-size:11px;color:var(--muted);min-width:30px;">Time</span>'
-      + '<div style="display:flex;align-items:center;gap:6px;">'
+      // ── Time section ──────────────────────────────────────────
+      + '<div id="ep-time" style="display:none;padding:10px 12px;border-top:1px solid var(--border);">'
+      //   Header: centered "Time" label
+      +   '<div style="text-align:center;font-size:11px;color:var(--muted);margin-bottom:8px;">Time</div>'
+      //   Controls centered in a flex column
       +   '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">'
-      +     '<button id="ep-hr-up" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:11px;line-height:1;padding:2px 9px;">&#43;</button>'
-      +     '<input id="ep-hr" type="number" min="0" max="23" style="width:44px;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:14px;padding:5px 4px;-moz-appearance:textfield;outline:none;">'
-      +     '<button id="ep-hr-dn" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:11px;line-height:1;padding:2px 9px;">&#8722;</button>'
-      +   '</div>'
-      +   '<span style="font-weight:700;font-size:16px;color:var(--muted);margin-bottom:1px;">:</span>'
-      +   '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">'
-      +     '<button id="ep-mn-up" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:11px;line-height:1;padding:2px 9px;">&#43;</button>'
-      +     '<input id="ep-mn" type="number" min="0" max="59" style="width:44px;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:14px;padding:5px 4px;-moz-appearance:textfield;outline:none;">'
-      +     '<button id="ep-mn-dn" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:11px;line-height:1;padding:2px 9px;">&#8722;</button>'
-      +   '</div>'
-      +   '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;margin-left:2px;">'
-      +     '<button id="ep-ampm" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);font-size:11px;font-weight:600;line-height:1;padding:3px 7px;min-width:36px;text-align:center;">AM</button>'
-      +     '<button id="ep-hrfmt" style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:10px;line-height:1;padding:3px 7px;min-width:36px;text-align:center;">24h</button>'
+      //     + buttons row
+      +     '<div style="display:flex;align-items:center;gap:6px;">'
+      +       '<button id="ep-hr-up" style="' + _EP_STEP_STYLE + '">&#43;</button>'
+      +       '<span style="width:14px;flex-shrink:0;"></span>'
+      +       '<button id="ep-mn-up" style="' + _EP_STEP_STYLE + '">&#43;</button>'
+      +     '</div>'
+      //     input row + AM/PM pill
+      +     '<div style="display:flex;align-items:center;gap:6px;">'
+      +       '<input id="ep-hr" type="number" min="0" max="23" style="' + _EP_INP_STYLE + '">'
+      +       '<span style="font-weight:700;font-size:16px;color:var(--muted);flex-shrink:0;">:</span>'
+      +       '<input id="ep-mn" type="number" min="0" max="59" style="' + _EP_INP_STYLE + '">'
+      +       '<div id="ep-ampm-wrap" style="display:none;flex-direction:column;border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-left:4px;align-self:stretch;">'
+      +         '<button id="ep-am" style="' + _EP_PILL_ACTIVE + 'flex:1;border-bottom:1px solid var(--border);">AM</button>'
+      +         '<button id="ep-pm" style="' + _EP_PILL_BASE + 'flex:1;">PM</button>'
+      +       '</div>'
+      +     '</div>'
+      //     − buttons row
+      +     '<div style="display:flex;align-items:center;gap:6px;">'
+      +       '<button id="ep-hr-dn" style="' + _EP_STEP_STYLE + '">&#8722;</button>'
+      +       '<span style="width:14px;flex-shrink:0;"></span>'
+      +       '<button id="ep-mn-dn" style="' + _EP_STEP_STYLE + '">&#8722;</button>'
+      +     '</div>'
       +   '</div>'
       + '</div>'
-      + '</div>'
-      + '<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;border-top:1px solid var(--border);">'
+      // ── Footer ───────────────────────────────────────────────
+      + '<div id="ep-footer" style="display:flex;align-items:center;gap:6px;padding:8px 10px;border-top:1px solid var(--border);">'
       + '<button id="ep-today" style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);font-size:11px;padding:4px 10px;">Today</button>'
-      + '<span style="flex:1"></span>'
+      // 12h/24h pill — hidden when not in datetime mode, shown by openEditorPicker
+      + '<div id="ep-hrfmt-wrap" style="display:none;flex:1;justify-content:center;">'
+      +   '<div style="display:inline-flex;border:1px solid var(--border);border-radius:4px;overflow:hidden;">'
+      +     '<button id="ep-fmt-12" style="' + _EP_PILL_BASE + '">12h</button>'
+      +     '<div style="width:1px;background:var(--border);flex-shrink:0;"></div>'
+      +     '<button id="ep-fmt-24" style="' + _EP_PILL_ACTIVE + '">24h</button>'
+      +   '</div>'
+      + '</div>'
+      + '<span id="ep-footer-spacer" style="flex:1"></span>'
       + '<button id="ep-clear" style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);font-size:11px;padding:4px 10px;">Clear</button>'
       + '<button id="ep-done" style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);font-size:11px;padding:4px 10px;font-weight:600;">Done</button>'
       + '</div>';
@@ -7950,16 +8016,19 @@ function dockPanel(panelId, zone) {
       wds.appendChild(s);
     });
 
-    // Hover effects on step/nav buttons (skip ep-ampm which has its own active styling)
+    // Hover on nav/step/footer buttons only (pill buttons manage their own styling)
+    var _EP_PILL_IDS = {
+      'ep-fmt-12': true, 'ep-fmt-24': true, 'ep-am': true, 'ep-pm': true
+    };
     p.addEventListener('mouseover', function(e) {
       var btn = e.target.closest('button');
-      if (!btn || !p.contains(btn) || btn.id === 'ep-ampm') return;
+      if (!btn || !p.contains(btn) || _EP_PILL_IDS[btn.id]) return;
       btn.style.borderColor = 'var(--accent)';
       btn.style.color = 'var(--accent)';
     });
     p.addEventListener('mouseout', function(e) {
       var btn = e.target.closest('button');
-      if (!btn || !p.contains(btn) || btn.id === 'ep-ampm') return;
+      if (!btn || !p.contains(btn) || _EP_PILL_IDS[btn.id]) return;
       btn.style.borderColor = '';
       btn.style.color = '';
     });
@@ -7979,21 +8048,14 @@ function dockPanel(panelId, zone) {
     document.getElementById('ep-clear').addEventListener('click', function() { _epClose(); if (_epCb) _epCb(null); });
     document.getElementById('ep-done').addEventListener('click', _epCommit);
 
-    document.getElementById('ep-hr-dn').addEventListener('click', function() {
-      if (_ep12) { var isPm = _epHr >= 12; var disp = (_epHrFrom12(document.getElementById('ep-hr').value, isPm) + 23) % 24; _epHr = ((_epHr - 1) + 24) % 24; }
-      else { _epHr = (_epHr - 1 + 24) % 24; }
-      _epSyncTimeUi();
-    });
-    document.getElementById('ep-hr-up').addEventListener('click', function() {
-      _epHr = (_epHr + 1) % 24; _epSyncTimeUi();
-    });
+    document.getElementById('ep-hr-dn').addEventListener('click', function() { _epHr = (_epHr - 1 + 24) % 24; _epSyncTimeUi(); });
+    document.getElementById('ep-hr-up').addEventListener('click', function() { _epHr = (_epHr + 1) % 24; _epSyncTimeUi(); });
     document.getElementById('ep-mn-dn').addEventListener('click', function() { _epMn = (_epMn - 5 + 60) % 60; document.getElementById('ep-mn').value = _epPad(_epMn); });
     document.getElementById('ep-mn-up').addEventListener('click', function() { _epMn = (_epMn + 5) % 60; document.getElementById('ep-mn').value = _epPad(_epMn); });
 
     document.getElementById('ep-hr').addEventListener('change', function() {
       if (_ep12) {
-        var isPm = _epHr >= 12;
-        _epHr = _epHrFrom12(this.value, isPm);
+        _epHr = _epHrFrom12(this.value, _epHr >= 12);
       } else {
         var v = parseInt(this.value, 10);
         _epHr = isNaN(v) ? 0 : Math.max(0, Math.min(23, v));
@@ -8002,15 +8064,14 @@ function dockPanel(panelId, zone) {
     });
     document.getElementById('ep-mn').addEventListener('change', function() { var v = parseInt(this.value, 10); _epMn = isNaN(v) ? 0 : Math.max(0, Math.min(59, v)); this.value = _epPad(_epMn); });
 
-    document.getElementById('ep-ampm').addEventListener('click', function() {
-      // Toggle AM/PM by flipping 12 hours
-      _epHr = (_epHr + 12) % 24; _epSyncTimeUi();
-    });
+    document.getElementById('ep-am').addEventListener('click', function() { if (_epHr >= 12) { _epHr -= 12; _epSyncTimeUi(); } });
+    document.getElementById('ep-pm').addEventListener('click', function() { if (_epHr < 12)  { _epHr += 12; _epSyncTimeUi(); } });
 
-    document.getElementById('ep-hrfmt').addEventListener('click', function() {
-      _ep12 = !_ep12;
-      try { localStorage.setItem('tvs:picker12hr', _ep12 ? '1' : '0'); } catch(e) {}
-      _epSyncTimeUi();
+    document.getElementById('ep-fmt-12').addEventListener('click', function() {
+      _ep12 = true; try { localStorage.setItem('tvs:picker12hr', '1'); } catch(e) {} _epSyncTimeUi();
+    });
+    document.getElementById('ep-fmt-24').addEventListener('click', function() {
+      _ep12 = false; try { localStorage.setItem('tvs:picker12hr', '0'); } catch(e) {} _epSyncTimeUi();
     });
 
     document.addEventListener('mousedown', function(e) {
@@ -8088,7 +8149,11 @@ function dockPanel(panelId, zone) {
     _epYear = _epSelDate.getFullYear(); _epMonth = _epSelDate.getMonth();
     _epHr = init.getHours(); _epMn = init.getMinutes();
     var timeRow = document.getElementById('ep-time');
-    if (timeRow) timeRow.style.display = isDatetime ? 'flex' : 'none';
+    if (timeRow) timeRow.style.display = isDatetime ? 'block' : 'none';
+    var fmtWrap = document.getElementById('ep-hrfmt-wrap');
+    var fmtSpacer = document.getElementById('ep-footer-spacer');
+    if (fmtWrap) fmtWrap.style.display = isDatetime ? 'flex' : 'none';
+    if (fmtSpacer) fmtSpacer.style.display = isDatetime ? 'none' : '';
     var mnInp = document.getElementById('ep-mn');
     if (mnInp) mnInp.value = _epPad(_epMn);
     _epSyncTimeUi();
