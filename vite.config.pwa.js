@@ -38,13 +38,14 @@ function tesselBundleAsset() {
     transformIndexHtml(html) {
       return html.replace(
         /src="[^"]*dist\/tessel\.bundle\.js"/,
-        'src="/tessel.bundle.js"'
+        'src="tessel.bundle.js"'
       )
     },
   }
 }
 
 export default defineConfig({
+  base: '/tessel/',
   build: {
     outDir:      path.resolve(__dirname, 'studio/tessel-pwa/dist'),
     emptyOutDir: true,
@@ -71,8 +72,8 @@ export default defineConfig({
         theme_color:      '#1e1e1e',
         background_color: '#1e1e1e',
         display:          'standalone',
-        scope:            '/',
-        start_url:        '/',
+        scope:            '/tessel/',
+        start_url:        '/tessel/',
         icons: [
           {
             src:     'icons/icon.svg',
