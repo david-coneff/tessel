@@ -13,7 +13,7 @@ import { updateToolbarState, FONT_MAP, updateInlineFormatState,
          isBlockLevelFormatting, applyFontFamily, initInlineFormat } from './InlineFormat.js';
 import { FORMAT_PANE_ITEMS, getHiddenItems, setItemHidden, initPaneBuilder } from './PaneBuilder.js';
 import { dockPanel, initDockSystem, makePipHeaderControls, getPipPanels } from './DockSystem.js';
-import { isTauri, initTauriWindowSync } from './TauriBridge.js';
+import { isTauri, initTauriWindowSync, closeCurrentWindow } from './TauriBridge.js';
 import { initOptionsDialog } from './OptionsDialog.js';
 import { initCustomFonts } from './CustomFonts.js';
 import { initPaneDragReorder } from './PaneDragReorder.js';
@@ -126,7 +126,7 @@ export function initApp() {
       pane.classList.add('satellite-pane');
       document.body.appendChild(pane);
     }
-    if (pane) makePipHeaderControls(pane, function() { window.close(); });
+    if (pane) makePipHeaderControls(pane, function() { closeCurrentWindow(); });
     initSatelliteChannel({
       setBlocks:          function(v) { blocks = v; },
       setSelectedBlockId: function(v) { selectedBlockId = v; },
