@@ -1,0 +1,8 @@
+exclude:
+  - spec/
+  - tools/
+  - node_modules/
+  - "*.cjs"
+  - "*.js"
+  - ROADMAP.md
+  - MODULARIZATION_PLAN.md
