@@ -670,6 +670,15 @@ select.prop-input { cursor: pointer; }
 .ctrl-pane-pip-btn:hover { background: var(--surface2); border-color: var(--accent); color: var(--text); }
 .ctrl-pane-pip-btn.pip-active { border-color: var(--accent); color: var(--accent); }
 
+/* in-pane return + close buttons shown inside pip/satellite windows */
+.pip-ctrl-btn {
+  background: none; border: 1px solid var(--border); cursor: pointer;
+  color: var(--muted); padding: 2px 6px; font-size: 14px; line-height: 1;
+  border-radius: 5px; flex-shrink: 0; margin-left: 2px;
+}
+.pip-ctrl-btn:hover { background: var(--surface2); border-color: var(--accent); color: var(--text); }
+.pip-close-btn:hover { border-color: #c0392b; color: #c0392b; }
+
 /* satellite window layout */
 body.satellite-mode { margin: 0; overflow: hidden; }
 .satellite-pane {

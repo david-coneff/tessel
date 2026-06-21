@@ -12,7 +12,7 @@ import { makeDockablePane } from './PaneFactory.js';
 import { updateToolbarState, FONT_MAP, updateInlineFormatState,
          isBlockLevelFormatting, applyFontFamily, initInlineFormat } from './InlineFormat.js';
 import { FORMAT_PANE_ITEMS, getHiddenItems, setItemHidden, initPaneBuilder } from './PaneBuilder.js';
-import { dockPanel, initDockSystem } from './DockSystem.js';
+import { dockPanel, initDockSystem, makePipHeaderControls } from './DockSystem.js';
 import { initOptionsDialog } from './OptionsDialog.js';
 import { initCustomFonts } from './CustomFonts.js';
 import { initPaneDragReorder } from './PaneDragReorder.js';
@@ -124,6 +124,7 @@ export function initApp() {
       pane.classList.add('satellite-pane');
       document.body.appendChild(pane);
     }
+    if (pane) makePipHeaderControls(pane, function() { window.close(); });
     initSatelliteChannel({
       setBlocks:          function(v) { blocks = v; },
       setSelectedBlockId: function(v) { selectedBlockId = v; },

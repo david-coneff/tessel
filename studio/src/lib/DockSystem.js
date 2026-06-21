@@ -1,6 +1,30 @@
 import { clampToViewport } from './FloatingPane.js';
 import { sidePanelOpenFn, sidePanelArrowSync } from './PaneFactory.js';
 
+/**
+ * Inject return + close buttons into a pane header for pip/satellite windows.
+ * Both buttons call closeFn (which closes the pip/satellite window).
+ * Returns the two elements so the caller can remove them on teardown.
+ */
+export function makePipHeaderControls(panel, closeFn) {
+  var hdr = panel.querySelector('.ctrl-pane-header') ||
+            panel.querySelector('h3');
+  if (!hdr) return [];
+  var returnBtn = document.createElement('button');
+  returnBtn.className = 'pip-ctrl-btn pip-return-btn';
+  returnBtn.innerHTML = '&#8617;';
+  returnBtn.title = 'Return to main window';
+  returnBtn.addEventListener('click', closeFn);
+  var closeBtn = document.createElement('button');
+  closeBtn.className = 'pip-ctrl-btn pip-close-btn';
+  closeBtn.innerHTML = '&#215;';
+  closeBtn.title = 'Close';
+  closeBtn.addEventListener('click', closeFn);
+  hdr.appendChild(returnBtn);
+  hdr.appendChild(closeBtn);
+  return [returnBtn, closeBtn];
+}
+
 export function dockPanel(panelId, zone) {
   var panel = document.getElementById(panelId);
   var zoneEl = document.getElementById('dock-' + zone);
@@ -78,6 +102,7 @@ export function initDockSystem() {
       var saved = pipPanels[panelId];
       if (!saved) return;
       var panel = saved.panel;
+      if (saved._pipCtls) saved._pipCtls.forEach(function(el) { el.remove(); });
       delete pipPanels[panelId];
       panel.removeAttribute('data-pip-out');
       var pb = document.querySelector('[data-pane-pip-btn="' + panelId + '"]');
@@ -123,6 +148,7 @@ export function initDockSystem() {
         panel.style.left = panel.style.top = panel.style.width = panel.style.height = panel.style.zIndex = '';
         panel.setAttribute('data-pip-out', '1');
         pipWin.document.body.appendChild(panel);
+        pipPanels[panelId]._pipCtls = makePipHeaderControls(panel, function() { pipWin.close(); });
         var pb = document.querySelector('[data-pane-pip-btn="' + panelId + '"]');
         if (pb) pb.classList.add('pip-active');
         pipWin.addEventListener('pagehide', function() { returnFromPip(panelId); });
