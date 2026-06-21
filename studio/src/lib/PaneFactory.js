@@ -1,3 +1,4 @@
+import * as StorageEngine from './StorageEngine.js';
 /**
  * PaneFactory — unified open/collapse/hide state machine for dockable panels
  *
@@ -33,8 +34,8 @@ export function makeDockablePane(cfg) {
   // Arrow character element inside the tab strip
   var tabArrow = tabEl ? tabEl.querySelector('.panel-tab-arrow') : null;
 
-  function ls(k)    { try { return localStorage.getItem(k);    } catch(e) { return null; } }
-  function lss(k,v) { try { localStorage.setItem(k, v);        } catch(e) {} }
+  function ls(k)    { try { return StorageEngine.getItem(k);    } catch(e) { return null; } }
+  function lss(k,v) { try { StorageEngine.setItem(k, v);        } catch(e) {} }
 
   function arrowDir(isOpen) {
     var onRight = pane.classList.contains('dock-right');
@@ -54,7 +55,7 @@ export function makeDockablePane(cfg) {
 
   function _restoreWidth() {
     try {
-      var w = localStorage.getItem('tvs:pane-w:' + cfg.paneId);
+      var w = StorageEngine.getItem('tvs:pane-w:' + cfg.paneId);
       if (w) pane.style.width = parseInt(w, 10) + 'px';
     } catch(e) {}
   }

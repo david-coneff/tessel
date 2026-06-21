@@ -1,3 +1,4 @@
+import * as StorageEngine from './StorageEngine.js';
 import { parseMd as TesselParseMd, blocksToHtml, buildPage as TesselBuildPage } from './TesselCompiler.js';
 import { uid } from './utils.js';
 import { saveUndoHistory, loadUndoHistory, updateUndoButtons } from './undo.js';
@@ -7,7 +8,7 @@ var _deps = {};
 export function initFileOps(deps) { _deps = deps; }
 
 export function isPersistUndo() {
-  try { return localStorage.getItem('tvs:opts:persist-undo') === '1'; } catch(e) { return false; }
+  try { return StorageEngine.getItem('tvs:opts:persist-undo') === '1'; } catch(e) { return false; }
 }
 
 var _statusTimer = null;
@@ -23,7 +24,7 @@ export function saveDraft() {
   try {
     var payload = { blocks: _deps.getBlocks() };
     if (isPersistUndo()) { var _uh = saveUndoHistory(); payload.undoStack = _uh.undoStack; payload.redoStack = _uh.redoStack; }
-    localStorage.setItem('tvs:draft', JSON.stringify(payload));
+    StorageEngine.setItem('tvs:draft', JSON.stringify(payload));
   } catch(e) {}
   _deps.setUnsaved(false);
   setStatus('Draft saved');
@@ -31,7 +32,7 @@ export function saveDraft() {
 
 export function loadDraft() {
   try {
-    var raw = localStorage.getItem('tvs:draft');
+    var raw = StorageEngine.getItem('tvs:draft');
     if (!raw) return;
     var payload = JSON.parse(raw);
     if (Array.isArray(payload)) {
@@ -44,7 +45,7 @@ export function loadDraft() {
     updateUndoButtons();
     setStatus('Draft restored');
   } catch(e) {}
-  try { var fn = localStorage.getItem('tvs:filename'); if (fn) _deps.setFilename(fn); } catch(e) {}
+  try { var fn = StorageEngine.getItem('tvs:filename'); if (fn) _deps.setFilename(fn); } catch(e) {}
 }
 
 export function flatBlockList(arr) {
@@ -58,7 +59,7 @@ export function flatBlockList(arr) {
 
 export function openMd(file) {
   _deps.setFilename(file.name.replace(/\.md$/i, ''));
-  try { localStorage.setItem('tvs:filename', _deps.getFilename()); } catch(e) {}
+  try { StorageEngine.setItem('tvs:filename', _deps.getFilename()); } catch(e) {}
   var rd = new FileReader();
   rd.onload = function(e) {
     try {
@@ -75,7 +76,7 @@ export function openMd(file) {
 
 export function openHtml(file) {
   _deps.setFilename(file.name.replace(/\.html?$/i, ''));
-  try { localStorage.setItem('tvs:filename', _deps.getFilename()); } catch(e) {}
+  try { StorageEngine.setItem('tvs:filename', _deps.getFilename()); } catch(e) {}
   var rd = new FileReader();
   rd.onload = function(ev) {
     var html = ev.target.result;
@@ -104,13 +105,10 @@ export function getCustomFontFaceCSS() {
   var css = '';
   var prefix = 'tvs:font:';
   try {
-    for (var i = 0; i < localStorage.length; i++) {
-      var k = localStorage.key(i);
-      if (k && k.indexOf(prefix) === 0) {
-        var d = JSON.parse(localStorage.getItem(k));
-        css += '@font-face { font-family: "' + d.family + '"; src: url("' + d.dataUrl + '") format("' + d.format + '"); }\n';
-      }
-    }
+    StorageEngine.getKeys(prefix).forEach(function(k) {
+      var d = JSON.parse(StorageEngine.getItem(k));
+      css += '@font-face { font-family: "' + d.family + '"; src: url("' + d.dataUrl + '") format("' + d.format + '"); }\n';
+    });
   } catch(e) {}
   return css;
 }
@@ -121,7 +119,7 @@ export function getCompiledHtml() {
   try { srcB64 = btoa(unescape(encodeURIComponent(JSON.stringify(_deps.getBlocks())))); } catch(e) {}
   var extraCss = '';
   try {
-    if (localStorage.getItem('tvs:opts:embed-fonts') === '1') {
+    if (StorageEngine.getItem('tvs:opts:embed-fonts') === '1') {
       var fc = getCustomFontFaceCSS();
       if (fc) extraCss = fc;
     }
@@ -130,7 +128,7 @@ export function getCompiledHtml() {
 }
 
 export function saveFile(fname, content, mimeType, lsKey) {
-  var mode = (function(){ try { return localStorage.getItem(lsKey) || 'picker'; } catch(e) { return 'picker'; } })();
+  var mode = (function(){ try { return StorageEngine.getItem(lsKey) || 'picker'; } catch(e) { return 'picker'; } })();
   if (mode === 'picker' && window.showSaveFilePicker) {
     var ext = fname.split('.').pop().toLowerCase();
     var typeMap = { html: 'text/html', md: 'text/markdown', json: 'application/json', zip: 'application/zip' };

@@ -1,3 +1,4 @@
+import * as StorageEngine from './StorageEngine.js';
 import { FloatingPane } from './FloatingPane.js';
 import { formatDatePattern } from './DateUtils.js';
 
@@ -8,7 +9,7 @@ import { formatDatePattern } from './DateUtils.js';
   var _epYear = 0, _epMonth = 0, _epSelDate = null, _epHr = 0, _epMn = 0;
   // _epHr is always 0-23 internally; display adapts to _ep12
   var _ep12 = false;
-  try { _ep12 = localStorage.getItem('tvs:picker12hr') === '1'; } catch(e) {}
+  try { _ep12 = StorageEngine.getItem('tvs:picker12hr') === '1'; } catch(e) {}
 
   function _epPad(n) { return n < 10 ? '0' + n : '' + n; }
 
@@ -220,7 +221,7 @@ import { formatDatePattern } from './DateUtils.js';
     document.getElementById('ep-ampm-wrap').addEventListener('click', _epToggleAmPm);
 
     function _epToggleFmt() {
-      _ep12 = !_ep12; try { localStorage.setItem('tvs:picker12hr', _ep12 ? '1' : '0'); } catch(e) {} _epSyncTimeUi();
+      _ep12 = !_ep12; try { StorageEngine.setItem('tvs:picker12hr', _ep12 ? '1' : '0'); } catch(e) {} _epSyncTimeUi();
     }
     document.getElementById('ep-hrfmt-wrap').addEventListener('click', _epToggleFmt);
 
@@ -451,7 +452,7 @@ import { formatDatePattern } from './DateUtils.js';
   }
 
   // Restore open state on load
-  try { if (localStorage.getItem('tvs:datefmtHelpOpen') === '1') openHelp(); } catch(e) {}
+  try { if (StorageEngine.getItem('tvs:datefmtHelpOpen') === '1') openHelp(); } catch(e) {}
 
   if (helpBtn) helpBtn.addEventListener('click', openHelp);
   // close handled by helpPane constructor

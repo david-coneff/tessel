@@ -628,6 +628,7 @@ select.prop-input { cursor: pointer; }
   border: 1px solid var(--border) !important; border-radius: 8px;
   box-shadow: 0 8px 32px rgba(0,0,0,.45);
   background: color-mix(in srgb, var(--surface) var(--float-panel-opacity, 100%), transparent) !important;
+  -webkit-backdrop-filter: blur(var(--float-panel-blur, 0px));
   backdrop-filter: blur(var(--float-panel-blur, 0px));
 }
 .dock-float .ctrl-pane-body { flex: 1; overflow-y: auto; overflow-x: hidden; min-height: 0; }
@@ -1212,3 +1213,15 @@ body.pane-dragging-active .dock-edge-target { display: flex; }
 .dock-edge-right  { right: 0; top: 36px; bottom: 20px; width: 36px; }
 .dock-edge-top    { top: 36px; left: 36px; right: 36px; height: 36px; }
 .dock-edge-bottom { bottom: 20px; left: 36px; right: 36px; height: 36px; }
+
+/* ── WebKit compatibility ──────────────────────────────────────────────────── */
+/* scrollbar-gutter: stable is unsupported in WebKit (Safari/WKWebView).
+   Reserve equivalent space with padding-right so content width stays stable
+   when scrollbars appear or disappear. Only applies when scrollbar-gutter
+   is not supported — Chromium and Firefox both support it and use the rule above. */
+@supports not (scrollbar-gutter: stable) {
+  .ctrl-pane-body,
+  #outline-list,
+  #props-body,
+  #opts-content { padding-right: 7px; }
+}

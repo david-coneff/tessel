@@ -9,7 +9,10 @@
     "build:studio": "vite build",
     "build:pwa": "node tools/rollup.cjs && vite build --config vite.config.pwa.js",
     "dev": "vite",
-    "watch:bundle": "node tools/rollup.cjs --watch"
+    "watch:bundle": "node tools/rollup.cjs --watch",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "devDependencies": {
     "vite": "^5.4.0",
@@ -17,6 +20,7 @@
     "vite-plugin-singlefile": "^2.0.1"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.11.1",
     "lucide": "^1.21.0"
   }
 }

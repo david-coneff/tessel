@@ -1,3 +1,4 @@
+import * as StorageEngine from './StorageEngine.js';
 export function updateToolbarState(b) {
   var activeType  = b ? b.type  : null;
   var activeLevel = b ? b.level : null;
@@ -85,7 +86,7 @@ export function updateInlineFormatState() {
 }
 
 export function isBlockLevelFormatting() {
-  try { return localStorage.getItem('tvs:opts:block-fmt') === '1'; } catch(e) { return false; }
+  try { return StorageEngine.getItem('tvs:opts:block-fmt') === '1'; } catch(e) { return false; }
 }
 
 export function closePreview() {

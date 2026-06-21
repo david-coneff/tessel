@@ -12,7 +12,8 @@ import { makeDockablePane } from './PaneFactory.js';
 import { updateToolbarState, FONT_MAP, updateInlineFormatState,
          isBlockLevelFormatting, applyFontFamily, initInlineFormat } from './InlineFormat.js';
 import { FORMAT_PANE_ITEMS, getHiddenItems, setItemHidden, initPaneBuilder } from './PaneBuilder.js';
-import { dockPanel, initDockSystem, makePipHeaderControls } from './DockSystem.js';
+import { dockPanel, initDockSystem, makePipHeaderControls, getPipPanels } from './DockSystem.js';
+import { isTauri, initTauriWindowSync } from './TauriBridge.js';
 import { initOptionsDialog } from './OptionsDialog.js';
 import { initCustomFonts } from './CustomFonts.js';
 import { initPaneDragReorder } from './PaneDragReorder.js';
@@ -172,6 +173,7 @@ export function initApp() {
     });
 
     initDockSystem();
+    if (isTauri) initTauriWindowSync(getPipPanels);
 
     initOptionsDialog({
       closeAllDropdowns:      closeAllDropdowns,

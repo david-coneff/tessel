@@ -1,3 +1,4 @@
+import * as StorageEngine from './StorageEngine.js';
 var THEMES = [
   {
     id: 'dark', name: 'Dark', preset: true,
@@ -68,18 +69,18 @@ var THEMES = [
 ];
 
 function getCustomThemes() {
-  try { return JSON.parse(localStorage.getItem('tvs:custom-themes') || '[]'); } catch(e) { return []; }
+  try { return JSON.parse(StorageEngine.getItem('tvs:custom-themes') || '[]'); } catch(e) { return []; }
 }
 
 function saveCustomThemes(arr) {
-  localStorage.setItem('tvs:custom-themes', JSON.stringify(arr));
+  StorageEngine.setItem('tvs:custom-themes', JSON.stringify(arr));
 }
 
 function getThemeOrder() {
-  try { return JSON.parse(localStorage.getItem('tvs:theme-order') || 'null'); } catch(e) { return null; }
+  try { return JSON.parse(StorageEngine.getItem('tvs:theme-order') || 'null'); } catch(e) { return null; }
 }
 function saveThemeOrder(ids) {
-  localStorage.setItem('tvs:theme-order', JSON.stringify(ids));
+  StorageEngine.setItem('tvs:theme-order', JSON.stringify(ids));
 }
 function getAllThemes() {
   var all = THEMES.concat(getCustomThemes());
@@ -129,7 +130,7 @@ export function applyTheme(themeId) {
   el.textContent = css;
   document.body.classList.remove('light');
   if (isLightColor(vars['--bg'])) document.body.classList.add('light');
-  localStorage.setItem('tvs:active-theme', themeId);
+  StorageEngine.setItem('tvs:active-theme', themeId);
   updateThemeBtn();
   _themeChangeCallbacks.forEach(function(cb) { try { cb(themeId); } catch(e) {} });
 }
@@ -138,9 +139,9 @@ function updateThemeBtn() {
   var btnA = document.getElementById('theme-pill-a');
   var btnB = document.getElementById('theme-pill-b');
   if (!btnA || !btnB) return;
-  var themeA = localStorage.getItem('tvs:theme-a') || 'dark';
-  var themeB = localStorage.getItem('tvs:theme-b') || 'light';
-  var activeId = localStorage.getItem('tvs:active-theme') || 'dark';
+  var themeA = StorageEngine.getItem('tvs:theme-a') || 'dark';
+  var themeB = StorageEngine.getItem('tvs:theme-b') || 'light';
+  var activeId = StorageEngine.getItem('tvs:active-theme') || 'dark';
 
   function themeIcon(themeId) {
     if (themeId === 'dark') {
@@ -155,8 +156,8 @@ function updateThemeBtn() {
     }
   }
 
-  var activeSlot = localStorage.getItem('tvs:active-slot') || 'a';
-  var previewing = !!localStorage.getItem('tvs:previewing');
+  var activeSlot = StorageEngine.getItem('tvs:active-slot') || 'a';
+  var previewing = !!StorageEngine.getItem('tvs:previewing');
   btnA.innerHTML = themeIcon(themeA);
   btnB.innerHTML = themeIcon(themeB);
   btnA.classList.toggle('active', !previewing && activeSlot === 'a');
@@ -177,7 +178,7 @@ function updateThemeBtn() {
 function restoreSlotCard(slot) {
   if (!slot) return;
   var slotName = slot.getAttribute('data-slot');
-  var themeId = localStorage.getItem('tvs:theme-' + slotName) || (slotName === 'a' ? 'dark' : 'light');
+  var themeId = StorageEngine.getItem('tvs:theme-' + slotName) || (slotName === 'a' ? 'dark' : 'light');
   var t = getThemeById(themeId);
   var nameEl = document.getElementById('opts-slot-' + slotName + '-name');
   var swEl = document.getElementById('opts-slot-' + slotName + '-swatches');
@@ -189,10 +190,10 @@ function restoreSlotCard(slot) {
 }
 
 function renderThemeSlots() {
-  var themeA = localStorage.getItem('tvs:theme-a') || 'dark';
-  var themeB = localStorage.getItem('tvs:theme-b') || 'light';
-  var activeSlot = localStorage.getItem('tvs:active-slot') || 'a';
-  var previewing = !!localStorage.getItem('tvs:previewing');
+  var themeA = StorageEngine.getItem('tvs:theme-a') || 'dark';
+  var themeB = StorageEngine.getItem('tvs:theme-b') || 'light';
+  var activeSlot = StorageEngine.getItem('tvs:active-slot') || 'a';
+  var previewing = !!StorageEngine.getItem('tvs:previewing');
 
   function fillSlot(slotId, nameId, swatchesId, themeId, slotName) {
     var slot = document.getElementById(slotId);
@@ -205,7 +206,7 @@ function renderThemeSlots() {
       ? '<div class="theme-swatch" style="background:'+t.vars['--bg']+';width:14px;height:14px;" title="bg"></div>'
         + '<div class="theme-swatch" style="background:'+t.vars['--accent']+';width:14px;height:14px;" title="accent"></div>'
       : '';
-    var previewingTheme = localStorage.getItem('tvs:previewing-theme');
+    var previewingTheme = StorageEngine.getItem('tvs:previewing-theme');
     slot.classList.toggle('active-slot',
       (!previewing && activeSlot === slotName) ||
       (previewing && !!previewingTheme && previewingTheme === themeId)
@@ -257,9 +258,9 @@ function renderThemeSlots() {
   function wireSlotClick(slot, getThemeId) {
     if (!slot) return;
     slot.onclick = function() {
-      localStorage.removeItem('tvs:previewing');
-      localStorage.removeItem('tvs:previewing-theme');
-      localStorage.setItem('tvs:active-slot', slot.getAttribute('data-slot'));
+      StorageEngine.removeItem('tvs:previewing');
+      StorageEngine.removeItem('tvs:previewing-theme');
+      StorageEngine.setItem('tvs:active-slot', slot.getAttribute('data-slot'));
       applyTheme(getThemeId());
       renderThemeSlots();
       renderThemeList();
@@ -269,8 +270,8 @@ function renderThemeSlots() {
       if (_dragMode === 'reorder') return;
       e.preventDefault();
       var targetName = slot.getAttribute('data-slot');
-      var curA = localStorage.getItem('tvs:theme-a') || 'dark';
-      var curB = localStorage.getItem('tvs:theme-b') || 'light';
+      var curA = StorageEngine.getItem('tvs:theme-a') || 'dark';
+      var curB = StorageEngine.getItem('tvs:theme-b') || 'light';
       var isSwap = !_dragFromList && (
         (targetName === 'a' && _draggedThemeId === curB) ||
         (targetName === 'b' && _draggedThemeId === curA)
@@ -337,21 +338,21 @@ function renderThemeSlots() {
       var droppedId = e.dataTransfer.getData('text/plain');
       if (!droppedId) return;
       var targetName = slot.getAttribute('data-slot');
-      var curA = localStorage.getItem('tvs:theme-a') || 'dark';
-      var curB = localStorage.getItem('tvs:theme-b') || 'light';
+      var curA = StorageEngine.getItem('tvs:theme-a') || 'dark';
+      var curB = StorageEngine.getItem('tvs:theme-b') || 'light';
       if (targetName === 'a' && droppedId === curB) {
-        localStorage.setItem('tvs:theme-a', curB);
-        localStorage.setItem('tvs:theme-b', curA);
+        StorageEngine.setItem('tvs:theme-a', curB);
+        StorageEngine.setItem('tvs:theme-b', curA);
       } else if (targetName === 'b' && droppedId === curA) {
-        localStorage.setItem('tvs:theme-b', curA);
-        localStorage.setItem('tvs:theme-a', curB);
+        StorageEngine.setItem('tvs:theme-b', curA);
+        StorageEngine.setItem('tvs:theme-a', curB);
       } else {
-        localStorage.setItem(targetName === 'a' ? 'tvs:theme-a' : 'tvs:theme-b', droppedId);
+        StorageEngine.setItem(targetName === 'a' ? 'tvs:theme-a' : 'tvs:theme-b', droppedId);
       }
-      localStorage.removeItem('tvs:previewing');
-      localStorage.removeItem('tvs:previewing-theme');
-      var activeSlot = localStorage.getItem('tvs:active-slot') || 'a';
-      var activeTheme = localStorage.getItem('tvs:theme-' + activeSlot) || 'dark';
+      StorageEngine.removeItem('tvs:previewing');
+      StorageEngine.removeItem('tvs:previewing-theme');
+      var activeSlot = StorageEngine.getItem('tvs:active-slot') || 'a';
+      var activeTheme = StorageEngine.getItem('tvs:theme-' + activeSlot) || 'dark';
       applyTheme(activeTheme);
       renderThemeSlots();
       renderThemeList();
@@ -368,17 +369,17 @@ function renderThemeSlots() {
     };
   }
 
-  wireSlotClick(slotA, function() { return localStorage.getItem('tvs:theme-a') || 'dark'; });
-  wireSlotClick(slotB, function() { return localStorage.getItem('tvs:theme-b') || 'light'; });
+  wireSlotClick(slotA, function() { return StorageEngine.getItem('tvs:theme-a') || 'dark'; });
+  wireSlotClick(slotB, function() { return StorageEngine.getItem('tvs:theme-b') || 'light'; });
 }
 
 function renderThemeList() {
   var container = document.getElementById('opts-themes-list');
   if (!container) return;
-  var activeId = localStorage.getItem('tvs:active-theme') || 'dark';
-  var themeA = localStorage.getItem('tvs:theme-a') || 'dark';
-  var themeB = localStorage.getItem('tvs:theme-b') || 'light';
-  var listPreviewing = !!localStorage.getItem('tvs:previewing');
+  var activeId = StorageEngine.getItem('tvs:active-theme') || 'dark';
+  var themeA = StorageEngine.getItem('tvs:theme-a') || 'dark';
+  var themeB = StorageEngine.getItem('tvs:theme-b') || 'light';
+  var listPreviewing = !!StorageEngine.getItem('tvs:previewing');
   var all = getAllThemes();
   var html = '';
   for (var i = 0; i < all.length; i++) {
@@ -408,8 +409,8 @@ function renderThemeList() {
   container.querySelectorAll('[data-theme-preview]').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var previewId = this.getAttribute('data-theme-preview');
-      localStorage.setItem('tvs:previewing', '1');
-      localStorage.setItem('tvs:previewing-theme', previewId);
+      StorageEngine.setItem('tvs:previewing', '1');
+      StorageEngine.setItem('tvs:previewing-theme', previewId);
       applyTheme(previewId);
       renderThemeList(); renderThemeSlots(); updateThemeBtn();
     });
@@ -679,7 +680,7 @@ function showThemeEditor(themeId) {
 
 function showNewThemeEditor() {
   var newId = 'custom-' + Date.now();
-  var activeId = localStorage.getItem('tvs:active-theme') || 'dark';
+  var activeId = StorageEngine.getItem('tvs:active-theme') || 'dark';
   var src = getThemeById(activeId) || getThemeById('dark');
   var customs = getCustomThemes();
   customs.push({ id: newId, name: 'Custom Theme', preset: false, vars: JSON.parse(JSON.stringify(src.vars)) });
@@ -690,24 +691,24 @@ function showNewThemeEditor() {
 
 // Init
 (function() {
-  var activeId = localStorage.getItem('tvs:active-theme') || 'dark';
-  if (!localStorage.getItem('tvs:theme-a')) localStorage.setItem('tvs:theme-a', 'dark');
-  if (!localStorage.getItem('tvs:theme-b')) localStorage.setItem('tvs:theme-b', 'light');
-  if (!localStorage.getItem('tvs:active-slot')) {
-    var themeA = localStorage.getItem('tvs:theme-a') || 'dark';
-    localStorage.setItem('tvs:active-slot', activeId === themeA ? 'a' : 'b');
+  var activeId = StorageEngine.getItem('tvs:active-theme') || 'dark';
+  if (!StorageEngine.getItem('tvs:theme-a')) StorageEngine.setItem('tvs:theme-a', 'dark');
+  if (!StorageEngine.getItem('tvs:theme-b')) StorageEngine.setItem('tvs:theme-b', 'light');
+  if (!StorageEngine.getItem('tvs:active-slot')) {
+    var themeA = StorageEngine.getItem('tvs:theme-a') || 'dark';
+    StorageEngine.setItem('tvs:active-slot', activeId === themeA ? 'a' : 'b');
   }
   applyTheme(activeId);
 
   var pillA = document.getElementById('theme-pill-a');
   var pillB = document.getElementById('theme-pill-b');
   function toggleThemePill() {
-    localStorage.removeItem('tvs:previewing');
-    localStorage.removeItem('tvs:previewing-theme');
-    var curSlot = localStorage.getItem('tvs:active-slot') || 'a';
+    StorageEngine.removeItem('tvs:previewing');
+    StorageEngine.removeItem('tvs:previewing-theme');
+    var curSlot = StorageEngine.getItem('tvs:active-slot') || 'a';
     var nextSlot = curSlot === 'a' ? 'b' : 'a';
-    var nextTheme = localStorage.getItem('tvs:theme-' + nextSlot) || (nextSlot === 'a' ? 'dark' : 'light');
-    localStorage.setItem('tvs:active-slot', nextSlot);
+    var nextTheme = StorageEngine.getItem('tvs:theme-' + nextSlot) || (nextSlot === 'a' ? 'dark' : 'light');
+    StorageEngine.setItem('tvs:active-slot', nextSlot);
     applyTheme(nextTheme);
     renderThemeList(); renderThemeSlots(); updateThemeBtn();
   }

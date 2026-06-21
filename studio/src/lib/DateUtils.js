@@ -1,3 +1,4 @@
+import * as StorageEngine from './StorageEngine.js';
 var _renderProps = null;
 export function initDateUtils(deps) { _renderProps = deps.renderProps; }
 
@@ -21,21 +22,21 @@ export var TZ_SHORTCODES = [
 ];
 
 export function getDefaultTimezone() {
-  try { var v = localStorage.getItem('tvs:defaultTimezone'); if (v) return v; } catch(e) {}
+  try { var v = StorageEngine.getItem('tvs:defaultTimezone'); if (v) return v; } catch(e) {}
   return '';
 }
 export function saveDefaultTimezone(tz) {
-  try { localStorage.setItem('tvs:defaultTimezone', tz); } catch(e) {}
+  try { StorageEngine.setItem('tvs:defaultTimezone', tz); } catch(e) {}
 }
 export function getDateFmtPresets(type) {
   try {
-    var raw = localStorage.getItem('tvs:dateFormatPresets:' + type);
+    var raw = StorageEngine.getItem('tvs:dateFormatPresets:' + type);
     if (raw) { var arr = JSON.parse(raw); if (Array.isArray(arr) && arr.length) return arr; }
   } catch(e) {}
   return DATE_FMT_DEFAULTS[type].slice();
 }
 export function saveDateFmtPresets(type, arr) {
-  try { localStorage.setItem('tvs:dateFormatPresets:' + type, JSON.stringify(arr)); } catch(e) {}
+  try { StorageEngine.setItem('tvs:dateFormatPresets:' + type, JSON.stringify(arr)); } catch(e) {}
 }
 
 export function buildDateFmtSection() {
@@ -97,8 +98,8 @@ export function buildDateFmtSection() {
     tzWrap.innerHTML = '';
 
     var tzModeKey = 'tvs:tzPickerMode';
-    function getTzMode() { try { return localStorage.getItem(tzModeKey) || 'iana'; } catch(e) { return 'iana'; } }
-    function saveTzMode(m) { try { localStorage.setItem(tzModeKey, m); } catch(e) {} }
+    function getTzMode() { try { return StorageEngine.getItem(tzModeKey) || 'iana'; } catch(e) { return 'iana'; } }
+    function saveTzMode(m) { try { StorageEngine.setItem(tzModeKey, m); } catch(e) {} }
 
     var pillWrap = document.createElement('div');
     pillWrap.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:8px;';

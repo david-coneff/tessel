@@ -1,3 +1,4 @@
+import * as StorageEngine from './StorageEngine.js';
 import { FIELD_TYPES } from './metadata.js';
 import { slugify } from './utils.js';
 import { makeTextInput, makeToggle } from '../tessel-ui/index.js';
@@ -206,7 +207,7 @@ export function renderProps() {
     }));
 
     var tzRow = mkPropRow('Timezone');
-    var propTzMode = (function() { try { return localStorage.getItem('tvs:tzPickerMode') || 'iana'; } catch(e) { return 'iana'; } })();
+    var propTzMode = (function() { try { return StorageEngine.getItem('tvs:tzPickerMode') || 'iana'; } catch(e) { return 'iana'; } })();
     var propTzListId = propTzMode === 'short' ? 'tz-short-datalist' : 'tz-iana-datalist';
     if (!document.getElementById('tz-iana-datalist')) {
       var _dl = document.createElement('datalist'); _dl.id = 'tz-iana-datalist';

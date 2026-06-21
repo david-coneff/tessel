@@ -1,3 +1,4 @@
+import * as StorageEngine from './StorageEngine.js';
 import { slugify } from './utils.js';
 import { serializeBlocks, serializeBlock } from './blocks.js';
 import { parseMd } from './TesselCompiler.js';
@@ -181,7 +182,7 @@ var MiniZipReader = (function() {
 export function openZip(file) {
   var _filename = _deps.getFilename();
   _deps.setFilename(file.name.replace(/\.zip$/i, ''));
-  try { localStorage.setItem('tvs:filename', file.name.replace(/\.zip$/i, '')); } catch(e) {}
+  try { StorageEngine.setItem('tvs:filename', file.name.replace(/\.zip$/i, '')); } catch(e) {}
   var rd = new FileReader();
   rd.onload = function(ev) {
     MiniZipReader.readAll(ev.target.result).then(function(fileMap) {
@@ -267,17 +268,14 @@ export function exportZip() {
     attachments.forEach(function(a) { zipFiles.push({ name: assetDir + '/' + a.name, data: a.data }); });
 
     try {
-      if (localStorage.getItem('tvs:opts:embed-fonts-zip') === '1') {
+      if (StorageEngine.getItem('tvs:opts:embed-fonts-zip') === '1') {
         var prefix = 'tvs:font:';
-        for (var i = 0; i < localStorage.length; i++) {
-          var k = localStorage.key(i);
-          if (k && k.indexOf(prefix) === 0) {
-            var fd = JSON.parse(localStorage.getItem(k));
-            var bytes = MiniZip.dataUrlToBytes(fd.dataUrl);
-            var ext = fd.format === 'truetype' ? 'ttf' : fd.format === 'opentype' ? 'otf' : fd.format;
-            zipFiles.push({ name: 'fonts/' + fd.family + '.' + ext, data: bytes });
-          }
-        }
+        StorageEngine.getKeys(prefix).forEach(function(k) {
+          var fd = JSON.parse(StorageEngine.getItem(k));
+          var bytes = MiniZip.dataUrlToBytes(fd.dataUrl);
+          var ext = fd.format === 'truetype' ? 'ttf' : fd.format === 'opentype' ? 'otf' : fd.format;
+          zipFiles.push({ name: 'fonts/' + fd.family + '.' + ext, data: bytes });
+        });
       }
     } catch(e) {}
 
@@ -367,7 +365,7 @@ export function exportMd() {
   var md = attachments.length
     ? serializeBlocksForExport(blocks, assetDir)
     : serializeBlocks(blocks);
-  var mode = (function() { try { return localStorage.getItem('tvs:opts:export-mode-md') || 'picker'; } catch(e) { return 'picker'; } })();
+  var mode = (function() { try { return StorageEngine.getItem('tvs:opts:export-mode-md') || 'picker'; } catch(e) { return 'picker'; } })();
 
   if (!attachments.length) {
     _deps.saveFile(fname, md, 'text/markdown', 'tvs:opts:export-mode-md');
