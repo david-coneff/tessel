@@ -3038,28 +3038,61 @@ function docSlugify(title) {
 }
 
 // ---- TOC HTML ----
-TesselCompiler.prototype._renderTocEntry = function(entry, depth) {
-  var children = '';
-  if (entry.children && entry.children.length) {
-    children = '\n<details class="bf-toc-section" open>\n<summary></summary>\n<ul>\n' +
-      entry.children.map(function(c) { return this._renderTocEntry(c, depth + 1); }, this).join('\n') +
-      '\n</ul>\n</details>';
+// Normative: matches md_to_html.py _build_toc_html() output exactly.
+//
+// h2 entries with h3 children → always wrapped in <details class="bf-toc-section">
+// h3 entries with h4 children → wrapped only when children.length >= 3
+// All entries carry a <span class="bf-toc-num"> badge before the title text.
+// Outer container is <details id="bf-toc" open> (not a div) so the whole TOC
+// can be toggled via its <summary>.
+
+TesselCompiler.prototype._renderH4Li = function(entry) {
+  var lnk = '<a href="#' + esc(entry.id) + '" data-bf-toc="1">' +
+    '<span class="bf-toc-num">' + esc(entry.num) + '</span> ' + esc(entry.title) + '</a>';
+  return '<li>' + lnk + '</li>';
+};
+
+TesselCompiler.prototype._renderH3Li = function(entry) {
+  var lnk = '<a href="#' + esc(entry.id) + '" data-bf-toc="1">' +
+    '<span class="bf-toc-num">' + esc(entry.num) + '</span> ' + esc(entry.title) + '</a>';
+  var h4s = entry.children || [];
+  if (h4s.length) {
+    var inner = h4s.map(function(c) { return this._renderH4Li(c); }, this).join('');
+    if (h4s.length >= 3) {
+      return '<li><details class="bf-toc-section" open>' +
+        '<summary>' + lnk + '</summary>' +
+        '<ul class="bf-toc-l3">' + inner + '</ul></details></li>';
+    }
+    return '<li>' + lnk + '<ul class="bf-toc-l3">' + inner + '</ul></li>';
   }
-  return '<li><a href="#' + esc(entry.id) + '">' + esc(entry.title) + '</a>' + children + '</li>';
+  return '<li>' + lnk + '</li>';
+};
+
+TesselCompiler.prototype._renderH2Li = function(entry) {
+  var lnk = '<a href="#' + esc(entry.id) + '" data-bf-toc="1">' +
+    '<span class="bf-toc-num">' + esc(entry.num) + '</span> ' + esc(entry.title) + '</a>';
+  var h3s = entry.children || [];
+  if (h3s.length) {
+    var inner = h3s.map(function(c) { return this._renderH3Li(c); }, this).join('');
+    return '<li><details class="bf-toc-section" open>' +
+      '<summary>' + lnk + '</summary>' +
+      '<ul class="bf-toc-l2">' + inner + '</ul></details></li>';
+  }
+  return '<li>' + lnk + '</li>';
 };
 
 TesselCompiler.prototype._renderToc = function(toc) {
-  if (!toc || !toc.length) return '';
-  var entries = toc.map(function(e) { return this._renderTocEntry(e, 0); }, this).join('\n');
-  return [
-    '<div id="bf-toc">',
-    '  <div class="toc-header">',
-    '    <span>Contents</span>',
-    '    <button id="bf-toc-section-toggle" title="Collapse all sections">&#x2212;</button>',
-    '  </div>',
-    '  <nav><ul>' + entries + '</ul></nav>',
-    '</div>'
-  ].join('\n');
+  if (!toc || toc.length < 3) return '';
+  var items = toc.map(function(e) { return this._renderH2Li(e); }, this).join('');
+  return '<details id="bf-toc" open>' +
+    '<summary>' +
+    '<span class="bf-toc-title">Contents</span>' +
+    '<span class="bf-toc-controls">' +
+    '<button type="button" id="bf-toc-section-toggle" title="Collapse all sections">&#x2212;</button>' +
+    '</span>' +
+    '</summary>' +
+    '<nav><ul class="bf-toc-l1">' + items + '</ul></nav>' +
+    '</details>';
 };
 
 // ---- block renderers ----
