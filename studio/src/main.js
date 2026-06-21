@@ -156,4 +156,15 @@ import './lib/ThemeManager.js';
 import './lib/EditorDatePicker.js';
 import { initApp } from './lib/AppInit.js';
 
+// Detect rendering engine and expose as data-engine attribute on <html>.
+// Used by CSS [data-engine] selectors for engine-specific tweaks.
+// Chromium check must come first — Chrome UA includes "AppleWebKit" too.
+(function() {
+  var ua = navigator.userAgent;
+  var engine = /Chrome\/|Chromium\/|EdgA?\/|OPR\//.test(ua) ? 'chromium'
+             : /AppleWebKit/.test(ua)                        ? 'webkit'
+             : 'other';
+  document.documentElement.setAttribute('data-engine', engine);
+})();
+
 initApp();
