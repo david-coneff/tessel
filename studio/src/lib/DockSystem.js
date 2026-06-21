@@ -1,6 +1,7 @@
 import * as StorageEngine from './StorageEngine.js';
 import { clampToViewport } from './FloatingPane.js';
 import { sidePanelOpenFn, sidePanelArrowSync } from './PaneFactory.js';
+import { isTauri, openTauriSatellite } from './TauriBridge.js';
 
 /**
  * Inject return + close buttons into a pane header for pip/satellite windows.
@@ -56,6 +57,8 @@ export function dockPanel(panelId, zone) {
 }
 
 export var floatPanel = null;
+var _pipPanels = {};
+export function getPipPanels() { return _pipPanels; }
 
 export function initDockSystem() {
   // ── Floating panel system ──────────────────────────────────────────────────
@@ -65,7 +68,7 @@ export function initDockSystem() {
     var PANE_DEF = {'format-pane':'left','text-pane':'left','form-pane':'left','outline-panel':'left','props-panel':'right'};
     var lastZone = {};
     var zCounter = 201;
-    var pipPanels = {};
+    var pipPanels = _pipPanels;
 
     function loadState(id) { try { return JSON.parse(StorageEngine.getItem('tvs:float:'+id))||null; } catch(e) { return null; } }
     function saveState(id,x,y,w,h) { try { StorageEngine.setItem('tvs:float:'+id, JSON.stringify({x:x,y:y,w:w,h:h})); } catch(e) {} }
@@ -165,22 +168,31 @@ export function initDockSystem() {
       var w = Math.round(parseFloat(panel.style.width)  || panel.offsetWidth  || FLOAT_W);
       var h = Math.round(parseFloat(panel.style.height) || panel.offsetHeight || FLOAT_H);
       var url = location.href.split('?')[0] + '?satellite=' + encodeURIComponent(panelId);
-      var winRef = window.open(url, '_blank', 'width='+w+',height='+h+',popup=1');
-      if (!winRef) return;
-      var pb = document.querySelector('[data-pane-pip-btn="'+panelId+'"]');
-      if (pb) pb.classList.add('pip-active');
-      panel.classList.add('satellite-hidden');
-      pipPanels[panelId] = { pipWin: winRef, isSatellite: true, panel: panel };
-      var iv = setInterval(function() {
-        if (winRef.closed) {
-          clearInterval(iv);
-          var entry = pipPanels[panelId];
-          if (entry && entry.panel) entry.panel.classList.remove('satellite-hidden');
-          delete pipPanels[panelId];
-          var pb2 = document.querySelector('[data-pane-pip-btn="'+panelId+'"]');
-          if (pb2) pb2.classList.remove('pip-active');
-        }
-      }, 500);
+
+      function _onWindowReady(winRef) {
+        if (!winRef) return;
+        var pb = document.querySelector('[data-pane-pip-btn="'+panelId+'"]');
+        if (pb) pb.classList.add('pip-active');
+        panel.classList.add('satellite-hidden');
+        pipPanels[panelId] = { pipWin: winRef, isSatellite: true, isTauri: isTauri, panel: panel };
+        var iv = setInterval(function() {
+          if (winRef.closed) {
+            clearInterval(iv);
+            var entry = pipPanels[panelId];
+            if (entry && entry.panel) entry.panel.classList.remove('satellite-hidden');
+            delete pipPanels[panelId];
+            var pb2 = document.querySelector('[data-pane-pip-btn="'+panelId+'"]');
+            if (pb2) pb2.classList.remove('pip-active');
+          }
+        }, 500);
+      }
+
+      if (isTauri) {
+        openTauriSatellite(panelId, url, w, h).then(_onWindowReady).catch(function() {});
+      } else {
+        var winRef = window.open(url, '_blank', 'width='+w+',height='+h+',popup=1');
+        _onWindowReady(winRef);
+      }
     }
 
     function curZoneOf(panel) {
