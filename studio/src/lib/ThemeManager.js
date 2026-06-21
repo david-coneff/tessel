@@ -122,7 +122,10 @@ export function onThemeChange(cb) { _themeChangeCallbacks.push(cb); }
 
 export function applyTheme(themeId) {
   var theme = getThemeById(themeId);
-  if (!theme) return;
+  if (!theme) {
+    if (themeId !== 'dark') applyTheme('dark');
+    return;
+  }
   var vars = theme.vars;
   var css = ':root {\n' + Object.keys(vars).map(function(k){ return '  ' + k + ': ' + vars[k] + ';'; }).join('\n') + '\n}';
   var el = document.getElementById('tvs-theme-style');
@@ -692,6 +695,7 @@ function showNewThemeEditor() {
 // Init
 (function() {
   var activeId = StorageEngine.getItem('tvs:active-theme') || 'dark';
+  if (!getThemeById(activeId)) { activeId = 'dark'; StorageEngine.setItem('tvs:active-theme', 'dark'); }
   if (!StorageEngine.getItem('tvs:theme-a')) StorageEngine.setItem('tvs:theme-a', 'dark');
   if (!StorageEngine.getItem('tvs:theme-b')) StorageEngine.setItem('tvs:theme-b', 'light');
   if (!StorageEngine.getItem('tvs:active-slot')) {
