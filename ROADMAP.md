@@ -513,7 +513,82 @@ VitePWA({
 
 **Relationship to Electron/Tauri/PWA native wrapper (future):** The in-pane ↩ and × controls added during the pop-out window work (PW-006) are intentionally designed to be the sole window chrome when OS title bars are suppressed by a native wrapper. A Tessel VS PWA in `standalone` display mode — or a future Electron/Tauri shell — will benefit from these controls without any additional changes.
 
-**Status:** Roadmap item. Not started. Requires Phase 6 (full Tessel VS Studio build) to be stable before this is meaningful to ship.
+**Status:** **Complete.** Deployed to `https://david-coneff.github.io/tessel/` via GitHub Actions workflow (`.github/workflows/deploy-pwa.yml`). Built with `npm run build:pwa` using `vite.config.pwa.js`.
+
+---
+
+### Phase 10 — OPFS Storage Migration (Optional)
+
+**Goal:** Replace `localStorage` with the Origin Private File System (OPFS) as the primary persistence layer for all non-volatile app state in Tessel VS Studio. This provides true per-app storage isolation scoped to the app's origin path, larger quota, and eliminates cross-app key collision risk when multiple apps are deployed under the same GitHub Pages domain.
+
+**Motivation:** All repos under `david-coneff.github.io` share the same `localStorage` origin. A key named `theme` in Tessel VS is accessible to any other app at the same origin. Namespacing keys prevents accidental collision but does not prevent cross-app access. OPFS is scoped per origin path and provides genuine isolation with no cost.
+
+**Core constraint:** The plain `studio/tessel-vs.html` single-file build must continue to work when opened directly from the filesystem (`file://`). OPFS is unavailable on `file://`. The `StorageEngine` abstraction must detect context and fall back to `localStorage` transparently. Calling code must not need to know which backend is active.
+
+**Scope:**
+- All `localStorage` usage in Tessel VS Studio: theme, dock layout, pane sizes, recent files, UI preferences
+- `sessionStorage` is unchanged — credentials remain intentionally volatile (AD-T-006)
+- Compiled Tessel document runtime (`tessel-runtime.js`) is out of scope for this phase
+
+**Architecture — `StorageEngine` abstraction:**
+
+```js
+// Auto-selects OPFS when available, falls back to localStorage on file://
+const StorageEngine = (() => {
+  function isOpfsAvailable() {
+    return typeof navigator !== 'undefined'
+      && navigator.storage
+      && typeof navigator.storage.getDirectory === 'function'
+      && location.protocol !== 'file:';
+  }
+
+  async function getRoot() {
+    return navigator.storage.getDirectory();
+  }
+
+  return {
+    async get(key) {
+      if (!isOpfsAvailable()) return localStorage.getItem(key);
+      try {
+        const root = await getRoot();
+        const fh = await root.getFileHandle(key + '.json');
+        const file = await fh.getFile();
+        return await file.text();
+      } catch { return null; }
+    },
+    async set(key, value) {
+      if (!isOpfsAvailable()) { localStorage.setItem(key, value); return; }
+      const root = await getRoot();
+      const fh = await root.getFileHandle(key + '.json', { create: true });
+      const w = await fh.createWritable();
+      await w.write(value);
+      await w.close();
+    },
+    async remove(key) {
+      if (!isOpfsAvailable()) { localStorage.removeItem(key); return; }
+      try {
+        const root = await getRoot();
+        await root.removeEntry(key + '.json');
+      } catch {}
+    },
+  };
+})();
+```
+
+**Migration path:** On first load in OPFS context, if OPFS storage is empty and matching `localStorage` keys exist, migrate values to OPFS and remove from `localStorage`. This is a one-time silent migration.
+
+**Key files to update:**
+- `ThemeManager.js` — theme persistence
+- `DockSystem.js` — dock layout, pane sizes
+- Any other module with direct `localStorage.setItem`/`getItem` calls
+
+**Browser support:** OPFS available in Chrome 86+, Firefox 111+, Safari 15.2+. Same baseline as Phase 9 PWA.
+
+**AD reference:** AD-T-016.
+
+**Cross-project note:** This is a universal design principle for all PAP projects deployed under the same GitHub Pages account. See `rhiz-memory/state/cross-project-design-principles.md` P-001.
+
+**Status:** Roadmap item. Not started. Recommended after Phase 6 (full Studio) is stable, as Phase 6 will introduce additional localStorage usage that should be migrated in one pass.
 
 ---
 
@@ -659,6 +734,20 @@ prune [--keep N] [--dry-run]       — remove oldest versioned folders beyond th
                                      skips any version still in a dependency chain; operator-only
 ```
 
+### AD-T-016 — OPFS as the standard persistence layer for Studio app state
+
+`localStorage` is scoped to the origin (`david-coneff.github.io`), meaning all apps under the same GitHub Pages account share the same storage namespace. OPFS is scoped per origin path and provides true per-app isolation at zero cost.
+
+**Rule:** All non-volatile app state in Tessel VS Studio (theme, dock layout, pane sizes, preferences) must be stored via a `StorageEngine` abstraction that uses OPFS when available and falls back to `localStorage` on `file://` contexts.
+
+**`sessionStorage` is unchanged.** Credentials and other intentionally volatile state remain in `sessionStorage` (cleared on tab close, per AD-T-006). OPFS is for persistent, non-sensitive preferences only.
+
+**Portability constraint:** OPFS is unavailable on `file://`. The `StorageEngine` must detect `location.protocol === 'file:'` and use `localStorage` in that case. The plain `studio/tessel-vs.html` single-file build must continue to work without a server.
+
+**This is a cross-project design principle.** All PAP projects deployed under the same GitHub Pages account should adopt this pattern. See `rhiz-memory/state/cross-project-design-principles.md` P-001.
+
+**Implementation:** Phase 10.
+
 ---
 
 ## 8. File Layout
@@ -737,9 +826,10 @@ tessel/
 | 6 | Tessel Studio full (WYSIWYG + form designer) | **In progress** | Very High |
 | 7 | Broodforge migration | **Complete** | Medium |
 | 8 | DocGraph tooling (`doc-graph.py`) | **Complete** | Low |
-| 9 | Tessel VS Studio PWA wrapper (optional, additive) | **Roadmap** | Low |
+| 9 | Tessel VS Studio PWA wrapper (optional, additive) | **Complete** | Low |
+| 10 | OPFS storage migration (optional, Studio only) | **Roadmap** | Medium |
 
-**Recommended sequence:** Phase 0 → 1 → 3 → 2 → 5 → 4 → 7 → 6 → 8 → (9 optional, after Phase 6 stable)
+**Recommended sequence:** Phase 0 → 1 → 3 → 2 → 5 → 4 → 7 → 6 → 8 → 9 → (10 optional, after Phase 6 stable)
 
 ---
 
@@ -779,4 +869,4 @@ tessel/
 
 **Phase 6 — Full WYSIWYG Studio:** `studio/tessel-studio-full.html` exists and provides the compiler-mode and Studio foundation. The remaining work is full WYSIWYG editing (in-browser visual editing of Markdown without switching to raw source) and the visual form designer (drag-and-drop `@directive` insertion and configuration).
 
-Phases 0–5 and Phase 7–8 are complete. Phase 6 is the final major phase. Phase 9 (PWA wrapper) is an optional additive target, deferred until Phase 6 is stable.
+Phases 0–5 and Phase 7–9 are complete. Phase 6 is the final major phase. Phase 10 (OPFS storage migration) is an optional cleanup target, recommended after Phase 6 is stable so all new localStorage usage can be migrated in a single pass.
