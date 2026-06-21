@@ -46,6 +46,8 @@ export function initSatelliteChannel(deps) {
         _deps.renderProps();
         _deps.updateOutline();
       } catch(ex) {}
+    } else if (msg.type === 'theme') {
+      if (_deps.applyTheme) try { _deps.applyTheme(msg.themeId); } catch(ex) {}
     }
   };
   // Request initial state, retry until received
@@ -60,4 +62,9 @@ export function initSatelliteChannel(deps) {
 export function broadcastUpdate(blocks) {
   if (!_ch) return;
   try { _ch.postMessage({ type: 'update', blocks: JSON.stringify(blocks) }); } catch(e) {}
+}
+
+export function broadcastTheme(themeId) {
+  if (!_ch) return;
+  try { _ch.postMessage({ type: 'theme', themeId: themeId }); } catch(e) {}
 }

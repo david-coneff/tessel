@@ -19,7 +19,8 @@ import { initPaneDragReorder } from './PaneDragReorder.js';
 import { initToolbarWiring } from './ToolbarWiring.js';
 import { isSatellite, getSatellitePaneId,
          initMainChannel, broadcastState,
-         initSatelliteChannel, broadcastUpdate } from './SatelliteChannel.js';
+         initSatelliteChannel, broadcastUpdate, broadcastTheme } from './SatelliteChannel.js';
+import { onThemeChange, applyTheme } from './ThemeManager.js';
 
 export function initApp() {
   'use strict';
@@ -130,6 +131,7 @@ export function initApp() {
       setSelectedBlockId: function(v) { selectedBlockId = v; },
       renderProps:        renderProps,
       updateOutline:      updateOutline,
+      applyTheme:         applyTheme,
     });
   } else {
     // ── Main window mode ────────────────────────────────────────────────────
@@ -213,5 +215,9 @@ export function initApp() {
       markUnsaved:     markUnsaved,
     });
     _broadcastFn = function() { broadcastState(blocks, selectedBlockId); };
+
+    onThemeChange(function(themeId) {
+      broadcastTheme(themeId);
+    });
   }
 }
