@@ -161,17 +161,20 @@ export function initDockSystem() {
       var panel = document.getElementById(panelId);
       if (!panel) return;
       if (pipPanels[panelId]) return;
-      var w = Math.round(parseFloat(panel.style.width)  || FLOAT_W);
-      var h = Math.round(parseFloat(panel.style.height) || FLOAT_H);
+      var w = Math.round(parseFloat(panel.style.width)  || panel.offsetWidth  || FLOAT_W);
+      var h = Math.round(parseFloat(panel.style.height) || panel.offsetHeight || FLOAT_H);
       var url = location.href.split('?')[0] + '?satellite=' + encodeURIComponent(panelId);
       var winRef = window.open(url, '_blank', 'width='+w+',height='+h+',popup=1');
       if (!winRef) return;
       var pb = document.querySelector('[data-pane-pip-btn="'+panelId+'"]');
       if (pb) pb.classList.add('pip-active');
-      pipPanels[panelId] = { pipWin: winRef, isSatellite: true };
+      panel.classList.add('off');
+      pipPanels[panelId] = { pipWin: winRef, isSatellite: true, panel: panel };
       var iv = setInterval(function() {
         if (winRef.closed) {
           clearInterval(iv);
+          var entry = pipPanels[panelId];
+          if (entry && entry.panel) entry.panel.classList.remove('off');
           delete pipPanels[panelId];
           var pb2 = document.querySelector('[data-pane-pip-btn="'+panelId+'"]');
           if (pb2) pb2.classList.remove('pip-active');
