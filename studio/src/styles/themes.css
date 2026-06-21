@@ -1,0 +1,7 @@
+body.light {
+  --bg: #f0f0f2; --surface: #fff; --border: #d0d2d8; --text: #1a1b1e;
+  --surface2: #e8e9ec; --muted: #6b7280;
+  --canvas-bg: #ffffff; --canvas-shadow: 0 2px 16px rgba(0,0,0,0.10);
+  --canvas-text: #1a1b1e; --canvas-muted: #6b7280; --para-border-focus: #e0e0e0;
+  --field-bg: #eef2ff; --field-border: #c7d2fe;
+}

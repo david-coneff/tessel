@@ -1,0 +1,245 @@
+# Tessel Studio (studio/tessel-vs.html) — UI Implementation Schema
+# Machine-readable specification of studio UI features and their implementation details.
+# Authoritative source: studio/tessel-vs.html (single-file self-contained app)
+
+schema_id: tessel-studio-ui
+schema_version: "1.0"
+date: "2026-06-18"
+source_file: studio/tessel-vs.html
+
+# ── CSS Custom Properties ────────────────────────────────────────────────────
+
+css_custom_properties:
+
+  --float-panel-opacity:
+    type: percentage string  # e.g. "70%"
+    default: "100%"
+    purpose: Floating panel content background transparency via color-mix()
+    css_usage: "background: color-mix(in srgb, var(--surface) var(--float-panel-opacity), transparent)"
+    applied_to:
+      - .dock-float .ctrl-pane-content
+      - .dock-float #outline-content
+      - .dock-float #props-content
+    persistence:
+      localStorage_key: tvs:opts:float-opacity
+      value_format: integer (0–100)
+      default_value: 70
+
+  --float-panel-blur:
+    type: pixel string  # e.g. "8px"
+    default: "0px"
+    purpose: backdrop-filter blur on floating panel content containers
+    css_usage: "backdrop-filter: blur(var(--float-panel-blur))"
+    applied_to:
+      - .dock-float .ctrl-pane-content
+      - .dock-float #outline-content
+      - .dock-float #props-content
+    persistence:
+      localStorage_key: tvs:opts:float-blur
+      value_format: integer (0–20)
+      default_value: 0
+
+# ── Z-Index Stacking Hierarchy ───────────────────────────────────────────────
+# All values are in the root stacking context unless noted.
+
+z_index_hierarchy:
+
+  dock_float_container:
+    selector: "#dock-float"
+    position: fixed
+    z_index: 200
+    extra: "inset: 0; pointer-events: none"
+    note: Container for all floating panels. pointer-events none on container; panels set pointer-events all.
+
+  floating_panels:
+    selector: ".ctrl-pane.dock-float, #outline-panel.dock-float, #props-panel.dock-float"
+    position: absolute  # within #dock-float, effectively viewport-fixed
+    z_index: "201+"  # incremented via zCounter on each float/drag/resize
+    z_counter_start: 201
+    z_counter_increments_on: [panel floated, header drag start, resize handle drag start]
+
+  toolbar:
+    selector: "#toolbar"
+    position: relative
+    z_index: 300
+    note: >-
+      position: relative required to form a stacking context so that z-index takes effect.
+      Stacking context at 300 ensures the toolbar and its dropdown menus always
+      paint above #dock-float (200), regardless of how high zCounter climbs.
+
+  dropdown_menus:
+    selector: ".dropdown-menu"
+    position: absolute  # within toolbar stacking context
+    z_index: 1000
+    note: Absolute children of toolbar stacking context; effectively at z-index 300 relative to root.
+
+  insert_float_menu:
+    selector: "#insert-float"
+    position: fixed
+    z_index: 600
+
+  options_dialog:
+    selector: "#options-dialog"
+    position: fixed
+    z_index: 900
+
+  preview_modal:
+    selector: "#preview-modal"
+    position: fixed
+    z_index: 800
+
+  toast:
+    selector: "[toast/notification element]"
+    position: fixed
+    z_index: 9900
+
+# ── localStorage Keys ────────────────────────────────────────────────────────
+
+localStorage_keys:
+
+  # Panel dock state
+  "tvs:dock:{panelId}":
+    format: "string (left | right | top | bottom | float)"
+    purpose: Current dock zone for each panel
+    panel_ids: [format-pane, text-pane, form-pane, outline-panel, props-panel]
+
+  # Floating panel geometry
+  "tvs:float:{panelId}":
+    format: "JSON { x: number, y: number, w: number, h: number }"
+    purpose: Saved position and dimensions for a floating panel
+    panel_ids: [format-pane, text-pane, form-pane, outline-panel, props-panel]
+
+  # Options dialog state
+  "tvs:opts:open":
+    format: "string (\"1\" | \"0\")"
+    purpose: Whether Options dialog was open at last session end
+
+  "tvs:opts:section":
+    format: "string (layout | animations | menu-items | editing | shortcuts | fonts)"
+    purpose: Last active left-nav section in Options dialog
+
+  "tvs:opts:pos":
+    format: "JSON { left: \"Xpx\", top: \"Ypx\" }"
+    purpose: Last dragged pixel position of Options dialog
+    note: Clamped to viewport on restore in case window was resized since last session
+
+  # Options appearance settings
+  "tvs:opts:float-opacity":
+    format: integer (0–100)
+    purpose: Floating panel background transparency (100 = fully opaque)
+    default: 70
+
+  "tvs:opts:float-blur":
+    format: integer (0–20)
+    purpose: Floating panel backdrop blur in pixels
+    default: 0
+
+  "tvs:opts:transitions":
+    format: "string (\"0\" = disabled; absent = enabled)"
+    purpose: Panel open/close transition animations
+
+  "tvs:opts:autosave-freq":
+    format: integer (seconds)
+    purpose: Auto-save frequency
+
+  "tvs:opts:undo-depth":
+    format: integer
+    purpose: Undo history depth limit
+
+  "tvs:theme":
+    format: "string (\"light\" | \"dark\")"
+    purpose: Color theme preference
+
+# ── Panel Dock Zones ─────────────────────────────────────────────────────────
+
+panel_dock_zones:
+  zones: [left, right, top, bottom, float]
+
+  left_right:
+    orientation: vertical
+    css_classes: [dock-left, dock-right]
+    width: 192px  # default
+    collapse_button: visible  # collapses panel to tab strip
+    tab_strip: visible when collapsed
+
+  top_bottom:
+    orientation: horizontal
+    css_classes: [dock-top, dock-bottom, pane-h]
+    height: 44px
+    collapse_button: hidden  # .pane-h .ctrl-pane-collapse-btn { display: none }
+    on_off_control: badge button only
+    rationale: >-
+      Horizontal panes have no meaningful "collapsed" intermediate state —
+      they are either visible (on) or not (off). The collapse arrow was
+      removed to avoid a broken UX where the pane disappears via arrow
+      but the badge button doesn't reflect the off state.
+
+  float:
+    orientation: free
+    css_class: dock-float
+    container: "#dock-float"
+    default_width: 260
+    default_height: 380
+    min_width: 160
+    min_height: 120
+    drag_handle: ".ctrl-pane-header, #outline-content h3, #props-content h3"
+    resize_handles: [n, ne, e, se, s, sw, w, nw]
+    resize_handle_class: .pane-resize-handle
+    tab_strip: hidden  # .dock-float .ctrl-pane-tab { display: none }
+    float_toggle_button:
+      class: .ctrl-pane-float-btn
+      data_attr: data-pane-float-btn
+      icon_docked: "↗ (↗)"
+      icon_floating: "↙ (↙)"
+      location: panel header
+
+# ── Floating Panel Appearance ─────────────────────────────────────────────────
+
+floating_panel_appearance:
+
+  outer_wrapper:
+    selectors: [".ctrl-pane.dock-float", "#outline-panel.dock-float", "#props-panel.dock-float"]
+    background: transparent  # !important — overrides .ctrl-pane { background: var(--surface) }
+    note: Must be transparent so content container's color-mix() shows through to canvas
+
+  content_container:
+    selectors: [".dock-float .ctrl-pane-content", ".dock-float #outline-content", ".dock-float #props-content"]
+    background: "color-mix(in srgb, var(--surface) var(--float-panel-opacity, 100%), transparent)"
+    backdrop_filter: "blur(var(--float-panel-blur, 0px))"
+    border: "1px solid var(--border)"  # always opaque
+    border_radius: 8px
+    box_shadow: "0 8px 32px rgba(0,0,0,.45)"
+
+  header:
+    selectors: [".dock-float .ctrl-pane-header", ".dock-float #outline-content h3", ".dock-float #props-content h3"]
+    background: "var(--surface)"  # always fully opaque
+    rationale: Title and controls must remain readable at all transparency levels
+
+  item_hover:
+    selectors:
+      - ".dock-float .ctrl-pane-body > *:hover"
+      - ".dock-float #outline-list > *:hover"
+      - ".dock-float #props-body > *:hover"
+    background: "var(--surface) !important"  # solid opaque background on hover
+    rationale: >-
+      Allows per-item readability restoration without CSS opacity inheritance.
+      Background transparency (not element opacity) is used so children can
+      individually override with an opaque background on hover.
+
+# ── Scroll Target Fix ────────────────────────────────────────────────────────
+
+scroll_target_fix:
+  context: Menu items browser right column (Options > Menu Items)
+  problem: >-
+    Last subcategory divider couldn't be scrolled to the top of the column
+    because scrollTop is clamped to (scrollHeight - clientHeight). With little
+    content below the last divider, there isn't enough scrollable range.
+  solution:
+    css: "padding-bottom: 300px on .mib-col-items"
+    why: >-
+      Guarantees any divider's offsetTop is reachable as scrollTop.
+      Pure CSS — no JS measurement, no spacer element, no timing races.
+  eliminated_approaches:
+    - JS spacer measurement at click time (races with layout)
+    - position: sticky on dividers (breaks offsetTop measurements)
+    - requestAnimationFrame-deferred scrollTop (still races)

@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 /**
- * tools/rollup.js — Tessel build script
+ * tools/rollup.cjs — Tessel build script
  *
  * Combines all compiler modules into:
  *   dist/tessel.bundle.js   — single JS file, browser + Node compatible
- *   dist/tessel-min.html    — minimal self-referencing loader stub (for dev)
  *
  * Usage:
- *   node tools/rollup.js [--out <dir>] [--watch]
+ *   node tools/rollup.cjs [--out <dir>] [--watch]
  *
  * The bundle uses a simple concatenation strategy (no bundler needed):
  *   1. Each module is wrapped to suppress its own module.exports line in bundle mode.
@@ -15,11 +14,7 @@
  *   3. A UMD wrapper provides window.Tessel in browsers and module.exports in Node.
  *
  * You can also run this to compile a single .md file for quick testing:
- *   node tools/rollup.js --compile path/to/doc.md [--html-out path/to/out.html]
- *
- * Build a fully self-contained Tessel Studio (no external deps):
- *   node tools/rollup.js --studio
- *   → writes dist/tessel-studio.html
+ *   node tools/rollup.cjs --compile path/to/doc.md [--html-out path/to/out.html]
  */
 
 'use strict';
@@ -41,7 +36,6 @@ var MODULES = [
 ];
 var ENTRY = path.join(COMPILER, 'tessel.js');
 
-// ---- helpers ----
 function readFile(p) {
   return fs.readFileSync(p, 'utf8');
 }
@@ -50,19 +44,10 @@ function ensureDir(d) {
   if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
 }
 
-/**
- * Strip the CJS module.exports shim from a module's source.
- * The shim is always the last non-empty line:
- *   if (typeof module !== 'undefined') module.exports = X;
- */
 function stripCjsShim(src) {
   return src.replace(/\nif\s*\(typeof module[\s\S]{1,120}module\.exports\s*=\s*\w+;\s*$/m, '');
 }
 
-/**
- * Build the bundle.
- * Returns the full JS string.
- */
 function buildBundle() {
   var parts = [];
 
@@ -77,30 +62,23 @@ function buildBundle() {
   parts.push('"use strict";');
   parts.push('');
 
-  // Inline each module (strip the CJS shim since we're concatenating)
   MODULES.forEach(function(mod) {
     var src = readFile(path.join(COMPILER, mod.file));
     src = stripCjsShim(src);
-    // Strip file-level 'use strict' duplicates
-    src = src.replace(/^['"]use strict['"];\n?/m, '');
+    src = src.replace(/^['"']use strict['"'];\n?/m, '');
     parts.push('// ---- ' + mod.file + ' ----');
     parts.push(src.trim());
     parts.push('');
   });
 
-  // Inline the entry file body — extract just the factory function body
-  // tessel.js wraps in a UMD; for the bundle we want the inner factory.
   var entrySrc = readFile(ENTRY);
-  // Extract the factory function body (between the two outermost parens of the factory call)
   var factoryMatch = entrySrc.match(/\}, function\(TESSEL_CSS[^{]*\{([\s\S]+)\}\);?\s*$/);
   if (factoryMatch) {
     var factoryBody = factoryMatch[1].trim();
-    // Remove module.exports reference (not needed inside bundle)
     factoryBody = factoryBody.replace(/\nif\s*\(typeof module[\s\S]{1,120}module\.exports[\s\S]*?;\s*$/m, '');
     parts.push('// ---- tessel.js (entry) ----');
     parts.push(factoryBody);
   } else {
-    // Fallback: just build the Tessel object directly
     parts.push('// ---- entry (fallback) ----');
     parts.push('var _parser   = new TesselParser();');
     parts.push('var _compiler = new TesselCompiler({ css: TESSEL_CSS, runtime: TESSEL_RUNTIME_JS, fields: TesselFields });');
@@ -127,25 +105,7 @@ function getVersion() {
   } catch(e) { return '0.1.0'; }
 }
 
-// ---- build standalone Studio (bundle inlined) ----
-function buildStudio(outDir) {
-  var studioSrc = readFile(path.join(ROOT, 'studio', 'tessel-studio.html'));
-  var bundle    = readFile(path.join(outDir, 'tessel.bundle.js'));
-  // Replace the relative <script src="../dist/tessel.bundle.js"> with inline bundle
-  var standalone = studioSrc.replace(
-    /<script\s+src="\.\.\/dist\/tessel\.bundle\.js"><\/script>/,
-    '<script>\n' + bundle + '\n</script>'
-  );
-  // Update title to indicate standalone
-  standalone = standalone.replace('<title>Tessel Studio</title>', '<title>Tessel Studio (standalone)</title>');
-  var outPath = path.join(outDir, 'tessel-studio.html');
-  fs.writeFileSync(outPath, standalone, 'utf8');
-  console.log('Standalone Studio: ' + outPath + ' (' + Math.round(standalone.length / 1024) + ' KB)');
-}
-
-// ---- compile a .md file ----
 function compileMd(mdPath, outPath) {
-  // Require the local modules (not the bundle — use the source for dev speed)
   var Tessel = require(path.join(COMPILER, 'tessel'));
   var md = readFile(mdPath);
   var html = Tessel.compile(md);
@@ -154,19 +114,16 @@ function compileMd(mdPath, outPath) {
   console.log('Compiled: ' + mdPath + ' → ' + outPath);
 }
 
-// ---- CLI ----
 function main() {
   var args = process.argv.slice(2);
   var outDir = DIST;
   var watchMode  = false;
-  var studioMode = false;
   var compileFile = null;
   var compileOut  = null;
 
   for (var i = 0; i < args.length; i++) {
     if (args[i] === '--out' && args[i + 1]) { outDir = path.resolve(args[++i]); }
     else if (args[i] === '--watch') { watchMode = true; }
-    else if (args[i] === '--studio') { studioMode = true; }
     else if (args[i] === '--compile' && args[i + 1]) { compileFile = path.resolve(args[++i]); }
     else if (args[i] === '--html-out' && args[i + 1]) { compileOut = path.resolve(args[++i]); }
   }
@@ -183,10 +140,6 @@ function main() {
   fs.writeFileSync(bundlePath, bundle, 'utf8');
   console.log('Bundle written: ' + bundlePath + ' (' + Math.round(bundle.length / 1024) + ' KB)');
 
-  if (studioMode) {
-    buildStudio(outDir);
-  }
-
   if (watchMode) {
     var watchTargets = MODULES.map(function(m) { return path.join(COMPILER, m.file); }).concat([ENTRY]);
     console.log('Watching for changes...');
@@ -197,7 +150,6 @@ function main() {
           var updated = buildBundle();
           fs.writeFileSync(bundlePath, updated, 'utf8');
           console.log('Rebuilt: ' + bundlePath);
-          if (studioMode) buildStudio(outDir);
         } catch(err) {
           console.error('Build error: ' + err.message);
         }

@@ -1,0 +1,124 @@
+/* ── tessel-ui controls ──────────────────────────────────────────────────── */
+
+/* Button */
+.tui-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: none; border-radius: 4px; cursor: pointer;
+  font: inherit; font-size: 12px; line-height: 1;
+  padding: 4px 8px; transition: background 0.12s, color 0.12s;
+  white-space: nowrap; user-select: none;
+}
+.tui-btn--ghost {
+  background: transparent; color: var(--text);
+}
+.tui-btn--ghost:hover { background: rgba(255,255,255,0.07); }
+.tui-btn--ghost:active { background: rgba(255,255,255,0.12); }
+.tui-btn--primary {
+  background: var(--accent); color: var(--accent-text);
+}
+.tui-btn--primary:hover { filter: brightness(1.1); }
+.tui-btn--icon {
+  background: transparent; color: var(--text);
+  padding: 5px; border-radius: 4px;
+}
+.tui-btn--icon:hover { background: rgba(255,255,255,0.07); }
+.tui-btn--icon:active { background: rgba(255,255,255,0.12); }
+.tui-btn--badge {
+  background: transparent; color: var(--text);
+  padding: 3px 7px; border-radius: 3px; font-size: 11px;
+  border: 1px solid transparent;
+}
+.tui-btn--badge:hover { border-color: var(--border); }
+.tui-btn--sm { padding: 2px 6px; font-size: 11px; }
+.tui-btn:disabled { opacity: 0.4; cursor: default; pointer-events: none; }
+.tui-btn__icon { flex-shrink: 0; display: flex; }
+.tui-btn svg { display: block; }
+
+/* Toggle (switch) */
+.tui-toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  cursor: pointer; user-select: none;
+}
+.tui-toggle__input { position: absolute; opacity: 0; width: 0; height: 0; }
+.tui-toggle__track {
+  position: relative; width: 30px; height: 16px;
+  border-radius: 8px; background: var(--border);
+  transition: background 0.15s; flex-shrink: 0;
+}
+.tui-toggle__track::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--muted); transition: transform 0.15s, background 0.15s;
+}
+.tui-toggle__input:checked + .tui-toggle__track { background: var(--accent); }
+.tui-toggle__input:checked + .tui-toggle__track::after {
+  transform: translateX(14px); background: #fff;
+}
+.tui-toggle__label { font-size: 12px; color: var(--text); }
+
+/* TextInput */
+.tui-text-input { display: flex; flex-direction: column; gap: 3px; }
+.tui-text-input__label { font-size: 11px; color: var(--muted); }
+.tui-text-input__field {
+  background: var(--field-bg, var(--surface)); color: var(--text);
+  border: 1px solid var(--field-border, var(--border));
+  border-radius: 4px; padding: 4px 7px; font: inherit; font-size: 12px;
+  outline: none; width: 100%; box-sizing: border-box;
+}
+.tui-text-input__field:focus { border-color: var(--accent); }
+
+/* Select */
+.tui-select { display: flex; flex-direction: column; gap: 3px; }
+.tui-select__label { font-size: 11px; color: var(--muted); }
+.tui-select__field {
+  background: var(--field-bg, var(--surface)); color: var(--text);
+  border: 1px solid var(--field-border, var(--border));
+  border-radius: 4px; padding: 4px 7px; font: inherit; font-size: 12px;
+  outline: none; width: 100%; box-sizing: border-box; cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%237a7d87' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 7px center;
+  padding-right: 22px;
+}
+.tui-select__field:focus { border-color: var(--accent); }
+
+/* Slider */
+.tui-slider { display: flex; flex-direction: column; gap: 4px; }
+.tui-slider__header { display: flex; justify-content: space-between; align-items: center; }
+.tui-slider__label { font-size: 11px; color: var(--muted); }
+.tui-slider__value { font-size: 11px; color: var(--text); font-variant-numeric: tabular-nums; }
+.tui-slider__input {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 4px; border-radius: 2px;
+  background: var(--border); outline: none; cursor: pointer;
+}
+.tui-slider__input::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px;
+  border-radius: 50%; background: var(--accent); cursor: pointer;
+  border: 2px solid var(--surface);
+}
+.tui-slider__input::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--accent); cursor: pointer; border: 2px solid var(--surface);
+}
+
+/* ColorPill */
+.tui-color-pill {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid transparent; cursor: pointer; padding: 0;
+  background: var(--tui-pill-color, #888); flex-shrink: 0;
+  transition: border-color 0.1s, transform 0.1s;
+}
+.tui-color-pill:hover { transform: scale(1.15); }
+.tui-color-pill--active { border-color: var(--text); }
+
+/* Separator */
+.tui-separator--vertical {
+  display: inline-block; width: 1px; height: 16px;
+  background: var(--border); margin: 0 4px; vertical-align: middle;
+  flex-shrink: 0;
+}
+.tui-separator--horizontal {
+  display: block; width: 100%; height: 1px;
+  background: var(--border); margin: 4px 0;
+}

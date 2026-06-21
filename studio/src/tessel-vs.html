@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tessel VS</title>
+  <link rel="stylesheet" href="./styles/variables.css">
+  <link rel="stylesheet" href="./styles/base.css">
+  <link rel="stylesheet" href="./styles/themes.css">
+  <link rel="stylesheet" href="./styles/tessel-ui.css">
+</head>
+<body>
+
+<!-- PRIMARY TOOLBAR -->
+<div id="toolbar">
+  <!-- File menu -->
+  <div class="dropdown" id="dd-file">
+    <button id="btn-file-dd">File &#9662;</button>
+    <div class="dropdown-menu" id="dm-file">
+      <div class="dm-item" id="btn-new"><span class="dm-icon">&#128196;</span>New</div>
+      <div class="dm-divider"></div>
+      <div class="dm-item" id="open-md-item"><span class="dm-icon">&#128194;</span>Open .md file</div>
+      <div class="dm-item" id="open-html-item"><span class="dm-icon">&#127760;</span>Open .html file</div>
+      <div class="dm-item" id="open-zip-item"><span class="dm-icon">&#128230;</span>Open .zip package</div>
+      <div class="dm-divider"></div>
+      <div class="dm-item" id="btn-save"><span class="dm-icon">&#128190;</span>Save Draft <span style="margin-left:auto;opacity:.5;font-size:10px">Ctrl+S</span></div>
+      <div class="dm-item" id="btn-export-md"><span class="dm-icon">&#128196;</span>Save as .md <span style="margin-left:auto;opacity:.5;font-size:10px">Ctrl+Shift+S</span></div>
+      <div class="dm-item" id="btn-export-zip"><span class="dm-icon">&#128230;</span>Save as .zip package</div>
+      <div class="dm-item" id="btn-export"><span class="dm-icon">&#8595;</span>Export HTML <span style="margin-left:auto;opacity:.5;font-size:10px">Ctrl+E</span></div>
+      <div class="dm-divider"></div>
+      <div class="dm-item" id="btn-options"><span class="dm-icon">&#9881;</span>Options&#8230;</div>
+    </div>
+  </div>
+
+  <div class="tb-sep"></div>
+
+  <!-- Badge buttons — toggle sub-toolbar panels -->
+  <button class="badge-btn" id="badge-format" title="Format controls">
+    <svg width="14" height="15" viewBox="0 0 14 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <text x="1" y="11" font-family="serif" font-weight="700" font-size="9" fill="currentColor">H</text>
+      <text x="7" y="11" font-family="serif" font-weight="700" font-size="7" fill="currentColor">1</text>
+      <line x1="1" y1="13" x2="13" y2="13" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+    </svg>
+    Format
+  </button>
+
+  <button class="badge-btn" id="badge-text" title="Text controls">
+    <svg width="14" height="15" viewBox="0 0 14 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="2.5" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+      <path d="M1 4.5 Q3.5 3 7 4.5 Q10.5 6 13 4.5" stroke="currentColor" stroke-width="1" fill="none" stroke-linecap="round"/>
+      <path d="M1 11 Q3.5 12.5 7 11 Q10.5 9.5 13 11" stroke="currentColor" stroke-width="1" fill="none" stroke-linecap="round"/>
+      <line x1="3.5" y1="7" x2="10.5" y2="7" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+    </svg>
+    Text
+  </button>
+
+  <button class="badge-btn" id="badge-form" title="Form field controls">
+    <svg width="13" height="15" viewBox="0 0 13 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="1" width="11" height="13" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+      <rect x="2.5" y="3.5" width="2.5" height="2.5" rx=".5" stroke="currentColor" stroke-width="1"/>
+      <line x1="6.5" y1="4.75" x2="10" y2="4.75" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+      <rect x="2.5" y="7.25" width="2.5" height="2.5" rx=".5" stroke="currentColor" stroke-width="1"/>
+      <line x1="6.5" y1="8.5" x2="10" y2="8.5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+      <rect x="2.5" y="11" width="2.5" height="2.5" rx=".5" stroke="currentColor" stroke-width="1"/>
+      <line x1="6.5" y1="12.25" x2="10" y2="12.25" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+    </svg>
+    Form
+  </button>
+
+  <div class="tb-sep"></div>
+
+  <button class="badge-btn" id="badge-outline" title="Outline panel">
+    <svg width="14" height="15" viewBox="0 0 14 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="1" y1="3" x2="13" y2="3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      <line x1="3.5" y1="7" x2="13" y2="7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+      <line x1="3.5" y1="11" x2="13" y2="11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+      <line x1="5.5" y1="13" x2="13" y2="13" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+    </svg>
+    Outline
+  </button>
+
+  <button class="badge-btn" id="badge-props" title="Properties panel">
+    <svg width="14" height="15" viewBox="0 0 14 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="7" cy="5" r="2.5" stroke="currentColor" stroke-width="1.2"/>
+      <path d="M2 13c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+      <line x1="9.5" y1="5" x2="12.5" y2="5" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-dasharray="1 1.2"/>
+    </svg>
+    Props
+  </button>
+
+  <!-- Undo/Redo -->
+  <div class="tb-sep"></div>
+  <button id="btn-undo" class="tb-icon" title="Undo (Ctrl+Z)" disabled>&#8592;</button>
+  <button id="btn-redo" class="tb-icon" title="Redo (Ctrl+Y)" disabled>&#8594;</button>
+
+  <!-- Preview -->
+  <div class="tb-sep"></div>
+  <button id="btn-preview" title="Preview compiled document">Preview</button>
+
+  <!-- Logo + theme pushed to right -->
+  <div class="spacer"></div>
+  <span class="logo">Tessel <span>VS</span></span>
+  <div class="tb-sep"></div>
+  <div id="theme-pill" title="Toggle theme A/B">
+    <span id="theme-pill-slider"></span>
+    <button id="theme-pill-a" class="theme-pill-btn" title="Theme A"></button>
+    <button id="theme-pill-b" class="theme-pill-btn" title="Theme B"></button>
+  </div>
+</div>
+
+
+<!-- HIDDEN FILE INPUTS -->
+<input type="file" id="pick-md" accept=".md" style="display:none">
+<input type="file" id="pick-html" accept=".html" style="display:none">
+<input type="file" id="pick-zip" accept=".zip" style="display:none">
+
+<!-- TOP DOCK ZONE -->
+<div id="dock-top"></div>
+
+<!-- BODY -->
+<div class="body">
+
+  <!-- LEFT DOCK ZONE -->
+  <div id="dock-left">
+
+  <!-- FORMAT PANE -->
+  <div id="format-pane" class="ctrl-pane">
+    <div class="ctrl-pane-content">
+      <div class="ctrl-pane-header">
+        <span class="ctrl-pane-title">Format</span>
+        <button class="ctrl-pane-collapse-btn" title="Collapse panel">&#8249;</button>
+      </div>
+      <div class="ctrl-pane-body">
+        <div class="ctrl-group-label" id="fmt-group-blocktype">Block Type</div>
+        <button class="ctrl-btn" id="btn-h1"><span class="ctrl-btn-icon">H1</span>Heading 1</button>
+        <button class="ctrl-btn" id="btn-h2"><span class="ctrl-btn-icon">H2</span>Heading 2</button>
+        <button class="ctrl-btn" id="btn-h3"><span class="ctrl-btn-icon">H3</span>Heading 3</button>
+        <button class="ctrl-btn" id="btn-para"><span class="ctrl-btn-icon">&#182;</span>Paragraph</button>
+        <div class="ctrl-group-label" id="fmt-group-indent">Indent</div>
+        <button class="ctrl-btn" id="btn-indent-more"><span class="ctrl-btn-icon">&#8677;</span>Indent</button>
+        <button class="ctrl-btn" id="btn-indent-less"><span class="ctrl-btn-icon">&#8676;</span>Outdent</button>
+        <div class="ctrl-group-label" id="fmt-group-inline">Inline Style</div>
+        <button class="ctrl-btn" id="btn-bold"><span class="ctrl-btn-icon"><b>B</b></span>Bold</button>
+        <button class="ctrl-btn" id="btn-italic"><span class="ctrl-btn-icon"><i>I</i></span>Italic</button>
+        <button class="ctrl-btn" id="btn-underline"><span class="ctrl-btn-icon"><u>U</u></span>Underline</button>
+        <button class="ctrl-btn" id="btn-link"><span class="ctrl-btn-icon">&#128279;</span>Link</button>
+        <div class="ctrl-group-label" id="fmt-group-font">Font</div>
+        <button class="ctrl-btn" id="btn-font-default"><span class="ctrl-btn-icon">Aa</span>Default</button>
+        <button class="ctrl-btn" id="btn-font-georgia"><span class="ctrl-btn-icon" style="font-family:Georgia,serif">Gg</span>Georgia</button>
+        <button class="ctrl-btn" id="btn-font-franklin"><span class="ctrl-btn-icon" style="font-family:'Franklin Gothic Book',sans-serif">Ff</span>Franklin Gothic</button>
+        <button class="ctrl-btn" id="btn-font-verdana"><span class="ctrl-btn-icon" style="font-family:Verdana,sans-serif">Vv</span>Verdana</button>
+      </div>
+    </div>
+    <div class="ctrl-pane-tab" title="Toggle Format panel">
+      <span class="pane-grip" data-pane-grip="format-pane" title="Drag to reorder">&#8942;</span>
+      <span class="panel-tab-title">Format</span>
+      <button class="panel-tab-arrow">&#8249;</button>
+    </div>
+  </div><!-- #format-pane -->
+
+  <!-- TEXT PANE -->
+  <div id="text-pane" class="ctrl-pane">
+    <div class="ctrl-pane-content">
+      <div class="ctrl-pane-header">
+        <span class="ctrl-pane-title">Text</span>
+        <button class="ctrl-pane-collapse-btn" title="Collapse panel">&#8249;</button>
+      </div>
+      <div class="ctrl-pane-body" id="text-pane-body">
+        <!-- populated by buildTextPaneButtons() -->
+      </div>
+    </div>
+    <div class="ctrl-pane-tab" title="Toggle Text panel">
+      <span class="pane-grip" data-pane-grip="text-pane" title="Drag to reorder">&#8942;</span>
+      <span class="panel-tab-title">Text</span>
+      <button class="panel-tab-arrow">&#8249;</button>
+    </div>
+  </div><!-- #text-pane -->
+
+  <!-- FORM PANE -->
+  <div id="form-pane" class="ctrl-pane">
+    <div class="ctrl-pane-content">
+      <div class="ctrl-pane-header">
+        <span class="ctrl-pane-title">Form</span>
+        <button class="ctrl-pane-collapse-btn" title="Collapse panel">&#8249;</button>
+      </div>
+      <div class="ctrl-pane-body">
+        <div class="ctrl-group-label">Text Input</div>
+        <button class="ctrl-btn" data-insert-field="text"><span class="ctrl-btn-icon">T</span>Text Field</button>
+        <button class="ctrl-btn" data-insert-field="area"><span class="ctrl-btn-icon">&#128196;</span>Text Area</button>
+        <button class="ctrl-btn" data-insert-field="number"><span class="ctrl-btn-icon">#</span>Number</button>
+        <button class="ctrl-btn" data-insert-field="email"><span class="ctrl-btn-icon">@</span>Email</button>
+        <button class="ctrl-btn" data-insert-field="phone"><span class="ctrl-btn-icon">&#9990;</span>Phone</button>
+        <button class="ctrl-btn" data-insert-field="url"><span class="ctrl-btn-icon">&#128279;</span>URL</button>
+        <div class="ctrl-divider"></div>
+        <div class="ctrl-group-label">Date &amp; Time</div>
+        <button class="ctrl-btn" data-insert-field="date"><span class="ctrl-btn-icon">&#128197;</span>Date</button>
+        <button class="ctrl-btn" data-insert-field="datetime"><span class="ctrl-btn-icon">&#128336;</span>DateTime</button>
+        <div class="ctrl-divider"></div>
+        <div class="ctrl-group-label">Choice</div>
+        <button class="ctrl-btn" data-insert-field="select"><span class="ctrl-btn-icon">&#9660;</span>Dropdown</button>
+        <button class="ctrl-btn" data-insert-field="radio"><span class="ctrl-btn-icon">&#8857;</span>Radio</button>
+        <button class="ctrl-btn" data-insert-field="check"><span class="ctrl-btn-icon">&#9745;</span>Checkboxes</button>
+        <div class="ctrl-divider"></div>
+        <div class="ctrl-group-label">Rich Content</div>
+        <button class="ctrl-btn" data-insert-field="image"><span class="ctrl-btn-icon">&#128444;</span>Image</button>
+        <button class="ctrl-btn" data-insert-field="richtext"><span class="ctrl-btn-icon">&#10000;</span>Rich Text</button>
+        <button class="ctrl-btn" data-insert-field="computed"><span class="ctrl-btn-icon">&#9889;</span>Computed</button>
+        <button class="ctrl-btn" data-insert-field="signature"><span class="ctrl-btn-icon">&#10002;</span>Signature</button>
+        <button class="ctrl-btn" data-insert-field="parse"><span class="ctrl-btn-icon">&#128269;</span>Parse</button>
+        <div class="ctrl-divider"></div>
+        <div class="ctrl-group-label">File</div>
+        <button class="ctrl-btn" data-insert-field="filename"><span class="ctrl-btn-icon">&#128194;</span>Filename</button>
+        <button class="ctrl-btn" data-insert-field="dir"><span class="ctrl-btn-icon">&#128193;</span>Directory</button>
+        <div class="ctrl-divider"></div>
+        <div class="ctrl-group-label">Secure</div>
+        <button class="ctrl-btn" data-insert-field="credential"><span class="ctrl-btn-icon">&#128273;</span>Credential</button>
+        <button class="ctrl-btn" data-insert-field="totp"><span class="ctrl-btn-icon">&#128272;</span>TOTP</button>
+        <div class="ctrl-divider"></div>
+        <div class="ctrl-group-label">File</div>
+        <button class="ctrl-btn" data-insert-field="attachment"><span class="ctrl-btn-icon">&#128206;</span>Attachment</button>
+      </div>
+    </div>
+    <div class="ctrl-pane-tab" title="Toggle Form panel">
+      <span class="pane-grip" data-pane-grip="form-pane" title="Drag to reorder">&#8942;</span>
+      <span class="panel-tab-title">Form</span>
+      <button class="panel-tab-arrow">&#8249;</button>
+    </div>
+  </div><!-- #form-pane -->
+
+  <div id="outline-panel">
+    <div id="outline-content">
+      <h3>Outline<button class="panel-tab-arrow" id="btn-outline-collapse" style="margin-left:auto">&#8249;</button></h3>
+      <div id="outline-list"><div style="padding:10px;font-size:11px;color:var(--muted)">No headings yet</div></div>
+    </div>
+    <div id="outline-tab" title="Toggle Outline">
+      <span class="pane-grip" data-pane-grip="outline-panel" title="Drag to reorder">&#8942;</span>
+      <span class="panel-tab-title">Outline</span>
+      <button class="panel-tab-arrow">&#8249;</button>
+    </div>
+  </div>
+
+  </div><!-- #dock-left -->
+
+  <div id="canvas-wrap">
+    <div id="canvas">
+      <div id="canvas-empty">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-bottom:10px">
+          <rect x="8" y="4" width="28" height="36" rx="3" fill="currentColor" opacity=".12"/>
+          <rect x="8" y="4" width="28" height="36" rx="3" stroke="currentColor" stroke-width="2" opacity=".5"/>
+          <line x1="14" y1="14" x2="30" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".6"/>
+          <line x1="14" y1="20" x2="30" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".6"/>
+          <line x1="14" y1="26" x2="24" y2="26" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".6"/>
+          <circle cx="36" cy="36" r="8" fill="currentColor" opacity=".15"/>
+          <line x1="33" y1="36" x2="39" y2="36" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <line x1="36" y1="33" x2="36" y2="39" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <div>Start building your document</div>
+        <p>Use the toolbar to insert blocks, or click Insert &#9662; to add content</p>
+      </div>
+      <div id="blocks-root"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT DOCK ZONE -->
+  <div id="dock-right">
+
+  <div id="props-panel">
+    <div id="props-tab" title="Toggle Properties">
+      <span class="pane-grip" data-pane-grip="props-panel" title="Drag to reorder">&#8942;</span>
+      <span class="panel-tab-title">Properties</span>
+      <button class="panel-tab-arrow">&#8250;</button>
+    </div>
+    <div id="props-content">
+      <h3>Properties<button class="panel-tab-arrow" id="btn-props-collapse" style="margin-left:auto">&#8250;</button></h3>
+      <div id="props-body">
+        <div id="props-empty">Select a field block to edit its properties</div>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- #dock-right -->
+</div><!-- .body -->
+
+<!-- BOTTOM DOCK ZONE -->
+<div id="dock-bottom"></div>
+
+<!-- FLOAT DOCK ZONE -->
+<div id="dock-float"></div>
+
+<!-- INSERT FLOAT MENU -->
+<div id="insert-float"></div>
+
+<!-- PREVIEW MODAL -->
+<div id="preview-modal">
+  <div class="preview-box">
+    <div class="preview-box-header">
+      <h3>Document Preview</h3>
+      <button id="preview-close">&#10005; Close</button>
+    </div>
+    <iframe id="preview-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-modals"></iframe>
+  </div>
+</div>
+
+<!-- OPTIONS DIALOG -->
+<div id="options-dialog">
+  <div id="options-dialog-header">
+    <span style="font-size:16px;">&#9881;</span>
+    <h2>Options</h2>
+    <button id="options-dialog-close" title="Close">&#10005;</button>
+  </div>
+  <div id="options-dialog-main">
+    <nav id="opts-nav">
+      <button class="opts-nav-btn active" data-opts-section="layout">Layout</button>
+      <button class="opts-nav-btn" data-opts-section="animations">Animations</button>
+      <button class="opts-nav-btn" data-opts-section="menu-items">Menu Items</button>
+      <button class="opts-nav-btn" data-opts-section="editing">Editing</button>
+      <button class="opts-nav-btn" data-opts-section="fonts">Fonts</button>
+      <button class="opts-nav-btn" data-opts-section="prefs-io">Preferences</button>
+      <button class="opts-nav-btn" data-opts-section="shortcuts">Shortcuts</button>
+      <button class="opts-nav-btn" data-opts-section="themes">Themes</button>
+      <button class="opts-nav-btn" data-opts-section="date-formats">Date Formats</button>
+    </nav>
+    <div id="opts-content">
+
+      <!-- LAYOUT -->
+      <div class="opts-section active" id="opts-section-layout">
+        <div class="opts-section-label">Panel Positions</div>
+        <div id="opts-dock-settings">
+          <div class="opts-dock-row">
+            <span class="opts-dock-label">Format</span>
+            <div class="opts-dock-btns" data-dock-panel="format-pane">
+              <button class="opts-dock-btn active" data-zone="left">&#8592; Left</button>
+              <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
+              <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
+              <button class="opts-dock-btn" data-zone="right">&#8594; Right</button>
+              <button class="opts-dock-btn" data-zone="float">&#8599; Float</button>
+            </div>
+          </div>
+          <div class="opts-dock-row">
+            <span class="opts-dock-label">Text</span>
+            <div class="opts-dock-btns" data-dock-panel="text-pane">
+              <button class="opts-dock-btn active" data-zone="left">&#8592; Left</button>
+              <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
+              <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
+              <button class="opts-dock-btn" data-zone="right">&#8594; Right</button>
+              <button class="opts-dock-btn" data-zone="float">&#8599; Float</button>
+            </div>
+          </div>
+          <div class="opts-dock-row">
+            <span class="opts-dock-label">Form</span>
+            <div class="opts-dock-btns" data-dock-panel="form-pane">
+              <button class="opts-dock-btn active" data-zone="left">&#8592; Left</button>
+              <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
+              <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
+              <button class="opts-dock-btn" data-zone="right">&#8594; Right</button>
+              <button class="opts-dock-btn" data-zone="float">&#8599; Float</button>
+            </div>
+          </div>
+          <div class="opts-dock-row">
+            <span class="opts-dock-label">Outline</span>
+            <div class="opts-dock-btns" data-dock-panel="outline-panel">
+              <button class="opts-dock-btn active" data-zone="left">&#8592; Left</button>
+              <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
+              <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
+              <button class="opts-dock-btn" data-zone="right">&#8594; Right</button>
+              <button class="opts-dock-btn" data-zone="float">&#8599; Float</button>
+            </div>
+          </div>
+          <div class="opts-dock-row">
+            <span class="opts-dock-label">Properties</span>
+            <div class="opts-dock-btns" data-dock-panel="props-panel">
+              <button class="opts-dock-btn" data-zone="left">&#8592; Left</button>
+              <button class="opts-dock-btn" data-zone="top">&#8593; Top</button>
+              <button class="opts-dock-btn" data-zone="bottom">&#8595; Bottom</button>
+              <button class="opts-dock-btn active" data-zone="right">&#8594; Right</button>
+              <button class="opts-dock-btn" data-zone="float">&#8599; Float</button>
+            </div>
+          </div>
+        </div>
+        <div class="opts-divider"></div>
+        <div class="opts-section-label">Floating Panels</div>
+        <div class="opts-toggle-row">
+          <span>Transparency</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="range" id="opts-float-opacity" class="tui-slider__input" min="0" max="100" value="70" style="width:100px">
+            <span id="opts-float-opacity-val" class="tui-slider__value" style="min-width:28px">70%</span>
+          </div>
+        </div>
+        <div class="opts-toggle-row" style="margin-top:8px">
+          <span>Blur</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="range" id="opts-float-blur" class="tui-slider__input" min="0" max="20" value="0" style="width:100px">
+            <span id="opts-float-blur-val" class="tui-slider__value" style="min-width:28px">0px</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANIMATIONS -->
+      <div class="opts-section" id="opts-section-animations">
+        <div class="opts-section-label">Transitions</div>
+        <div class="opts-toggle-row">
+          <span>Animate panel open / close</span>
+          <button class="opts-toggle on" id="opts-transitions-toggle" title="Toggle transitions"></button>
+        </div>
+      </div>
+
+      <!-- MENU ITEMS -->
+      <div class="opts-section" id="opts-section-menu-items">
+        <p class="opts-helper-text" style="margin-bottom:8px;">Select a pane, then a category, then toggle individual items on or off.</p>
+        <div class="mib-browser">
+          <div class="mib-col" id="mib-col-panes"></div>
+          <div class="mib-col" id="mib-col-groups"></div>
+          <div class="mib-col mib-col-items" id="mib-col-items">
+            <div class="mib-empty">← Select a category</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EDITING -->
+      <div class="opts-section" id="opts-section-editing">
+        <div class="opts-section-label">Auto-Save</div>
+        <div class="opts-toggle-row" style="margin-bottom:10px;">
+          <span>Save frequency</span>
+          <select id="opts-autosave-freq" class="opts-select">
+            <option value="0">Off</option>
+            <option value="30">Every 30 seconds</option>
+            <option value="60" selected>Every minute</option>
+            <option value="300">Every 5 minutes</option>
+            <option value="600">Every 10 minutes</option>
+          </select>
+        </div>
+        <div class="opts-divider"></div>
+        <div class="opts-section-label">Undo History</div>
+        <div class="opts-toggle-row" style="margin-bottom:10px;">
+          <span>Granularity Type</span>
+          <div class="opts-pill-group" id="opts-undo-granularity-pill">
+            <div class="opts-pill-slider" id="opts-gran-slider"></div>
+            <input type="radio" name="undo-gran" id="opts-gran-action" value="action">
+            <label for="opts-gran-action">Per Action</label>
+            <input type="radio" name="undo-gran" id="opts-gran-time" value="time">
+            <label for="opts-gran-time">By Time Window</label>
+          </div>
+        </div>
+        <div class="opts-toggle-row" id="opts-undo-window-row" style="margin-top:8px;">
+          <span>Time window</span>
+          <div class="opts-undo-depth-wrap">
+            <button type="button" class="opts-num-step-btn" id="opts-undo-window-dec" title="Decrease">&#x2212;</button>
+            <input type="number" id="opts-undo-time-window-num" class="opts-num-input" min="100" max="60000" value="1000" style="width:68px;">
+            <span style="font-size:11px;color:var(--muted);margin-left:2px;">ms</span>
+            <button type="button" class="opts-num-step-btn" id="opts-undo-window-inc" title="Increase">&#x2B;</button>
+            <select id="opts-undo-window-preset" class="opts-select opts-preset-select" title="Quick presets">
+              <option value="">Presets…</option>
+              <option value="500">0.5 s</option>
+              <option value="1000">1 s</option>
+              <option value="2000">2 s</option>
+              <option value="5000">5 s</option>
+              <option value="10000">10 s</option>
+              <option value="30000">30 s</option>
+            </select>
+          </div>
+        </div>
+        <div class="opts-toggle-row" style="margin-top:8px;">
+          <span>Max undo steps</span>
+          <div class="opts-undo-depth-wrap">
+            <button type="button" class="opts-num-step-btn" id="opts-undo-depth-dec" title="Decrease">&#x2212;</button>
+            <input type="number" id="opts-undo-depth-num" class="opts-num-input" min="1" max="10000" value="100">
+            <button type="button" class="opts-num-step-btn" id="opts-undo-depth-inc" title="Increase">&#x2B;</button>
+            <select id="opts-undo-depth-preset" class="opts-select opts-preset-select" title="Quick presets">
+              <option value="">Presets…</option>
+              <option value="10">10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="200">200</option>
+              <option value="500">500</option>
+              <option value="1000">1,000</option>
+              <option value="5000">5,000</option>
+              <option value="10000">10,000</option>
+            </select>
+          </div>
+        </div>
+        <div class="opts-toggle-row" style="margin-top:8px;">
+          <span>Save undo history with document</span>
+          <button class="opts-toggle" id="opts-persist-undo" title="Persist undo history"></button>
+        </div>
+        <div class="opts-divider"></div>
+        <div class="opts-section-label">Formatting Scope</div>
+        <div class="opts-toggle-row" style="margin-bottom:6px;">
+          <span>Apply formatting to whole block</span>
+          <button class="opts-toggle" id="opts-block-fmt" title="Block-level formatting"></button>
+        </div>
+        <p class="opts-helper-text" style="margin:0;">When on, clicking a format option applies it to the entire block regardless of what text is selected. When off, formatting applies only to the selected text.</p>
+      </div>
+
+      <!-- FONTS -->
+      <div class="opts-section" id="opts-section-fonts">
+        <div class="opts-section-label">Custom Fonts</div>
+        <p class="opts-helper-text">Import a font file (TTF, OTF, WOFF, WOFF2) to use it in Format &rsaquo; Font. Fonts are stored locally in this browser.</p>
+        <button class="opts-action-btn" id="opts-import-font">&#43; Import font file&hellip;</button>
+        <input type="file" id="opts-font-file-input" accept=".ttf,.otf,.woff,.woff2" style="display:none">
+        <div id="opts-font-list" style="margin-top:12px;display:flex;flex-direction:column;gap:6px;"></div>
+
+        <div class="opts-divider"></div>
+
+        <div class="opts-section-label">Export</div>
+        <div class="opts-toggle-row">
+          <span>Embed fonts in exported HTML</span>
+          <button class="opts-toggle" id="opts-embed-fonts"></button>
+        </div>
+        <p class="opts-helper-text" style="margin-top:4px;">When on, custom font data is inlined into the exported HTML so it renders correctly without internet access.</p>
+        <div class="opts-toggle-row" style="margin-top:8px;">
+          <span>Include fonts in .zip package</span>
+          <button class="opts-toggle" id="opts-embed-fonts-zip"></button>
+        </div>
+        <p class="opts-helper-text" style="margin-top:4px;">When on, custom font files are bundled into a <code>fonts/</code> folder inside the ZIP.</p>
+      </div>
+
+      <!-- PREFERENCES IMPORT / EXPORT -->
+      <div class="opts-section" id="opts-section-prefs-io">
+        <div class="opts-section-label">Export</div>
+        <p class="opts-helper-text" style="margin-bottom:10px;">Choose how each file type is saved. <em>File picker</em> opens a native Save As dialog; <em>silent download</em> saves immediately to your browser's default download folder.</p>
+        <div class="opts-toggle-row" style="margin-bottom:8px;">
+          <span>Save as .md</span>
+          <select class="opts-select" id="opts-export-mode-md">
+            <option value="picker">File picker</option>
+            <option value="download">Silent download</option>
+          </select>
+        </div>
+        <div class="opts-toggle-row" style="margin-bottom:8px;">
+          <span>HTML export (.html)</span>
+          <select class="opts-select" id="opts-export-mode">
+            <option value="picker">File picker</option>
+            <option value="download">Silent download</option>
+          </select>
+        </div>
+        <div class="opts-toggle-row" style="margin-bottom:8px;">
+          <span>ZIP package (.zip)</span>
+          <select class="opts-select" id="opts-export-mode-zip">
+            <option value="picker">File picker</option>
+            <option value="download">Silent download</option>
+          </select>
+        </div>
+        <div class="opts-toggle-row">
+          <span>Preferences config (.json)</span>
+          <select class="opts-select" id="opts-export-mode-prefs">
+            <option value="picker">File picker</option>
+            <option value="download">Silent download</option>
+          </select>
+        </div>
+
+        <div class="opts-divider"></div>
+
+        <div class="opts-section-label">Preferences file</div>
+        <p class="opts-helper-text">Save all your Tessel preferences to a file you can bring to another instance.</p>
+        <button class="opts-action-btn" id="opts-export-prefs">&#8595; Export preferences&hellip;</button>
+
+        <div class="opts-divider"></div>
+
+        <div class="opts-section-label">Import</div>
+        <p class="opts-helper-text">Load a preferences file exported from another Tessel instance. This will overwrite your current settings.</p>
+        <button class="opts-action-btn" id="opts-import-prefs">&#8593; Import preferences&hellip;</button>
+        <input type="file" id="opts-import-prefs-file" accept=".json" style="display:none">
+        <div id="opts-import-status" class="opts-import-status"></div>
+      </div>
+
+      <!-- KEYBOARD SHORTCUTS -->
+      <div class="opts-section" id="opts-section-shortcuts">
+        <div class="opts-section-label">Document</div>
+        <table class="shortcut-table">
+          <tr><td class="shortcut-keys"><kbd>Ctrl</kbd><kbd>S</kbd></td><td>Save draft</td></tr>
+          <tr><td class="shortcut-keys"><kbd>Ctrl</kbd><kbd>Z</kbd></td><td>Undo</td></tr>
+          <tr><td class="shortcut-keys"><kbd>Ctrl</kbd><kbd>Y</kbd></td><td>Redo</td></tr>
+          <tr><td class="shortcut-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Z</kbd></td><td>Redo (alternate)</td></tr>
+          <tr><td class="shortcut-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>S</kbd></td><td>Save as .md</td></tr>
+          <tr><td class="shortcut-keys"><kbd>Ctrl</kbd><kbd>E</kbd></td><td>Export HTML</td></tr>
+          <tr><td class="shortcut-keys"><kbd>Esc</kbd></td><td>Close dialogs / dismiss menus</td></tr>
+        </table>
+
+        <div class="opts-divider"></div>
+        <div class="opts-section-label">Editing</div>
+        <table class="shortcut-table">
+          <tr><td class="shortcut-keys"><kbd>Enter</kbd></td><td>New block after current heading or paragraph</td></tr>
+          <tr><td class="shortcut-keys"><kbd>Backspace</kbd></td><td>Delete block when its content is empty</td></tr>
+          <tr><td class="shortcut-keys"><kbd>Enter</kbd> <span class="shortcut-ctx">in list item</span></td><td>Add new list item</td></tr>
+          <tr><td class="shortcut-keys"><kbd>Tab</kbd> <span class="shortcut-ctx">in code block</span></td><td>Insert tab character</td></tr>
+        </table>
+
+        <div class="opts-divider"></div>
+        <div class="opts-section-label">Navigation &amp; UI</div>
+        <table class="shortcut-table">
+          <tr><td class="shortcut-keys"><kbd>Shift</kbd> + scroll <span class="shortcut-ctx">over toolbar</span></td><td>Scroll toolbar buttons horizontally</td></tr>
+          <tr><td class="shortcut-keys">Drag title bar</td><td>Reorder or move a pane to another edge</td></tr>
+        </table>
+
+        <p class="opts-helper-text" style="margin-top:12px;"><kbd>Ctrl</kbd> = Ctrl on Windows/Linux, ⌘ Cmd on macOS.</p>
+      </div>
+
+      <div class="opts-section" id="opts-section-themes">
+        <div class="opts-section-label">THEME A / B</div>
+        <p class="opts-helper-text">Drag a theme onto a slot to assign it. Click a slot to activate that theme.</p>
+        <div id="opts-theme-slots">
+          <div class="opts-theme-slot-wrapper">
+            <div class="opts-theme-slot-label">A</div>
+            <div class="opts-theme-slot" id="opts-slot-a" data-slot="a">
+              <div class="opts-theme-slot-card">
+                <div class="opts-theme-slot-name" id="opts-slot-a-name">—</div>
+                <div class="opts-theme-slot-swatches" id="opts-slot-a-swatches"></div>
+              </div>
+            </div>
+          </div>
+          <div class="opts-theme-slot-wrapper">
+            <div class="opts-theme-slot-label">B</div>
+            <div class="opts-theme-slot" id="opts-slot-b" data-slot="b">
+              <div class="opts-theme-slot-card">
+                <div class="opts-theme-slot-name" id="opts-slot-b-name">—</div>
+                <div class="opts-theme-slot-swatches" id="opts-slot-b-swatches"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="opts-section-label" style="margin-top:14px;">ALL THEMES</div>
+        <div id="opts-themes-list"></div>
+        <button class="theme-new-btn" id="btn-new-theme">+ New Custom Theme</button>
+        <div id="theme-editor-container" style="display:none;"></div>
+      </div>
+
+      <!-- DATE FORMATS -->
+      <div class="opts-section" id="opts-section-date-formats">
+        <div class="opts-section-label">Default Timezone</div>
+        <div id="opts-datefmt-tz-wrap"></div>
+        <div class="opts-divider"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <p class="opts-helper-text" style="margin:0;flex:1;">Customize the preset patterns available in the date and date-time format dropdowns. Changes take effect the next time a date field is selected.</p>
+          <button type="button" id="opts-datefmt-help-btn" class="opts-num-step-btn" style="flex-shrink:0;font-size:11px;padding:4px 9px;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;" title="Pattern reference &amp; tester">?</button>
+        </div>
+        <div id="opts-datefmt-date-wrap"></div>
+        <div class="opts-divider"></div>
+        <div id="opts-datefmt-datetime-wrap"></div>
+      </div>
+
+    </div>
+  </div>
+  <div id="options-dialog-resize" title="Resize"></div>
+</div>
+
+<!-- DATE PATTERN HELP FLOATER -->
+<div id="datefmt-help-dialog" style="display:none;position:fixed;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.32);min-width:420px;max-width:540px;width:480px;top:80px;left:50%;transform:translateX(-50%);font-size:12px;color:var(--text);">
+  <div id="datefmt-help-header" style="display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);cursor:move;user-select:none;">
+    <span style="flex:1;font-weight:600;font-size:13px;">Date Pattern Reference</span>
+    <button id="datefmt-help-close" type="button" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--muted);font-size:14px;line-height:1;padding:2px 6px;" title="Close">&times;</button>
+  </div>
+  <div style="padding:14px;max-height:70vh;overflow-y:auto;">
+    <p style="margin:0 0 10px;color:var(--muted);font-size:11px;line-height:1.5;">Patterns are built by combining tokens. Any non-token characters (spaces, slashes, commas) are passed through literally.</p>
+    <div style="border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:12px;">
+      <div style="font-weight:600;margin-bottom:8px;font-size:12px;">Live Tester</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+        <label style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:56px;">Pattern</label>
+        <input type="text" id="datefmt-help-pattern" placeholder="e.g. MMMM DD, YYYY h:mm A" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;padding:5px 7px;outline:none;font-family:monospace;">
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+        <label style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:56px;">Date/time</label>
+        <div style="flex:1;display:flex;align-items:center;gap:4px;position:relative;">
+          <div id="datefmt-help-dt-display" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;padding:5px 7px;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+          <button type="button" id="datefmt-help-cal-btn" title="Pick date &amp; time" style="display:flex;align-items:center;flex-shrink:0;height:28px;padding:0 6px;background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);opacity:.7;line-height:1;"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="1" y="3" width="14" height="12" rx="1.5"/><path d="M1 7h14M5 1v4M11 1v4"/></svg></button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:56px;">Preview</label>
+        <div id="datefmt-help-preview" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:5px 7px;font-family:monospace;font-size:13px;min-height:28px;color:var(--text);"></div>
+      </div>
+    </div>
+    <table id="datefmt-help-table" style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border);">
+          <th style="text-align:left;padding:4px 8px;font-size:11px;color:var(--muted);font-weight:600;">Token</th>
+          <th style="text-align:left;padding:4px 8px;font-size:11px;color:var(--muted);font-weight:600;">Output</th>
+          <th style="text-align:left;padding:4px 8px;font-size:11px;color:var(--muted);font-weight:600;">Example</th>
+        </tr>
+      </thead>
+      <tbody id="datefmt-help-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- STATUS BAR -->
+<div id="status-bar">Ready</div>
+
+<script src="../../dist/tessel.bundle.js"></script>
+<script type="module" src="./main.js"></script>
+</body>
+</html>
