@@ -24,6 +24,7 @@ function fixOutputPath() {
 
 export default defineConfig({
   build: {
+    target: 'es2022',
     outDir: path.resolve(__dirname, 'studio'),
     emptyOutDir: false,
     rollupOptions: {
