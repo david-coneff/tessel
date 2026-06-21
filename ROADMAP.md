@@ -1,6 +1,6 @@
 # Tessel — Implementation Roadmap
 
-Last updated: 2026-06-17
+Last updated: 2026-06-21
 
 ---
 
@@ -465,6 +465,58 @@ tessel.js
 
 ---
 
+### Phase 8 — DocGraph Tooling
+
+**Goal:** `tools/doc-graph.py` — Rhizome DocGraph protocol (rhiz-docgraph v1) for Merkle-tree document decomposition. Large Markdown artifacts can be split into independently hash-verified section files with a JSON index.
+
+**Commands:** `split`, `update`, `verify`, `merge`, `status`, `init`. Zero external dependencies; Python 3.8+ stdlib only.
+
+**Status:** **Complete.** `tools/doc-graph.py` delivered.
+
+---
+
+### Phase 9 — Tessel VS Studio PWA Wrapper (Optional)
+
+**Goal:** An optional, additive deployment target that wraps the existing `studio/tessel-vs.html` Vite build output as an installable Progressive Web App. This phase does **not** change the core build pipeline or the portable single-file HTML artifact — it is a side implementation that sits alongside the existing build.
+
+**Core constraint (non-negotiable):** The plain `studio/tessel-vs.html` output must remain fully functional without any server, service worker, or PWA infrastructure. Portability-by-file-copy is a design principle and is preserved unchanged.
+
+**What the PWA wrapper adds:**
+- `manifest.json` — app name, icons, display mode (`standalone`), theme color
+- Service worker (via `vite-plugin-pwa`) — precaches the single-file HTML output for offline-install use
+- Home-screen / taskbar install prompt in supporting browsers
+
+**Update behavior:** Configured with `registerType: 'autoUpdate'`, `skipWaiting: true`, and `clientsClaim: true`. This makes update semantics identical to the plain HTML workflow: pull → build → refresh → new version. No manual uninstall/reinstall cycle. No "waiting" SW state.
+
+**Browser dependency note:** PWA install and service worker require HTTPS or `localhost`. The PWA wrapper therefore requires a local dev server (e.g., `vite preview`) or a static hosting deployment. This is an **additional external dependency** that does not exist for the plain HTML artifact. Users who want zero-dependency portability should continue using `studio/tessel-vs.html` directly.
+
+**Implementation sketch:**
+
+```js
+// vite.config.js — PWA target (separate config or build mode flag)
+import { VitePWA } from 'vite-plugin-pwa'
+
+VitePWA({
+  registerType: 'autoUpdate',
+  workbox: {
+    clientsClaim: true,
+    skipWaiting: true,
+  },
+  manifest: {
+    name: 'Tessel VS Studio',
+    short_name: 'Tessel VS',
+    display: 'standalone',
+    // ...
+  }
+})
+```
+
+**Relationship to Electron/Tauri/PWA native wrapper (future):** The in-pane ↩ and × controls added during the pop-out window work (PW-006) are intentionally designed to be the sole window chrome when OS title bars are suppressed by a native wrapper. A Tessel VS PWA in `standalone` display mode — or a future Electron/Tauri shell — will benefit from these controls without any additional changes.
+
+**Status:** Roadmap item. Not started. Requires Phase 6 (full Tessel VS Studio build) to be stable before this is meaningful to ship.
+
+---
+
 ## 7. Key Architectural Decisions
 
 ### AD-T-001 — JavaScript as the primary compiler
@@ -684,8 +736,10 @@ tessel/
 | 5 | tessel-vault.html | **Complete** | Low |
 | 6 | Tessel Studio full (WYSIWYG + form designer) | **In progress** | Very High |
 | 7 | Broodforge migration | **Complete** | Medium |
+| 8 | DocGraph tooling (`doc-graph.py`) | **Complete** | Low |
+| 9 | Tessel VS Studio PWA wrapper (optional, additive) | **Roadmap** | Low |
 
-**Recommended sequence:** Phase 0 → 1 → 3 → 2 → 5 → 4 → 7 → 6
+**Recommended sequence:** Phase 0 → 1 → 3 → 2 → 5 → 4 → 7 → 6 → 8 → (9 optional, after Phase 6 stable)
 
 ---
 
@@ -725,6 +779,4 @@ tessel/
 
 **Phase 6 — Full WYSIWYG Studio:** `studio/tessel-studio-full.html` exists and provides the compiler-mode and Studio foundation. The remaining work is full WYSIWYG editing (in-browser visual editing of Markdown without switching to raw source) and the visual form designer (drag-and-drop `@directive` insertion and configuration).
 
-Phases 0–5 and Phase 7 are complete. Phase 6 is the final major phase.
-
-**Phase 8 — DocGraph tooling (`doc-graph.py`):** `tools/doc-graph.py` implements the Rhizome DocGraph protocol (rhiz-docgraph v1) for Merkle-tree document decomposition. Large Markdown artifacts (such as this ROADMAP or any Tessel spec file) can be split into independently hash-verified section files with a JSON index. Commands: `split`, `update`, `verify`, `merge`, `status`, `init`. Zero external dependencies; Python 3.8+ stdlib only.
+Phases 0–5 and Phase 7–8 are complete. Phase 6 is the final major phase. Phase 9 (PWA wrapper) is an optional additive target, deferred until Phase 6 is stable.
