@@ -47,6 +47,7 @@ function tesselBundleAsset() {
 export default defineConfig({
   base: '/tessel/',
   build: {
+    target:      'es2022',
     outDir:      path.resolve(__dirname, 'studio/tessel-pwa/dist'),
     emptyOutDir: true,
     rollupOptions: {
