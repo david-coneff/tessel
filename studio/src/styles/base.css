@@ -681,6 +681,7 @@ select.prop-input { cursor: pointer; }
 
 /* satellite window layout */
 body.satellite-mode { margin: 0; overflow: hidden; }
+.satellite-hidden { display: none !important; }
 .satellite-pane {
   position: fixed !important;
   left: 0 !important; top: 0 !important;

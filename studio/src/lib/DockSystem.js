@@ -168,13 +168,13 @@ export function initDockSystem() {
       if (!winRef) return;
       var pb = document.querySelector('[data-pane-pip-btn="'+panelId+'"]');
       if (pb) pb.classList.add('pip-active');
-      panel.classList.add('off');
+      panel.classList.add('satellite-hidden');
       pipPanels[panelId] = { pipWin: winRef, isSatellite: true, panel: panel };
       var iv = setInterval(function() {
         if (winRef.closed) {
           clearInterval(iv);
           var entry = pipPanels[panelId];
-          if (entry && entry.panel) entry.panel.classList.remove('off');
+          if (entry && entry.panel) entry.panel.classList.remove('satellite-hidden');
           delete pipPanels[panelId];
           var pb2 = document.querySelector('[data-pane-pip-btn="'+panelId+'"]');
           if (pb2) pb2.classList.remove('pip-active');
