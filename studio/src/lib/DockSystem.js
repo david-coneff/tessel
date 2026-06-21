@@ -350,6 +350,22 @@ export function initDockSystem() {
       var s; try { s=localStorage.getItem('tvs:dock:'+panelId); } catch(e) {}
       if (s==='float') floatPanel(panelId);
     });
+
+    window._syncPipTheme = function(themeId) {
+      Object.keys(pipPanels).forEach(function(pid) {
+        var entry = pipPanels[pid];
+        if (entry.isSatellite || !entry.pipWin) return;
+        try {
+          var el = entry.pipWin.document.getElementById('tvs-theme-style');
+          var mainEl = document.getElementById('tvs-theme-style');
+          if (el && mainEl) { el.textContent = mainEl.textContent; }
+          if (isLightColor) {
+            entry.pipWin.document.body.classList.toggle('light',
+              document.body.classList.contains('light'));
+          }
+        } catch(e) {}
+      });
+    };
   })();
 
   // ── Vertical pane width resize ─────────────────────────────────────────────

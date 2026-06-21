@@ -218,6 +218,7 @@ export function initApp() {
 
     onThemeChange(function(themeId) {
       broadcastTheme(themeId);
+      if (window._syncPipTheme) window._syncPipTheme(themeId);
     });
   }
 }
