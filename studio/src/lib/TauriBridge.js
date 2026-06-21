@@ -29,6 +29,13 @@ export async function openTauriSatellite(panelId, url, w, h) {
   } catch(e) { return null; }
 }
 
+// Close the current window via the Tauri API. window.close() only blanks the
+// WebView content in Tauri; getCurrentWindow().close() closes the OS frame.
+export function closeCurrentWindow() {
+  if (!isTauri) { window.close(); return; }
+  try { getCurrentWindow().close(); } catch(e) { window.close(); }
+}
+
 // Register minimize/restore sync: when the main window minimizes, minimize all
 // open satellite windows. Restored when main restores. Call once after dock init.
 // getSatelliteHandles() should return the pipPanels map from DockSystem.

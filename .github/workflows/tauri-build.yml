@@ -83,6 +83,41 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+      - name: Generate placeholder icons
+        shell: python3 {0}
+        run: |
+          import struct, zlib, os
+          PNG_SIG = b'\x89PNG\r\n\x1a\n'
+          def chunk(tag, data):
+              c = zlib.crc32(tag + data) & 0xffffffff
+              return struct.pack('>I', len(data)) + tag + data + struct.pack('>I', c)
+          def make_rgba_png(w, h, r=0x1a, g=0x1b, b=0x1e, a=255):
+              raw = b''
+              for _ in range(h):
+                  raw += b'\x00' + bytes([r, g, b, a]) * w
+              png = PNG_SIG
+              png += chunk(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 6, 0, 0, 0))
+              png += chunk(b'IDAT', zlib.compress(raw))
+              png += chunk(b'IEND', b'')
+              return png
+          def is_valid_png(path):
+              try:
+                  with open(path, 'rb') as f:
+                      return f.read(8) == PNG_SIG
+              except:
+                  return False
+          icons = os.path.join('src-tauri', 'icons')
+          os.makedirs(icons, exist_ok=True)
+          sizes = [('32x32.png', 32, 32), ('128x128.png', 128, 128), ('128x128@2x.png', 256, 256)]
+          for name, w, h in sizes:
+              p = os.path.join(icons, name)
+              if not is_valid_png(p):
+                  with open(p, 'wb') as f:
+                      f.write(make_rgba_png(w, h))
+                  print(f'Generated {name} ({w}x{h})')
+              else:
+                  print(f'Kept existing {name}')
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

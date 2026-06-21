@@ -169,17 +169,21 @@ export function initDockSystem() {
       var h = Math.round(parseFloat(panel.style.height) || panel.offsetHeight || FLOAT_H);
       var url = location.href.split('?')[0] + '?satellite=' + encodeURIComponent(panelId);
 
+      // Hide immediately so the panel doesn't stay visible while the satellite window opens.
+      panel.classList.add('satellite-hidden');
+
       function _onWindowReady(winRef) {
-        if (!winRef) return;
+        if (!winRef) {
+          panel.classList.remove('satellite-hidden');
+          return;
+        }
         var pb = document.querySelector('[data-pane-pip-btn="'+panelId+'"]');
         if (pb) pb.classList.add('pip-active');
-        panel.classList.add('satellite-hidden');
         pipPanels[panelId] = { pipWin: winRef, isSatellite: true, isTauri: isTauri, panel: panel };
         var iv = setInterval(function() {
           if (winRef.closed) {
             clearInterval(iv);
-            var entry = pipPanels[panelId];
-            if (entry && entry.panel) entry.panel.classList.remove('satellite-hidden');
+            panel.classList.remove('satellite-hidden');
             delete pipPanels[panelId];
             var pb2 = document.querySelector('[data-pane-pip-btn="'+panelId+'"]');
             if (pb2) pb2.classList.remove('pip-active');
@@ -188,7 +192,9 @@ export function initDockSystem() {
       }
 
       if (isTauri) {
-        openTauriSatellite(panelId, url, w, h).then(_onWindowReady).catch(function() {});
+        openTauriSatellite(panelId, url, w, h).then(_onWindowReady).catch(function() {
+          panel.classList.remove('satellite-hidden');
+        });
       } else {
         var winRef = window.open(url, '_blank', 'width='+w+',height='+h+',popup=1');
         _onWindowReady(winRef);
@@ -273,8 +279,10 @@ export function initDockSystem() {
         pipBtn.addEventListener('click', function(e) {
           e.stopPropagation();
           if (pipPanels[pid]) {
-            try { pipPanels[pid].pipWin.close(); } catch(ex) {}
-            if (pipPanels[pid].isSatellite) {
+            var _entry = pipPanels[pid];
+            try { _entry.pipWin.close(); } catch(ex) {}
+            if (_entry.isSatellite) {
+              if (_entry.panel) _entry.panel.classList.remove('satellite-hidden');
               delete pipPanels[pid];
               pipBtn.classList.remove('pip-active');
             }
