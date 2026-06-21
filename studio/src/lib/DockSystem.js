@@ -352,17 +352,21 @@ export function initDockSystem() {
     });
 
     window._syncPipTheme = function(themeId) {
+      var mainEl = document.getElementById('tvs-theme-style');
+      if (!mainEl) return;
       Object.keys(pipPanels).forEach(function(pid) {
         var entry = pipPanels[pid];
         if (entry.isSatellite || !entry.pipWin) return;
         try {
           var el = entry.pipWin.document.getElementById('tvs-theme-style');
-          var mainEl = document.getElementById('tvs-theme-style');
-          if (el && mainEl) { el.textContent = mainEl.textContent; }
-          if (isLightColor) {
-            entry.pipWin.document.body.classList.toggle('light',
-              document.body.classList.contains('light'));
+          if (!el) {
+            el = entry.pipWin.document.createElement('style');
+            el.id = 'tvs-theme-style';
+            entry.pipWin.document.head.appendChild(el);
           }
+          el.textContent = mainEl.textContent;
+          entry.pipWin.document.body.classList.toggle('light',
+            document.body.classList.contains('light'));
         } catch(e) {}
       });
     };
