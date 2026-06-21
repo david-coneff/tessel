@@ -1,3 +1,4 @@
+import * as StorageEngine from './StorageEngine.js';
 import { esc } from './utils.js';
 
 export var FORMAT_PANE_ITEMS = [
@@ -22,12 +23,12 @@ export var FORMAT_PANE_ITEMS = [
 ];
 
 export function getHiddenItems(pane) {
-  try { var v = localStorage.getItem('tvs:hidden:' + pane); return new Set(v ? JSON.parse(v) : []); } catch(e) { return new Set(); }
+  try { var v = StorageEngine.getItem('tvs:hidden:' + pane); return new Set(v ? JSON.parse(v) : []); } catch(e) { return new Set(); }
 }
 export function setItemHidden(pane, label, hidden) {
   var set = getHiddenItems(pane);
   if (hidden) set.add(label); else set.delete(label);
-  try { localStorage.setItem('tvs:hidden:' + pane, JSON.stringify(Array.from(set))); } catch(e) {}
+  try { StorageEngine.setItem('tvs:hidden:' + pane, JSON.stringify(Array.from(set))); } catch(e) {}
   if (pane === 'text') buildTextPaneButtons();
   if (pane === 'format') applyFormatPaneVisibility();
 }
@@ -69,7 +70,7 @@ function buildTextPaneButtons() {
       if (hidden.has(item.label)) return;
       if (pendingGroupName !== null) {
         var key = 'tvs:grp:text:' + pendingGroupName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-        var saved; try { saved = localStorage.getItem(key); } catch(e) {}
+        var saved; try { saved = StorageEngine.getItem(key); } catch(e) {}
         var isOpen = saved !== '0';
         var lbl = document.createElement('div');
         lbl.className = 'ctrl-group-label ctrl-group-collapsible';
@@ -84,7 +85,7 @@ function buildTextPaneButtons() {
             open = !open;
             l.querySelector('.ctrl-group-arrow').innerHTML = open ? '&#9660;' : '&#9654;';
             w.style.display = open ? '' : 'none';
-            try { localStorage.setItem(k, open ? '1' : '0'); } catch(e) {}
+            try { StorageEngine.setItem(k, open ? '1' : '0'); } catch(e) {}
           });
         })(lbl, wrapper, key, isOpen);
         body.appendChild(lbl); body.appendChild(wrapper);
@@ -154,7 +155,7 @@ function initCollapsibleGroups(bodyEl, lsPrefix) {
     var labelEl = group.label;
     var groupName = labelEl.textContent.trim();
     var key = lsPrefix + ':' + groupName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    var saved; try { saved = localStorage.getItem(key); } catch(e) {}
+    var saved; try { saved = StorageEngine.getItem(key); } catch(e) {}
     var isOpen = saved !== '0';
     var wrapper = document.createElement('div');
     wrapper.className = 'ctrl-group-body';
@@ -170,7 +171,7 @@ function initCollapsibleGroups(bodyEl, lsPrefix) {
         open = !open;
         l.querySelector('.ctrl-group-arrow').innerHTML = open ? '&#9660;' : '&#9654;';
         w.style.display = open ? '' : 'none';
-        try { localStorage.setItem(k, open ? '1' : '0'); } catch(e) {}
+        try { StorageEngine.setItem(k, open ? '1' : '0'); } catch(e) {}
       });
     })(labelEl, wrapper, key, isOpen);
   });

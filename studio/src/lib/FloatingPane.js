@@ -1,3 +1,4 @@
+import * as StorageEngine from './StorageEngine.js';
 /**
  * FloatingPane — draggable, resizable, position-persistent floating dialog
  *
@@ -59,13 +60,13 @@ export class FloatingPane {
     if (this.showClass) this.el.classList.add(this.showClass);
     else this.el.style.display = '';
     this._restorePos();
-    if (this.openKey) { try { localStorage.setItem(this.openKey, '1'); } catch(e) {} }
+    if (this.openKey) { try { StorageEngine.setItem(this.openKey, '1'); } catch(e) {} }
   }
 
   close() {
     if (this.showClass) this.el.classList.remove(this.showClass);
     else this.el.style.display = 'none';
-    if (this.openKey) { try { localStorage.setItem(this.openKey, '0'); } catch(e) {} }
+    if (this.openKey) { try { StorageEngine.setItem(this.openKey, '0'); } catch(e) {} }
   }
 
   clamp() {
@@ -84,7 +85,7 @@ export class FloatingPane {
   restoreSize() {
     if (!this.sizeKey) return;
     try {
-      var s = JSON.parse(localStorage.getItem(this.sizeKey));
+      var s = JSON.parse(StorageEngine.getItem(this.sizeKey));
       if (s && s.w) this.el.style.width = s.w + 'px';
       if (s && s.h && this.sizeEl) this.sizeEl.style.height = s.h + 'px';
     } catch(e) {}
@@ -95,7 +96,7 @@ export class FloatingPane {
     if (this.el._fpDragged) { this.clamp(); return; }
     if (this.posKey) {
       try {
-        var v = JSON.parse(localStorage.getItem(this.posKey));
+        var v = JSON.parse(StorageEngine.getItem(this.posKey));
         if (v && v.left && v.top) {
           this.el.style.left      = v.left;
           this.el.style.top       = v.top;
@@ -126,7 +127,7 @@ export class FloatingPane {
       function onUp() {
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onUp);
-        if (self.posKey) try { localStorage.setItem(self.posKey, JSON.stringify({ left: self.el.style.left, top: self.el.style.top })); } catch(e) {}
+        if (self.posKey) try { StorageEngine.setItem(self.posKey, JSON.stringify({ left: self.el.style.left, top: self.el.style.top })); } catch(e) {}
       }
       document.addEventListener('mousemove', onMove);
       document.addEventListener('mouseup', onUp);
@@ -150,7 +151,7 @@ export class FloatingPane {
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onUp);
         if (self.sizeKey) {
-          try { localStorage.setItem(self.sizeKey, JSON.stringify({ w: self.el.offsetWidth, h: sizeEl ? sizeEl.offsetHeight : self.el.offsetHeight })); } catch(e) {}
+          try { StorageEngine.setItem(self.sizeKey, JSON.stringify({ w: self.el.offsetWidth, h: sizeEl ? sizeEl.offsetHeight : self.el.offsetHeight })); } catch(e) {}
         }
       }
       document.addEventListener('mousemove', onMove);

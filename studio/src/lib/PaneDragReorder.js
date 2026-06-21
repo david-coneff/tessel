@@ -1,3 +1,4 @@
+import * as StorageEngine from './StorageEngine.js';
 export function initPaneDragReorder(deps) {
   var dockPanel = deps.dockPanel;
 
@@ -31,13 +32,13 @@ export function initPaneDragReorder(deps) {
     var z = document.getElementById('dock-' + zone);
     if (!z) return;
     var order = Array.from(z.children).map(function(c) { return c.id; }).filter(Boolean);
-    try { localStorage.setItem('tvs:dock-order:' + zone, JSON.stringify(order)); } catch(e) {}
+    try { StorageEngine.setItem('tvs:dock-order:' + zone, JSON.stringify(order)); } catch(e) {}
   }
 
   function restorePaneOrder() {
     ZONES.forEach(function(zone) {
       try {
-        var saved = JSON.parse(localStorage.getItem('tvs:dock-order:' + zone) || 'null');
+        var saved = JSON.parse(StorageEngine.getItem('tvs:dock-order:' + zone) || 'null');
         if (!Array.isArray(saved)) return;
         var zoneEl = document.getElementById('dock-' + zone);
         saved.forEach(function(id) {

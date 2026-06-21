@@ -1,3 +1,4 @@
+import * as StorageEngine from './StorageEngine.js';
 import { clampToViewport } from './FloatingPane.js';
 import { sidePanelOpenFn, sidePanelArrowSync } from './PaneFactory.js';
 
@@ -51,7 +52,7 @@ export function dockPanel(panelId, zone) {
     b.classList.toggle('active', b.dataset.zone === zone);
   });
 
-  try { localStorage.setItem('tvs:dock:' + panelId, zone); } catch(e) {}
+  try { StorageEngine.setItem('tvs:dock:' + panelId, zone); } catch(e) {}
 }
 
 export var floatPanel = null;
@@ -66,8 +67,8 @@ export function initDockSystem() {
     var zCounter = 201;
     var pipPanels = {};
 
-    function loadState(id) { try { return JSON.parse(localStorage.getItem('tvs:float:'+id))||null; } catch(e) { return null; } }
-    function saveState(id,x,y,w,h) { try { localStorage.setItem('tvs:float:'+id, JSON.stringify({x:x,y:y,w:w,h:h})); } catch(e) {} }
+    function loadState(id) { try { return JSON.parse(StorageEngine.getItem('tvs:float:'+id))||null; } catch(e) { return null; } }
+    function saveState(id,x,y,w,h) { try { StorageEngine.setItem('tvs:float:'+id, JSON.stringify({x:x,y:y,w:w,h:h})); } catch(e) {} }
 
     function clampFloatPanel(panel) {
       if (!panel || !panel.classList.contains('dock-float')) return;
@@ -217,7 +218,7 @@ export function initDockSystem() {
       panel.classList.remove('off');
       var bdg = document.querySelector('[data-badge-pane="'+panelId+'"]') || document.getElementById('badge-'+panelId.replace(/-pane$/,'').replace(/-panel$/,''));
       if (bdg) bdg.classList.add('active');
-      try { localStorage.setItem('tvs:dock:'+panelId,'float'); } catch(e) {}
+      try { StorageEngine.setItem('tvs:dock:'+panelId,'float'); } catch(e) {}
     };
 
     function dockBack(panelId) {
@@ -350,7 +351,7 @@ export function initDockSystem() {
     });
 
     PANE_IDS.forEach(function(panelId) {
-      var s; try { s=localStorage.getItem('tvs:dock:'+panelId); } catch(e) {}
+      var s; try { s=StorageEngine.getItem('tvs:dock:'+panelId); } catch(e) {}
       if (s==='float') floatPanel(panelId);
     });
 
@@ -382,8 +383,8 @@ export function initDockSystem() {
     var LS_PREFIX = 'tvs:pane-w:';
 
     function lsKey(id) { return LS_PREFIX + id; }
-    function saveW(id, w) { try { localStorage.setItem(lsKey(id), w); } catch(e) {} }
-    function loadW(id) { try { var v = localStorage.getItem(lsKey(id)); return v ? parseInt(v, 10) : null; } catch(e) { return null; } }
+    function saveW(id, w) { try { StorageEngine.setItem(lsKey(id), w); } catch(e) {} }
+    function loadW(id) { try { var v = StorageEngine.getItem(lsKey(id)); return v ? parseInt(v, 10) : null; } catch(e) { return null; } }
 
     function isVertical(pane) {
       return !pane.classList.contains('pane-h') &&
@@ -467,8 +468,8 @@ export function initDockSystem() {
     function hideGhost() { ghostCtr.classList.remove('show'); }
 
     function lsKey(id) { return LS_PREFIX + id; }
-    function saveRows(id, n) { try { localStorage.setItem(lsKey(id), n); } catch(e) {} }
-    function loadRows(id) { try { var v = localStorage.getItem(lsKey(id)); return v ? Math.max(1, Math.min(MAX_ROWS, parseInt(v, 10))) : 1; } catch(e) { return 1; } }
+    function saveRows(id, n) { try { StorageEngine.setItem(lsKey(id), n); } catch(e) {} }
+    function loadRows(id) { try { var v = StorageEngine.getItem(lsKey(id)); return v ? Math.max(1, Math.min(MAX_ROWS, parseInt(v, 10))) : 1; } catch(e) { return 1; } }
 
     function updateIndicator(pane) {
       var body    = pane.querySelector('.ctrl-pane-body');

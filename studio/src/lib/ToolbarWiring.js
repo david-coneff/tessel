@@ -1,3 +1,4 @@
+import * as StorageEngine from './StorageEngine.js';
 import { icon, makeSeparator } from '../tessel-ui/index.js';
 import { undo, redo, clearUndoHistory, updateUndoButtons } from './undo.js';
 import { openZip, exportZip, exportMd, exportHtml } from './ExportManager.js';
@@ -61,7 +62,7 @@ export function initToolbarWiring(deps) {
     updateUndoButtons();
     deps.renderCanvas(); deps.renderProps();
     deps.setFilename('document');
-    try { localStorage.removeItem('tvs:filename'); } catch(e) {}
+    try { StorageEngine.removeItem('tvs:filename'); } catch(e) {}
     setStatus('New document');
     deps.setUnsaved(false);
   });

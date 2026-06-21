@@ -1,3 +1,4 @@
+import * as StorageEngine from './StorageEngine.js';
 export function initCustomFonts(deps) {
   var FONT_PREFIX = 'tvs:font:';
   var fontStyleEl = document.createElement('style');
@@ -44,10 +45,7 @@ export function initCustomFonts(deps) {
     list.innerHTML = '';
     var keys = [];
     try {
-      for (var i = 0; i < localStorage.length; i++) {
-        var k = localStorage.key(i);
-        if (k && k.indexOf(FONT_PREFIX) === 0) keys.push(k);
-      }
+      keys = StorageEngine.getKeys(FONT_PREFIX);
     } catch(e) {}
     if (!keys.length) {
       list.innerHTML = '<p style="font-size:11px;color:var(--muted);margin:0">No custom fonts imported yet.</p>';
@@ -55,7 +53,7 @@ export function initCustomFonts(deps) {
     }
     keys.forEach(function(k) {
       try {
-        var data = JSON.parse(localStorage.getItem(k));
+        var data = JSON.parse(StorageEngine.getItem(k));
         var item = document.createElement('div');
         item.className = 'opts-font-item';
         var preview = document.createElement('span');
@@ -67,7 +65,7 @@ export function initCustomFonts(deps) {
         delBtn.title = 'Remove font';
         delBtn.textContent = '×';
         delBtn.addEventListener('click', function() {
-          try { localStorage.removeItem(k); } catch(e) {}
+          try { StorageEngine.removeItem(k); } catch(e) {}
           var btn = document.getElementById('btn-font-custom-' + data.family.replace(/\s+/g, '-').toLowerCase());
           if (btn) btn.parentNode.removeChild(btn);
           for (var i = deps.fontMap.length - 1; i >= 0; i--) {
@@ -89,14 +87,11 @@ export function initCustomFonts(deps) {
 
   function loadAllCustomFonts() {
     try {
-      for (var i = 0; i < localStorage.length; i++) {
-        var k = localStorage.key(i);
-        if (k && k.indexOf(FONT_PREFIX) === 0) {
-          var data = JSON.parse(localStorage.getItem(k));
-          injectFontFace(data.family, data.dataUrl, data.format);
-          addFontButton(data.family);
-        }
-      }
+      StorageEngine.getKeys(FONT_PREFIX).forEach(function(k) {
+        var data = JSON.parse(StorageEngine.getItem(k));
+        injectFontFace(data.family, data.dataUrl, data.format);
+        addFontButton(data.family);
+      });
     } catch(e) {}
   }
 
@@ -117,7 +112,7 @@ export function initCustomFonts(deps) {
       var dataUrl = ev.target.result;
       var storageKey = FONT_PREFIX + family.replace(/\s+/g, '-').toLowerCase();
       try {
-        localStorage.setItem(storageKey, JSON.stringify({ family: family, dataUrl: dataUrl, format: format }));
+        StorageEngine.setItem(storageKey, JSON.stringify({ family: family, dataUrl: dataUrl, format: format }));
       } catch(e) {
         deps.setStatus('Font too large to store locally');
         return;
@@ -132,25 +127,25 @@ export function initCustomFonts(deps) {
 
   var embedBtn = document.getElementById('opts-embed-fonts');
   function isEmbedFonts() {
-    try { return localStorage.getItem('tvs:opts:embed-fonts') === '1'; } catch(e) { return false; }
+    try { return StorageEngine.getItem('tvs:opts:embed-fonts') === '1'; } catch(e) { return false; }
   }
   function syncEmbedBtn() {
     var on = isEmbedFonts();
     embedBtn.classList.toggle('on', on);
   }
   embedBtn.addEventListener('click', function() {
-    try { localStorage.setItem('tvs:opts:embed-fonts', isEmbedFonts() ? '0' : '1'); } catch(e) {}
+    try { StorageEngine.setItem('tvs:opts:embed-fonts', isEmbedFonts() ? '0' : '1'); } catch(e) {}
     syncEmbedBtn();
   });
   syncEmbedBtn();
 
   var embedZipBtn = document.getElementById('opts-embed-fonts-zip');
   function isEmbedFontsZip() {
-    try { return localStorage.getItem('tvs:opts:embed-fonts-zip') === '1'; } catch(e) { return false; }
+    try { return StorageEngine.getItem('tvs:opts:embed-fonts-zip') === '1'; } catch(e) { return false; }
   }
   function syncEmbedZipBtn() { embedZipBtn.classList.toggle('on', isEmbedFontsZip()); }
   embedZipBtn.addEventListener('click', function() {
-    try { localStorage.setItem('tvs:opts:embed-fonts-zip', isEmbedFontsZip() ? '0' : '1'); } catch(e) {}
+    try { StorageEngine.setItem('tvs:opts:embed-fonts-zip', isEmbedFontsZip() ? '0' : '1'); } catch(e) {}
     syncEmbedZipBtn();
   });
   syncEmbedZipBtn();
@@ -158,9 +153,9 @@ export function initCustomFonts(deps) {
   function bindExportModeSel(id, lsKey) {
     var sel = document.getElementById(id);
     if (!sel) return;
-    try { sel.value = localStorage.getItem(lsKey) || 'picker'; } catch(e) {}
+    try { sel.value = StorageEngine.getItem(lsKey) || 'picker'; } catch(e) {}
     sel.addEventListener('change', function() {
-      try { localStorage.setItem(lsKey, sel.value); } catch(e) {}
+      try { StorageEngine.setItem(lsKey, sel.value); } catch(e) {}
     });
   }
   bindExportModeSel('opts-export-mode',       'tvs:opts:export-mode');

@@ -1,3 +1,4 @@
+import * as StorageEngine from './StorageEngine.js';
 import { FloatingPane } from './FloatingPane.js';
 import { floatPanel, dockPanel } from './DockSystem.js';
 import { sidePanelOpenFn, sidePanelArrowSync } from './PaneFactory.js';
@@ -44,7 +45,7 @@ export function initOptionsDialog(deps) {
     var defaults = { 'format-pane': 'left', 'text-pane': 'left', 'form-pane': 'left', 'outline-panel': 'left', 'props-panel': 'right' };
     ['format-pane', 'text-pane', 'form-pane', 'outline-panel', 'props-panel'].forEach(function(id) {
       var saved;
-      try { saved = localStorage.getItem('tvs:dock:' + id); } catch(e) {}
+      try { saved = StorageEngine.getItem('tvs:dock:' + id); } catch(e) {}
       if (saved === 'float') return; // float IIFE handles restore
       var zone = (saved === 'left' || saved === 'right' || saved === 'top' || saved === 'bottom') ? saved : defaults[id];
       if (zone !== defaults[id]) dockPanel(id, zone);
@@ -70,13 +71,13 @@ export function initOptionsDialog(deps) {
   function applyTransitions(on) {
     document.body.classList.toggle('no-transitions', !on);
     transBtn.classList.toggle('on', on);
-    try { localStorage.setItem('tvs:transitions', on ? '1' : '0'); } catch(e) {}
+    try { StorageEngine.setItem('tvs:transitions', on ? '1' : '0'); } catch(e) {}
   }
   transBtn.addEventListener('click', function() {
     applyTransitions(document.body.classList.contains('no-transitions'));
   });
   (function() {
-    var saved = (function(){ try { return localStorage.getItem('tvs:transitions'); } catch(e) { return null; } })();
+    var saved = (function(){ try { return StorageEngine.getItem('tvs:transitions'); } catch(e) { return null; } })();
     if (saved === '0') applyTransitions(false);
   })();
 
@@ -88,7 +89,7 @@ export function initOptionsDialog(deps) {
     document.documentElement.style.setProperty('--float-panel-opacity', val + '%');
     if (floatOpacityVal)    floatOpacityVal.textContent    = val + '%';
     if (floatOpacitySlider) floatOpacitySlider.value       = val;
-    try { localStorage.setItem('tvs:opts:float-opacity', val); } catch(e) {}
+    try { StorageEngine.setItem('tvs:opts:float-opacity', val); } catch(e) {}
   }
   if (floatOpacitySlider) {
     floatOpacitySlider.addEventListener('input', function() {
@@ -96,7 +97,7 @@ export function initOptionsDialog(deps) {
     });
   }
   (function() {
-    var saved; try { saved = parseInt(localStorage.getItem('tvs:opts:float-opacity'), 10); } catch(e) {}
+    var saved; try { saved = parseInt(StorageEngine.getItem('tvs:opts:float-opacity'), 10); } catch(e) {}
     applyFloatOpacity(isNaN(saved) || saved === null ? 70 : saved);
   })();
 
@@ -107,7 +108,7 @@ export function initOptionsDialog(deps) {
     document.documentElement.style.setProperty('--float-panel-blur', val + 'px');
     if (floatBlurVal)    floatBlurVal.textContent    = val + 'px';
     if (floatBlurSlider) floatBlurSlider.value       = val;
-    try { localStorage.setItem('tvs:opts:float-blur', val); } catch(e) {}
+    try { StorageEngine.setItem('tvs:opts:float-blur', val); } catch(e) {}
   }
   if (floatBlurSlider) {
     floatBlurSlider.addEventListener('input', function() {
@@ -115,7 +116,7 @@ export function initOptionsDialog(deps) {
     });
   }
   (function() {
-    var saved; try { saved = parseInt(localStorage.getItem('tvs:opts:float-blur'), 10); } catch(e) {}
+    var saved; try { saved = parseInt(StorageEngine.getItem('tvs:opts:float-blur'), 10); } catch(e) {}
     applyFloatBlur(isNaN(saved) ? 0 : saved);
   })();
 
@@ -128,7 +129,7 @@ export function initOptionsDialog(deps) {
       btn.classList.add('active');
       var sec = document.getElementById('opts-section-' + btn.dataset.optsSection);
       if (sec) sec.classList.add('active');
-      try { localStorage.setItem('tvs:opts:section', btn.dataset.optsSection); } catch(e) {}
+      try { StorageEngine.setItem('tvs:opts:section', btn.dataset.optsSection); } catch(e) {}
       if (btn.dataset.optsSection === 'menu-items' && !dialog._mibBuilt) {
         buildMenuItemsBrowser();
         dialog._mibBuilt = true;
@@ -141,13 +142,13 @@ export function initOptionsDialog(deps) {
   });
 
   function collToggle(btn, body, lsKey) {
-    var saved; try { saved = localStorage.getItem(lsKey); } catch(e) {}
+    var saved; try { saved = StorageEngine.getItem(lsKey); } catch(e) {}
     var open = saved === '1';
     if (open) { btn.classList.add('open'); body.classList.add('open'); }
     btn.addEventListener('click', function() {
       var nowOpen = body.classList.toggle('open');
       btn.classList.toggle('open', nowOpen);
-      try { localStorage.setItem(lsKey, nowOpen ? '1' : '0'); } catch(e) {}
+      try { StorageEngine.setItem(lsKey, nowOpen ? '1' : '0'); } catch(e) {}
     });
   }
 
@@ -257,7 +258,7 @@ export function initOptionsDialog(deps) {
   var autoSaveTimer = null;
 
   function getAutoSaveFreq() {
-    try { var v = parseInt(localStorage.getItem('tvs:opts:autosave-freq'), 10); if (!isNaN(v)) return v; } catch(e) {}
+    try { var v = parseInt(StorageEngine.getItem('tvs:opts:autosave-freq'), 10); if (!isNaN(v)) return v; } catch(e) {}
     return 60;
   }
 
@@ -277,7 +278,7 @@ export function initOptionsDialog(deps) {
 
   function applyUndoDepth(depth) {
     depth = Math.max(1, Math.min(10000, depth));
-    try { localStorage.setItem('tvs:opts:undo-depth', depth); } catch(e) {}
+    try { StorageEngine.setItem('tvs:opts:undo-depth', depth); } catch(e) {}
     trimUndoStack(depth);
     updateUndoButtons();
   }
@@ -294,7 +295,7 @@ export function initOptionsDialog(deps) {
   })();
 
   freqSel.addEventListener('change', function() {
-    try { localStorage.setItem('tvs:opts:autosave-freq', freqSel.value); } catch(e) {}
+    try { StorageEngine.setItem('tvs:opts:autosave-freq', freqSel.value); } catch(e) {}
     restartAutoSave();
   });
 
@@ -330,7 +331,7 @@ export function initOptionsDialog(deps) {
   persistBtn.addEventListener('click', function() {
     var nowOn = !persistBtn.classList.contains('on');
     persistBtn.classList.toggle('on', nowOn);
-    try { localStorage.setItem('tvs:opts:persist-undo', nowOn ? '1' : '0'); } catch(e) {}
+    try { StorageEngine.setItem('tvs:opts:persist-undo', nowOn ? '1' : '0'); } catch(e) {}
   });
 
   var granPill    = document.getElementById('opts-undo-granularity-pill');
@@ -370,7 +371,7 @@ export function initOptionsDialog(deps) {
   })();
   for (var _gi = 0; _gi < granRadios.length; _gi++) {
     granRadios[_gi].addEventListener('change', function() {
-      try { localStorage.setItem('tvs:opts:undo-granularity', getGranPillValue()); } catch(e) {}
+      try { StorageEngine.setItem('tvs:opts:undo-granularity', getGranPillValue()); } catch(e) {}
       cancelUndoDebounce();
       syncWindowRowActive();
       syncGranSlider();
@@ -399,7 +400,7 @@ export function initOptionsDialog(deps) {
     ms = Math.max(100, Math.min(60000, ms));
     if (windowNum) windowNum.value = ms;
     if (windowPreset) windowPreset.value = '';
-    try { localStorage.setItem('tvs:opts:undo-time-window', ms); } catch(e) {}
+    try { StorageEngine.setItem('tvs:opts:undo-time-window', ms); } catch(e) {}
   }
   if (windowPreset) windowPreset.addEventListener('change', function() {
     var v = parseInt(windowPreset.value, 10);
@@ -424,7 +425,7 @@ export function initOptionsDialog(deps) {
   blockFmtBtn.addEventListener('click', function() {
     var nowOn = !blockFmtBtn.classList.contains('on');
     blockFmtBtn.classList.toggle('on', nowOn);
-    try { localStorage.setItem('tvs:opts:block-fmt', nowOn ? '1' : '0'); } catch(e) {}
+    try { StorageEngine.setItem('tvs:opts:block-fmt', nowOn ? '1' : '0'); } catch(e) {}
   });
 
   restartAutoSave();
@@ -435,10 +436,9 @@ export function initOptionsDialog(deps) {
   function collectPrefs() {
     var prefs = {};
     try {
-      for (var i = 0; i < localStorage.length; i++) {
-        var k = localStorage.key(i);
-        if (k && k.indexOf(PREFS_PREFIX) === 0) prefs[k] = localStorage.getItem(k);
-      }
+      StorageEngine.getKeys(PREFS_PREFIX).forEach(function(k) {
+        prefs[k] = StorageEngine.getItem(k);
+      });
     } catch(e) {}
     return prefs;
   }
@@ -467,7 +467,7 @@ export function initOptionsDialog(deps) {
         Object.keys(prefs).forEach(function(k) {
           if (k.indexOf(PREFS_PREFIX) === 0) {
             if (k === 'tvs:draft') return;
-            try { localStorage.setItem(k, prefs[k]); count++; } catch(ex) {}
+            try { StorageEngine.setItem(k, prefs[k]); count++; } catch(ex) {}
           }
         });
         importStatus.style.color = 'var(--accent)';
@@ -483,7 +483,7 @@ export function initOptionsDialog(deps) {
 
   // Restore active section and open state
   (function() {
-    var savedSection; try { savedSection = localStorage.getItem('tvs:opts:section'); } catch(e) {}
+    var savedSection; try { savedSection = StorageEngine.getItem('tvs:opts:section'); } catch(e) {}
     if (savedSection) {
       var targetBtn = document.querySelector('#opts-nav .opts-nav-btn[data-opts-section="' + savedSection + '"]');
       if (targetBtn) {
@@ -495,7 +495,7 @@ export function initOptionsDialog(deps) {
         if (savedSection === 'menu-items' && !dialog._mibBuilt) { buildMenuItemsBrowser(); dialog._mibBuilt = true; }
       }
     }
-    var wasOpen; try { wasOpen = localStorage.getItem('tvs:opts:open'); } catch(e) {}
+    var wasOpen; try { wasOpen = StorageEngine.getItem('tvs:opts:open'); } catch(e) {}
     if (wasOpen === '1') openDialog();
   })();
 }

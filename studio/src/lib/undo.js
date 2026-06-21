@@ -1,3 +1,4 @@
+import * as StorageEngine from './StorageEngine.js';
 var undoStack = [], redoStack = [];
 var _undoDebounceTimer = null;
 var _undoPendingSnapshot = null;
@@ -9,14 +10,14 @@ export function initUndo(deps) {
 }
 
 export function getUndoDepth() {
-  try { var v = parseInt(localStorage.getItem('tvs:opts:undo-depth'), 10); if (v > 0) return v; } catch(e) {}
+  try { var v = parseInt(StorageEngine.getItem('tvs:opts:undo-depth'), 10); if (v > 0) return v; } catch(e) {}
   return 100;
 }
 export function getUndoGranularity() {
-  try { return localStorage.getItem('tvs:opts:undo-granularity') || 'action'; } catch(e) { return 'action'; }
+  try { return StorageEngine.getItem('tvs:opts:undo-granularity') || 'action'; } catch(e) { return 'action'; }
 }
 export function getUndoTimeWindow() {
-  try { var v = parseInt(localStorage.getItem('tvs:opts:undo-time-window'), 10); if (v > 0) return v; } catch(e) {}
+  try { var v = parseInt(StorageEngine.getItem('tvs:opts:undo-time-window'), 10); if (v > 0) return v; } catch(e) {}
   return 1000;
 }
 
