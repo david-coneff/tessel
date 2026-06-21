@@ -279,7 +279,7 @@ export function initDockSystem() {
               pipBtn.classList.remove('pip-active');
             }
           } else {
-            if (window.documentPictureInPicture) popOutToPip(pid);
+            if (window.documentPictureInPicture && !isTauri) popOutToPip(pid);
             else openSatellite(pid);
           }
         });
