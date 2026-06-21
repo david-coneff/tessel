@@ -128,6 +128,8 @@ export function initDockSystem() {
 
     function popOutToPip(panelId) {
       if (!window.documentPictureInPicture) return;
+      // Fall back to satellite if a PiP window is already occupying the one allowed slot
+      if (window.documentPictureInPicture.window) { openSatellite(panelId); return; }
       var panel = document.getElementById(panelId);
       if (!panel) return;
       if (pipPanels[panelId]) return;
