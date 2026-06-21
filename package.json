@@ -7,11 +7,13 @@
     "build": "node tools/rollup.cjs && vite build",
     "build:bundle": "node tools/rollup.cjs",
     "build:studio": "vite build",
+    "build:pwa": "node tools/rollup.cjs && vite build --config vite.config.pwa.js",
     "dev": "vite",
     "watch:bundle": "node tools/rollup.cjs --watch"
   },
   "devDependencies": {
     "vite": "^5.4.0",
+    "vite-plugin-pwa": "^1.3.0",
     "vite-plugin-singlefile": "^2.0.1"
   },
   "dependencies": {
