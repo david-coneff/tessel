@@ -335,7 +335,63 @@ The `CFC_ALGORITHM_LIBRARY` is a permanent, append-only registry in two synchron
 
 ---
 
-## 6. Phased Implementation Plan
+## 6. Deployment Targets
+
+Tessel VS Studio supports three deployment modes. The same HTML/CSS/JS source builds all three — only the hosting context and storage backend differ. Engine detection (`data-engine` attribute on `<html>`) and the `StorageEngine` abstraction (Phase 10) allow the codebase to adapt transparently.
+
+| Mode | Origin | Storage backend | Storage isolation | External dependencies |
+|------|--------|-----------------|-------------------|-----------------------|
+| `file://` open | `file://` (shared on Chrome) | localStorage | Weakest — all local HTML files share one origin on Chrome | None |
+| PWA (GitHub Pages) | `https://david-coneff.github.io/tessel/` | OPFS (after Phase 10) | High — scoped to origin path | Browser + HTTPS |
+| Tauri desktop | `tauri://localhost` (app-private) | OPFS | Strongest — true app-origin, no sharing possible | Tauri runtime (~5MB) |
+
+### 6.1 — `file://` Open
+
+**Use case:** Zero-dependency portability. Copy the HTML file anywhere, open it in any browser.
+
+**Storage:** `localStorage` only. OPFS is unavailable on `file://` — the `StorageEngine` falls back automatically.
+
+**Security note:** On Chrome, all `file://` pages share a single origin, meaning any other locally opened HTML file can read the same `localStorage` keys. Firefox and Safari isolate per-file, but this cannot be relied upon cross-browser. This is the accepted tradeoff for zero-dependency portability. No credentials are stored in localStorage (sessionStorage only, per AD-T-006).
+
+**Engine detection:** `data-engine="chromium"` or `"webkit"` set at startup. CSS `@supports` fallbacks handle WebKit rendering differences automatically.
+
+**Constraint (non-negotiable):** This mode must always work. No phase or feature may break `file://` open.
+
+### 6.2 — PWA (GitHub Pages)
+
+**Use case:** Installable browser app, auto-updating, offline-capable, shareable URL.
+
+**URL:** `https://david-coneff.github.io/tessel/`
+
+**Storage:** OPFS (after Phase 10), scoped to the `/tessel/` path. Falls back to `localStorage` during the transition period before Phase 10 is complete.
+
+**Security:** HTTPS enforced by GitHub Pages. Service worker scope limited to `/tessel/`. Storage isolated from other GitHub Pages apps at the origin level by OPFS path scoping (after Phase 10).
+
+**Update behavior:** Push to `main` → GitHub Actions builds → PWA auto-updates on next open (`autoUpdate` + `skipWaiting` + `clientsClaim`). No user action required.
+
+**Deployment:** `.github/workflows/deploy-pwa.yml` — runs `npm run build:pwa`, uploads `studio/tessel-pwa/dist/` to Pages.
+
+### 6.3 — Tauri Desktop Wrapper (Phase 11)
+
+**Use case:** Native desktop application with true app-origin storage isolation, OS integration, and native window management.
+
+**Storage:** OPFS, scoped to the Tauri app origin (`tauri://localhost` or platform equivalent). No sharing with any website or other app — strongest isolation of the three modes.
+
+**Binary size:** ~3–10MB installer (uses OS webview: WebView2 on Windows, WKWebView on macOS, WebKitGTK on Linux). No bundled Chromium.
+
+**Rendering:** Engine detection handles WebKit/Chromium differences. CSS `@supports not (scrollbar-gutter: stable)` fallback and `-webkit-backdrop-filter` prefix already in place (Phase 9 implementation).
+
+**Additional capabilities over PWA:**
+- Code-signed installer
+- OS protocol handler (`tessel://`) for edit-in-place on exported HTML files
+- Native file dialogs with remembered last-used directory
+- OS title bar suppression (in-pane ↩/× controls already designed for this — PW-006)
+
+**Status:** Phase 11 (roadmap). See §7.
+
+---
+
+## 7. Phased Implementation Plan
 
 ---
 
@@ -343,19 +399,7 @@ The `CFC_ALGORITHM_LIBRARY` is a permanent, append-only registry in two synchron
 
 **Goal:** Produce the authoritative written spec before writing a line of new code.
 
-**Deliverables:**
-
-- `spec/TESSEL-SPEC.md` — complete Tessel Markdown Specification
-- `spec/tessel-schema.json` — JSON Schema for the Tessel AST
-- `spec/DESIGN-PRINCIPLES.md` — design principles
-- `spec/COMPATIBILITY.md` — broodforge compatibility matrix
-- `spec/CANONICAL-FILENAMES.md` — CFC machine-readable schema + human-readable spec (§5.7–§5.9)
-- `spec/schemas/cfc/cfc-v_2026-06-16_20-02_00_49b99195/` — CFC v1 schema package:
-  - `spec-blob.txt`, `implementation.js`, `implementation.py`, `manifest.json` (with `file_hashes`)
-- `tools/tessel-integrity-checker.html` — standalone CFC verifier (§5.10, AD-T-012)
-- `tools/tessel-package.py` — schema and executable package versioning tooling (AD-T-015)
-
-**Status:** **Complete.** All Phase 0 deliverables shipped: `spec/TESSEL-SPEC.md`, `spec/tessel-schema.json`, `spec/DESIGN-PRINCIPLES.md`, `spec/COMPATIBILITY.md`, `spec/CANONICAL-FILENAMES.md`, `spec/schemas/cfc/cfc-v_2026-06-16_20-02_00_49b99195/` (with `file_hashes` in manifest), `tools/tessel-integrity-checker.html`, and `tools/tessel-package.py` (including `prune` command, `current.txt` management, and dependency cascade).
+**Status:** **Complete.**
 
 ---
 
@@ -363,55 +407,7 @@ The `CFC_ALGORITHM_LIBRARY` is a permanent, append-only registry in two synchron
 
 **Goal:** A single JavaScript file that accepts Markdown text and returns a complete, self-contained HTML string.
 
-**Architecture:**
-
-```
-tessel.js
-├── TesselTokenizer
-├── TesselParser
-│   ├── MarkdownParser
-│   ├── DirectiveParser
-│   ├── ConditionalParser
-│   └── ParameterParser
-├── TesselCompiler
-│   ├── HeadingRenderer
-│   ├── CodeBlockRenderer
-│   ├── FieldRenderer
-│   ├── ConditionalRenderer
-│   └── TocRenderer
-└── TesselRuntime
-    ├── ParameterEngine
-    ├── PersistenceEngine
-    ├── ValidationEngine
-    ├── VisibilityEngine
-    ├── ExportEngine
-    ├── ImportEngine
-    ├── AttachmentEngine
-    ├── NotesEngine
-    └── IntegrityEngine  — CFC_ALGORITHM_LIBRARY (permanent append-only),
-                           schema package verification (AD-T-014, §7.6),
-                           CFC filename parse, badge state management
-```
-
-**Key constraints:** zero external dependencies at compile or runtime; usable as a plain `<script>` tag.
-
-**New features in Phase 1:**
-- `@date[Label]` field type
-- `@if(expr) ... @endif` conditional sections
-- Full field metadata schema parsing
-- Validation engine
-- Integrity badge in document toolbar
-- `<meta name="tessel-cfc-version" content="cfc-v_2026-06-16_20-02_00_49b99195">` in compiler output
-- `IntegrityEngine` performs full schema package verification (all files in folder) before loading any schema (AD-T-014)
-
-**Testing:**
-- Golden-file test suite
-- Unit tests for each parser module
-- Integrity badge state transition tests
-- Standalone integrity checker cross-check
-- Schema package verification test: tamper a file in the schema folder; confirm load is aborted
-
-**Status:** **Complete.** Implemented as a multi-module library: `compiler/tessel.js` (public API entry point), `compiler/tessel-parser.js`, `compiler/tessel-compiler.js`, `compiler/tessel-fields.js`, `compiler/tessel-css.js`, `compiler/tessel-runtime.js`. ValidationEngine, VisibilityEngine, and `@if/@endif` conditional visibility are fully implemented in `tessel-runtime.js`. Golden-file test suite in `tests/golden/` with `tests/run-golden.js`. Bundled as `dist/tessel.bundle.js`. CLI wrapper at `tools/tessel-cli.js`.
+**Status:** **Complete.**
 
 ---
 
@@ -419,33 +415,31 @@ tessel.js
 
 **Goal:** Standalone `tessel-studio.html` — open `.md`, compile via `tessel.js`, download or preview. No Python. No server.
 
-**Status:** **Complete.** `studio/tessel-studio.html` delivered. `studio/tessel-studio-full.html` also exists (see Phase 6).
+**Status:** **Complete.**
 
 ---
 
 ### Phase 3 — Validation Runtime
 
-**Goal:** Complete validation state rendering. `ValidationEngine` fully wired, `required`/`required_if`/`visible_if`/`validate` enforcement, cross-field references, table row validation.
+**Goal:** Complete validation state rendering. `ValidationEngine` fully wired.
 
-**Status:** **Complete** (implemented as part of Phase 1). `ValidationEngine` and `VisibilityEngine` are in `compiler/tessel-runtime.js`, wired to the full field metadata schema. Export is blocked when required fields are unfilled or `validate` expressions fail.
+**Status:** **Complete** (implemented as part of Phase 1).
 
 ---
 
 ### Phase 4 — Repository Manager (`tessel-repo-manager.html`)
 
-**Goal:** Standalone HTML tool for local-path-first session save/restore/browse. Supports local path (primary), GitHub, GitLab, Forgejo.
+**Goal:** Standalone HTML tool for local-path-first session save/restore/browse.
 
-**Session folder naming:** `<doc-slug>/<YYYY-MM-DD_HH-MM_SS>_<CID-SHORT>/` (timestamp includes seconds per CFC convention).
-
-**Status:** **Complete.** `tools/tessel-repo-manager.html` delivered.
+**Status:** **Complete.**
 
 ---
 
 ### Phase 5 — Vault System (`tessel-vault.html`)
 
-**Goal:** Standalone encrypt/decrypt for Tessel export packages. AES-256-GCM, Argon2id/PBKDF2, diceware passphrases.
+**Goal:** Standalone encrypt/decrypt for Tessel export packages.
 
-**Status:** **Complete.** `tools/tessel-vault.html` delivered.
+**Status:** **Complete.**
 
 ---
 
@@ -453,87 +447,53 @@ tessel.js
 
 **Goal:** WYSIWYG editing, form designer, bulk compile operations.
 
-**Status:** **In progress.** `studio/tessel-studio-full.html` exists (27KB) and provides the full-studio foundation including compiler mode. Full WYSIWYG editing and the visual form designer are the remaining work. `dist/tessel-studio-full-standalone.html` is the bundled standalone version.
+**Status:** **In progress.** `studio/tessel-studio-full.html` exists and provides the full-studio foundation. Full WYSIWYG editing and the visual form designer are the remaining work.
 
 ---
 
 ### Phase 7 — Broodforge Migration
 
-**Goal:** Update broodforge to use `tessel.js`. `md_to_html.py` becomes a thin wrapper or stays as Python-native alternate. All existing broodforge `.md` docs compile identically.
+**Goal:** Update broodforge to use `tessel.js`.
 
-**Status:** **Complete.** `broodforge/doc-gen/regenerate_docs.py` updated to use `tessel-cli.js`. Golden-file tests (`tests/golden/bf-forging.*`, `bf-readme.*`, `bf-setup-guide.*`) confirm broodforge documents compile correctly.
+**Status:** **Complete.**
 
 ---
 
 ### Phase 8 — DocGraph Tooling
 
-**Goal:** `tools/doc-graph.py` — Rhizome DocGraph protocol (rhiz-docgraph v1) for Merkle-tree document decomposition. Large Markdown artifacts can be split into independently hash-verified section files with a JSON index.
+**Goal:** `tools/doc-graph.py` — Rhizome DocGraph protocol for Merkle-tree document decomposition.
 
-**Commands:** `split`, `update`, `verify`, `merge`, `status`, `init`. Zero external dependencies; Python 3.8+ stdlib only.
-
-**Status:** **Complete.** `tools/doc-graph.py` delivered.
+**Status:** **Complete.**
 
 ---
 
-### Phase 9 — Tessel VS Studio PWA Wrapper (Optional)
+### Phase 9 — Tessel VS Studio PWA Wrapper
 
-**Goal:** An optional, additive deployment target that wraps the existing `studio/tessel-vs.html` Vite build output as an installable Progressive Web App. This phase does **not** change the core build pipeline or the portable single-file HTML artifact — it is a side implementation that sits alongside the existing build.
+**Goal:** An optional, additive deployment target that wraps the existing `studio/tessel-vs.html` Vite build output as an installable Progressive Web App.
 
-**Core constraint (non-negotiable):** The plain `studio/tessel-vs.html` output must remain fully functional without any server, service worker, or PWA infrastructure. Portability-by-file-copy is a design principle and is preserved unchanged.
+**Core constraint (non-negotiable):** The plain `studio/tessel-vs.html` output must remain fully functional without any server, service worker, or PWA infrastructure.
 
-**What the PWA wrapper adds:**
-- `manifest.json` — app name, icons, display mode (`standalone`), theme color
-- Service worker (via `vite-plugin-pwa`) — precaches the single-file HTML output for offline-install use
-- Home-screen / taskbar install prompt in supporting browsers
+**Also completed in this phase:**
+- Engine detection (`data-engine` attribute on `<html>`) set at startup in `main.js`
+- `-webkit-backdrop-filter` prefix added for WebKit compatibility
+- `@supports not (scrollbar-gutter: stable)` CSS fallback for WebKit pane layout stability
+- These fixes apply across all three deployment modes (§6)
 
-**Update behavior:** Configured with `registerType: 'autoUpdate'`, `skipWaiting: true`, and `clientsClaim: true`. This makes update semantics identical to the plain HTML workflow: pull → build → refresh → new version. No manual uninstall/reinstall cycle. No "waiting" SW state.
-
-**Browser dependency note:** PWA install and service worker require HTTPS or `localhost`. The PWA wrapper therefore requires a local dev server (e.g., `vite preview`) or a static hosting deployment. This is an **additional external dependency** that does not exist for the plain HTML artifact. Users who want zero-dependency portability should continue using `studio/tessel-vs.html` directly.
-
-**Implementation sketch:**
-
-```js
-// vite.config.js — PWA target (separate config or build mode flag)
-import { VitePWA } from 'vite-plugin-pwa'
-
-VitePWA({
-  registerType: 'autoUpdate',
-  workbox: {
-    clientsClaim: true,
-    skipWaiting: true,
-  },
-  manifest: {
-    name: 'Tessel VS Studio',
-    short_name: 'Tessel VS',
-    display: 'standalone',
-    // ...
-  }
-})
-```
-
-**Relationship to Electron/Tauri/PWA native wrapper (future):** The in-pane ↩ and × controls added during the pop-out window work (PW-006) are intentionally designed to be the sole window chrome when OS title bars are suppressed by a native wrapper. A Tessel VS PWA in `standalone` display mode — or a future Electron/Tauri shell — will benefit from these controls without any additional changes.
-
-**Status:** **Complete.** Deployed to `https://david-coneff.github.io/tessel/` via GitHub Actions workflow (`.github/workflows/deploy-pwa.yml`). Built with `npm run build:pwa` using `vite.config.pwa.js`.
+**Status:** **Complete.** Deployed to `https://david-coneff.github.io/tessel/` via `.github/workflows/deploy-pwa.yml`.
 
 ---
 
-### Phase 10 — OPFS Storage Migration (Optional)
+### Phase 10 — OPFS Storage Migration
 
-**Goal:** Replace `localStorage` with the Origin Private File System (OPFS) as the primary persistence layer for all non-volatile app state in Tessel VS Studio. This provides true per-app storage isolation scoped to the app's origin path, larger quota, and eliminates cross-app key collision risk when multiple apps are deployed under the same GitHub Pages domain.
+**Goal:** Replace `localStorage` with the Origin Private File System (OPFS) as the primary persistence layer for all non-volatile app state in Tessel VS Studio, with automatic `localStorage` fallback for `file://` contexts.
 
-**Motivation:** All repos under `david-coneff.github.io` share the same `localStorage` origin. A key named `theme` in Tessel VS is accessible to any other app at the same origin. Namespacing keys prevents accidental collision but does not prevent cross-app access. OPFS is scoped per origin path and provides genuine isolation with no cost.
+**Motivation:** `localStorage` is shared across all apps at `david-coneff.github.io`. OPFS is path-scoped, providing true per-app isolation. The Tauri desktop wrapper (Phase 11) also benefits — OPFS in Tauri is app-origin isolated by default.
 
-**Core constraint:** The plain `studio/tessel-vs.html` single-file build must continue to work when opened directly from the filesystem (`file://`). OPFS is unavailable on `file://`. The `StorageEngine` abstraction must detect context and fall back to `localStorage` transparently. Calling code must not need to know which backend is active.
+**Core constraint:** `file://` open must continue to work. OPFS is unavailable on `file://`. The `StorageEngine` abstraction detects `location.protocol === 'file:'` and falls back to `localStorage` transparently. Calling code never needs to know which backend is active.
 
-**Scope:**
-- All `localStorage` usage in Tessel VS Studio: theme, dock layout, pane sizes, recent files, UI preferences
-- `sessionStorage` is unchanged — credentials remain intentionally volatile (AD-T-006)
-- Compiled Tessel document runtime (`tessel-runtime.js`) is out of scope for this phase
-
-**Architecture — `StorageEngine` abstraction:**
+**`StorageEngine` abstraction:**
 
 ```js
-// Auto-selects OPFS when available, falls back to localStorage on file://
 const StorageEngine = (() => {
   function isOpfsAvailable() {
     return typeof navigator !== 'undefined'
@@ -541,58 +501,58 @@ const StorageEngine = (() => {
       && typeof navigator.storage.getDirectory === 'function'
       && location.protocol !== 'file:';
   }
-
-  async function getRoot() {
-    return navigator.storage.getDirectory();
-  }
-
   return {
-    async get(key) {
-      if (!isOpfsAvailable()) return localStorage.getItem(key);
-      try {
-        const root = await getRoot();
-        const fh = await root.getFileHandle(key + '.json');
-        const file = await fh.getFile();
-        return await file.text();
-      } catch { return null; }
-    },
-    async set(key, value) {
-      if (!isOpfsAvailable()) { localStorage.setItem(key, value); return; }
-      const root = await getRoot();
-      const fh = await root.getFileHandle(key + '.json', { create: true });
-      const w = await fh.createWritable();
-      await w.write(value);
-      await w.close();
-    },
-    async remove(key) {
-      if (!isOpfsAvailable()) { localStorage.removeItem(key); return; }
-      try {
-        const root = await getRoot();
-        await root.removeEntry(key + '.json');
-      } catch {}
-    },
+    async get(key) { ... },    // OPFS or localStorage
+    async set(key, value) { ... },
+    async remove(key) { ... },
   };
 })();
 ```
 
-**Migration path:** On first load in OPFS context, if OPFS storage is empty and matching `localStorage` keys exist, migrate values to OPFS and remove from `localStorage`. This is a one-time silent migration.
+**Migration path:** On first load in OPFS context, if OPFS is empty and matching `localStorage` keys exist, migrate values silently and clear from `localStorage`.
 
-**Key files to update:**
+**Scope:**
 - `ThemeManager.js` — theme persistence
 - `DockSystem.js` — dock layout, pane sizes
-- Any other module with direct `localStorage.setItem`/`getItem` calls
+- All other `localStorage.setItem`/`getItem` calls in Studio
+- `sessionStorage` unchanged — credentials remain intentionally volatile (AD-T-006)
 
-**Browser support:** OPFS available in Chrome 86+, Firefox 111+, Safari 15.2+. Same baseline as Phase 9 PWA.
+**Browser support:** OPFS available in Chrome 86+, Firefox 111+, Safari 15.2+.
 
 **AD reference:** AD-T-016.
 
-**Cross-project note:** This is a universal design principle for all PAP projects deployed under the same GitHub Pages account. See `rhiz-memory/state/cross-project-design-principles.md` P-001.
-
-**Status:** Roadmap item. Not started. Recommended after Phase 6 (full Studio) is stable, as Phase 6 will introduce additional localStorage usage that should be migrated in one pass.
+**Status:** **In progress.** `StorageEngine` abstraction to be implemented. Recommended before Phase 11 so Tauri gets isolated storage from day one.
 
 ---
 
-## 7. Key Architectural Decisions
+### Phase 11 — Tauri Desktop Wrapper
+
+**Goal:** Package Tessel VS Studio as a native desktop application using Tauri, providing true app-origin storage isolation, OS-level integration, and native-feeling window management without Electron's runtime overhead (~5MB vs ~150MB).
+
+**What Tauri adds over PWA:**
+- True per-app origin (`tauri://localhost`) — OPFS storage is isolated from every website and every other app
+- Code-signed installer for distribution without browser permission prompts
+- OS protocol handler (`tessel://`) — enables edit-in-place: clicking a badge in an exported Tessel HTML file opens it in the desktop app
+- Native file dialogs with remembered last-used directory per file type
+- OS title bar suppression — the in-pane ↩/× controls (PW-006) become the sole chrome, as they were designed to be
+
+**What does NOT change:**
+- The HTML/CSS/JS source is identical to the PWA and `file://` builds
+- No new JS APIs required for basic functionality
+- Engine detection already handles WebKit/Chromium rendering differences (Phase 9)
+- OPFS storage works identically in Tauri as in the PWA (Phase 10)
+
+**Rendering notes:** Windows uses WebView2 (Chromium — negligible differences from Chrome). macOS/Linux use WKWebView/WebKitGTK. Phase 9 CSS compatibility tweaks handle the known WebKit divergence points (`scrollbar-gutter`, `backdrop-filter`). Custom controls throughout Studio eliminate the largest class of cross-platform differences (native form elements).
+
+**Build output:** Platform-native installers (`.exe`, `.dmg`, `.deb`) built via `cargo tauri build`. Requires Rust toolchain but not distributed with the app.
+
+**AD reference:** AD-T-017.
+
+**Status:** Roadmap item. Requires Phase 10 (OPFS storage) to be complete first so storage isolation is in place from the initial Tauri release.
+
+---
+
+## 8. Key Architectural Decisions
 
 ### AD-T-001 — JavaScript as the primary compiler
 
@@ -646,111 +606,53 @@ Timestamp includes seconds; underscore before SS is the field delimiter (`HH-MM_
 
 Persistent integrity badge in document toolbar and Studio. `IntegrityEngine` reads `tessel-cfc-version` meta, fetches own bytes, recomputes CID-SHORT, sets badge state.
 
-Version lookup is by string ID (`cfc-v_2026-06-16_20-02_00_49b99195`), not integer. Unknown versions show "unknown version" state, not false pass.
-
 ### AD-T-012 — CFC Algorithm Version Library
 
-Permanent, append-only registry bundled in `tools/tessel-integrity-checker.html` and `compiler/tessel.js` `IntegrityEngine`. Each entry includes the spec blob SHA-256 for schema verification. Entries are never removed; deprecated entries are annotated but `compute()` remains functional.
+Permanent, append-only registry bundled in `tools/tessel-integrity-checker.html` and `compiler/tessel.js` `IntegrityEngine`.
 
 ### AD-T-013 — Schema versioning via content-addressed folders
 
-Every schema used by Tessel (or any PAP-based project) is versioned using content-addressed version IDs and stored in a self-contained folder:
-
-```
-spec/schemas/<schema-name>/<version-id>/
-├── spec-blob.txt      — normative spec (no version ID embedded)
-├── implementation.js
-├── implementation.py
-└── manifest.json      — {schema_id, cfc_version, defined, spec_blob_sha256,
-                          spec_blob_cid_short, file_hashes: {all other files}}
-```
-
-Version ID: `<prefix>-v_<YYYY-MM-DD_HH-MM_SS>_<CID-SHORT>`. Spec blob does not embed its own version ID. Schema-locked documents embed all schema version IDs used during compilation.
-
-This is a universal PAP design principle. It ensures any artifact can be reproduced exactly as originally produced.
+Every schema used by Tessel (or any PAP-based project) is versioned using content-addressed version IDs and stored in a self-contained folder. This is a universal PAP design principle.
 
 ### AD-T-014 — Schema package integrity verification before load
 
-Any Tessel component that loads a versioned schema must verify the **entire schema package** before using any of its files. This means verifying every file recorded in `manifest.json["file_hashes"]` — not just spec-blob.txt. If any file fails, the load is **aborted with a hard error**.
-
-**Verification procedure (normative — see `spec/CANONICAL-FILENAMES.md §7.6` for the authoritative definition):**
-
-1. Read `manifest.json` from the schema version folder.
-2. Confirm `schema_id` matches the folder name (version ID being loaded). Abort if not.
-3. Resolve the CFC algorithm from `manifest.json["cfc_version"]` in `CFC_ALGORITHM_LIBRARY`. Abort if unrecognized.
-4. For each file in `manifest.json["file_hashes"]`: read the file, hash it with the CFC algorithm using the recorded `file_type`, compare the full 64-char hex SHA-256 to the recorded `sha256`. Abort on any mismatch.
-5. Confirm spec-blob.txt CID-SHORT matches the CID-SHORT in the version ID (cross-check between spec blob hash and version identity).
-6. All checks passed. Load the schema.
-
-**Scope:** applies to every schema loaded by `IntegrityEngine`, `TesselCompiler`, `TesselParser`, or any Python equivalent in `tessel.py`.
-
-**What this prevents:** a partially corrupted schema folder, a version mismatch between files (e.g., `spec-blob.txt` from v1 but `implementation.js` from v2 due to a failed update), or a tampered implementation file would all be caught before any compiled output is produced.
-
-**This is a universal PAP design principle.** It applies to any PAP-based project that uses schema versioning (AD-T-013). Interpreters, renderers, and compilers in PAP, broodforge, and tessel should all implement this check when loading schema dependencies.
+Any Tessel component that loads a versioned schema must verify the **entire schema package** before using any of its files. If any file fails, the load is **aborted with a hard error**.
 
 ### AD-T-015 — Versioned executable packages and dependency cascade tooling
 
-Executables and scripts are versioned as **coarse-grained packages** (one per sub-project, e.g., one broodforge package) using the same content-addressed folder structure as schemas (AD-T-013). Any file change in a package produces a new version of the whole package.
-
-**Package folder layout:**
-
-```
-executables/<name>/<name>-v_<YYYY-MM-DD_HH-MM_SS>_<CID-SHORT>/
-├── <script-a>.py
-├── <script-b>.js
-└── package-manifest.json
-    {
-      "package_id":           "<name>-v_<YYYY-MM-DD_HH-MM_SS>_<CID-SHORT>",
-      "cfc_version":          "<cfc-version-id>",
-      "defined":              "<ISO-8601>",
-      "aggregate_method":     "sha256(canonical JSON: sorted [{file, sha256}] for all non-manifest files)",
-      "aggregate_cid_short":  "<8-hex>",
-      "file_hashes":          { "<filename>": {"sha256": "<64-hex>", "cid_short": "<8-hex>", "file_type": "text|binary"} },
-      "dependencies":         { "schemas": ["<version-id>", ...], "packages": ["<version-id>", ...] }
-    }
-```
-
-**Aggregate CID-SHORT derivation:** SHA-256 of canonical JSON `[{"file": f, "sha256": h}]` sorted by filename, for all non-manifest files. This is deterministic and reproducible. `package-manifest.json` itself is excluded (it is the trust root, analogous to `manifest.json` in schemas).
-
-**Dependency graph:** Each package declares its schema and package dependencies in `package-manifest.json["dependencies"]`. The dependency graph is a DAG; cycles are rejected by the tooling. CFC is the root layer. The tooling (`tools/tessel-package.py`) builds the reverse dependency index by scanning declared dependencies across all versioned folders.
-
-**Advisory cascade (not automatic):** When a schema or package is updated, `tessel-package.py cascade <old-id> <new-id>` identifies all dependents and presents them for human review. No cascade update is applied without explicit confirmation. This constraint is especially important for behavioral changes (script content changes, not just version reference updates), where auto-updating could silently alter the behavior of dependents.
-
-**Tooling self-exclusion:** `tools/tessel-package.py` is infrastructure. It is not versioned as a schema or executable package and is not a node in the dependency graph it manages. If the manifest schema itself changes (new fields, new hash method), the script is updated manually. This is a rare, deliberate event; the script is intentionally mechanistic and low-churn.
-
-**Compiled artifact gap:** Compiled HTML artifacts embed schema and package version IDs but are not nodes in the dependency graph — they cannot be auto-updated, only recompiled from source. `cascade` flags compiled artifacts that reference old version IDs so the operator knows which documents need a recompile pass.
-
-**Storage:** Versioned folders contain full copies of files. Git's object store deduplicates content, so unchanged files across package versions are stored once in the git object database regardless of how many versioned folders reference them. Working-tree cost is proportional to the number of versions materialized, but the repository itself remains lean.
-
-**Tooling interface:** `tools/tessel-package.py`
-
-```
-package <draft-dir> <name>          — create versioned executable package from draft folder
-schema-package <draft-dir> <name>   — create versioned schema package from draft folder
-verify <versioned-dir>              — verify all file hashes + aggregate against manifest (hard-fail)
-deps <version-id>                   — show all files that reference this version ID
-cascade <old-id> <new-id>          — advisory: show what would need updating (no writes)
-prune [--keep N] [--dry-run]       — remove oldest versioned folders beyond the keep threshold;
-                                     skips any version still in a dependency chain; operator-only
-```
+Executables and scripts are versioned as coarse-grained packages using the same content-addressed folder structure as schemas. Advisory cascade tooling identifies dependents without auto-updating them.
 
 ### AD-T-016 — OPFS as the standard persistence layer for Studio app state
 
-`localStorage` is scoped to the origin (`david-coneff.github.io`), meaning all apps under the same GitHub Pages account share the same storage namespace. OPFS is scoped per origin path and provides true per-app isolation at zero cost.
+`localStorage` is origin-scoped and shared across all apps at `david-coneff.github.io`. OPFS is path-scoped and provides true per-app isolation.
 
-**Rule:** All non-volatile app state in Tessel VS Studio (theme, dock layout, pane sizes, preferences) must be stored via a `StorageEngine` abstraction that uses OPFS when available and falls back to `localStorage` on `file://` contexts.
+**Rule:** All non-volatile app state in Tessel VS Studio must go through `StorageEngine`, which uses OPFS when available and falls back to `localStorage` on `file://`.
 
-**`sessionStorage` is unchanged.** Credentials and other intentionally volatile state remain in `sessionStorage` (cleared on tab close, per AD-T-006). OPFS is for persistent, non-sensitive preferences only.
+**`sessionStorage` is unchanged.** Credentials remain intentionally volatile (AD-T-006).
 
-**Portability constraint:** OPFS is unavailable on `file://`. The `StorageEngine` must detect `location.protocol === 'file:'` and use `localStorage` in that case. The plain `studio/tessel-vs.html` single-file build must continue to work without a server.
+**Portability constraint:** OPFS unavailable on `file://`. `StorageEngine` must detect `location.protocol === 'file:'` and use `localStorage` in that case. The `file://` mode must always work.
 
-**This is a cross-project design principle.** All PAP projects deployed under the same GitHub Pages account should adopt this pattern. See `rhiz-memory/state/cross-project-design-principles.md` P-001.
+**This is a cross-project design principle.** See `rhiz-memory/state/cross-project-design-principles.md` P-001.
 
 **Implementation:** Phase 10.
 
+### AD-T-017 — Tauri as the target native desktop wrapper
+
+When a native desktop build of Tessel VS Studio is required, the target wrapper is **Tauri** (not Electron).
+
+**Rationale:**
+- Tauri uses the OS webview (WebView2/WKWebView/WebKitGTK) — ~5MB installer vs ~150MB for Electron
+- OPFS in Tauri is scoped to the app's origin (`tauri://localhost`) — strongest storage isolation of the three deployment modes
+- The HTML/CSS/JS source is identical across all three modes — no separate Tauri-specific code path
+- WebKit rendering differences are handled by engine detection (`data-engine`) and CSS `@supports` fallbacks (Phase 9) — no Tauri-specific CSS required
+
+**Prerequisites:** Phase 10 (OPFS storage migration) must be complete before the Tauri build is released, so storage isolation is in place from day one.
+
+**Implementation:** Phase 11.
+
 ---
 
-## 8. File Layout
+## 9. File Layout
 
 ```
 tessel/
@@ -765,108 +667,61 @@ tessel/
 │   └── schemas/
 │       └── cfc/
 │           └── cfc-v_2026-06-16_20-02_00_49b99195/
-│               ├── spec-blob.txt      — SHA-256(LF-norm): 49b99195...
-│               ├── implementation.js  — SHA-256(raw):     a97899e1...
-│               ├── implementation.py  — SHA-256(raw):     93f11cda...
-│               └── manifest.json      — trust root; file_hashes for all above
 ├── compiler/                      ✓ complete (Phase 1)
-│   ├── tessel.js                  — public API entry point
-│   ├── tessel-parser.js           — tokenizer, directive parser, conditional parser
-│   ├── tessel-compiler.js         — HTML renderer, TOC builder, bundler
-│   ├── tessel-fields.js           — all @directive renderers
-│   ├── tessel-css.js              — inlined CSS (dark/light theme, all components)
-│   └── tessel-runtime.js          — inline JS bundle (ValidationEngine, VisibilityEngine,
-│                                    ParameterEngine, PersistenceEngine, ExportEngine,
-│                                    ImportEngine, AttachmentEngine, NotesEngine, IntegrityEngine)
 ├── dist/                          ✓ complete
-│   ├── tessel.bundle.js           — rolled-up single-file compiler bundle
-│   ├── tessel-studio.html
-│   └── tessel-studio-full-standalone.html
-├── studio/                        ✓ complete (Phase 2 / Phase 6 in progress)
-│   ├── tessel-studio.html         — compiler-mode Studio (Phase 2)
-│   └── tessel-studio-full.html    — full Studio foundation (Phase 6)
-├── executables/                   — versioned executable packages (AD-T-015)
-│   └── <name>/
-│       └── <name>-v_<timestamp>_<cid>/
-│           ├── <script-files>
-│           └── package-manifest.json
+├── studio/                        ✓ Phase 2 complete / Phase 6 in progress
+│   ├── src/
+│   │   ├── lib/
+│   │   ├── styles/
+│   │   ├── tessel-ui/
+│   │   └── tessel-vs.html
+│   └── tessel-pwa/
+│       └── public/icons/icon.svg
+├── .github/
+│   └── workflows/
+│       └── deploy-pwa.yml         ✓ complete (Phase 9)
+├── executables/
 ├── tools/
-│   ├── tessel-integrity-checker.html  ✓ complete (§5.10, AD-T-012)
-│   ├── tessel-package.py              ✓ complete (AD-T-015, includes prune)
-│   ├── tessel-cli.js                  ✓ complete (Node CLI wrapper)
-│   ├── tessel-repo-manager.html       ✓ complete (Phase 4)
-│   ├── tessel-vault.html              ✓ complete (Phase 5)
-│   ├── doc-graph.py                   ✓ complete (rhiz-docgraph v1)
-│   └── rollup.js                      — bundle builder
+│   ├── tessel-integrity-checker.html  ✓ complete
+│   ├── tessel-package.py              ✓ complete
+│   ├── tessel-cli.js                  ✓ complete
+│   ├── tessel-repo-manager.html       ✓ complete
+│   ├── tessel-vault.html              ✓ complete
+│   └── doc-graph.py                   ✓ complete
 ├── tests/
-│   ├── run-golden.js              — golden-file test runner
-│   └── golden/
-│       ├── getting-started.{md,html,opts.json}
-│       ├── bf-forging.{md,html,opts.json}
-│       ├── bf-readme.{md,html,opts.json}
-│       └── bf-setup-guide.{md,html,opts.json}
 ├── examples/
-│   ├── getting-started.md
-│   └── getting-started.html
+├── vite.config.js
+├── vite.config.pwa.js
 └── ROADMAP.md
 ```
 
 ---
 
-## 9. Phase Summary and Sequencing
+## 10. Phase Summary and Sequencing
 
 | Phase | Deliverable | Status | Est. Complexity |
 |---|---|---|---|
-| 0 | Specification (TESSEL-SPEC.md, CANONICAL-FILENAMES.md, CFC schema package, integrity checker, package tooling) | **Complete** | Low |
-| 1 | tessel.js compiler (parser, compiler, runtime with ValidationEngine/VisibilityEngine) | **Complete** | High |
-| 2 | tessel-studio.html (compiler mode + integrity badge) | **Complete** | Medium |
-| 3 | Validation runtime (ValidationEngine, VisibilityEngine — implemented in Phase 1) | **Complete** | Medium |
+| 0 | Specification | **Complete** | Low |
+| 1 | tessel.js compiler | **Complete** | High |
+| 2 | tessel-studio.html (compiler mode) | **Complete** | Medium |
+| 3 | Validation runtime | **Complete** | Medium |
 | 4 | tessel-repo-manager.html | **Complete** | High |
 | 5 | tessel-vault.html | **Complete** | Low |
 | 6 | Tessel Studio full (WYSIWYG + form designer) | **In progress** | Very High |
 | 7 | Broodforge migration | **Complete** | Medium |
-| 8 | DocGraph tooling (`doc-graph.py`) | **Complete** | Low |
-| 9 | Tessel VS Studio PWA wrapper (optional, additive) | **Complete** | Low |
-| 10 | OPFS storage migration (optional, Studio only) | **Roadmap** | Medium |
+| 8 | DocGraph tooling | **Complete** | Low |
+| 9 | PWA wrapper + WebKit CSS compatibility | **Complete** | Low |
+| 10 | OPFS storage migration (StorageEngine abstraction) | **In progress** | Medium |
+| 11 | Tauri desktop wrapper | **Roadmap** | Medium |
 
-**Recommended sequence:** Phase 0 → 1 → 3 → 2 → 5 → 4 → 7 → 6 → 8 → 9 → (10 optional, after Phase 6 stable)
-
----
-
-## 10. Broodforge Compatibility Checklist
-
-| Broodforge Feature | Tessel Directive | Status |
-|---|---|---|
-| `{{VAR}}` template params | Same | Preserved in Phase 1 |
-| `{{VAR=default}}` | Same | Preserved in Phase 1 |
-| `@field[Label]` | Same | Preserved |
-| `@field[Label\|VAR=default]` | Same | Preserved |
-| `@area[Label]` | Same | Preserved |
-| `@credential[Label\|VAR]` | Same | Preserved |
-| `@totp[Label\|VAR]` | Same | Preserved |
-| `@radio[Label\|Opt1\|Opt2]` | Same | Preserved |
-| `@checkbox[Label\|Opt1\|Opt2]` | `@check[...]` → `@checkbox[...]` (rename) | Phase 1 |
-| `@select[Label\|Opt1]` | Same | Preserved |
-| `@table[Label\|Col1\|Col2]` | Same | Preserved |
-| `@parse[Label\|regex\|target]` | Same | Preserved |
-| `@filename[Label\|template]` | Same | Preserved |
-| `@dir[Label\|VAR]` | Same | Preserved |
-| `--collapsible` flag | `@collapsible` front-matter key | Phase 1 |
-| Split-pane layout | Same | Preserved |
-| Session notes tree | Same | Preserved |
-| Export ZIP + AES-256-GCM | Same | Preserved |
-| Import / restore | Same | Preserved |
-| Attachment drag-drop | Same | Preserved |
-| Dark/light theme | Same | Preserved |
-| Copy buttons on code | Same | Preserved |
-| Inline block editing | Same | Preserved |
-| TOC auto-generation | Same | Preserved |
-| Section collapse/expand all | Same | Preserved |
+**Recommended sequence:** 0 → 1 → 3 → 2 → 5 → 4 → 7 → 6 → 8 → 9 → 10 → 11
 
 ---
 
 ## 11. Next Action
 
-**Phase 6 — Full WYSIWYG Studio:** `studio/tessel-studio-full.html` exists and provides the compiler-mode and Studio foundation. The remaining work is full WYSIWYG editing (in-browser visual editing of Markdown without switching to raw source) and the visual form designer (drag-and-drop `@directive` insertion and configuration).
+**Phase 6 — Full WYSIWYG Studio** is the primary remaining major phase.
 
-Phases 0–5 and Phase 7–9 are complete. Phase 6 is the final major phase. Phase 10 (OPFS storage migration) is an optional cleanup target, recommended after Phase 6 is stable so all new localStorage usage can be migrated in a single pass.
+**Phase 10 — OPFS Storage Migration** is in progress in parallel: `StorageEngine` abstraction implementing OPFS with `localStorage` fallback for `file://`, covering `ThemeManager.js`, `DockSystem.js`, and all other Studio persistence calls.
+
+**Phase 11 — Tauri Desktop Wrapper** follows Phase 10. Engine detection and WebKit CSS compatibility are already in place (Phase 9); Phase 10 storage isolation is the remaining prerequisite.
