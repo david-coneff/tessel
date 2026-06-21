@@ -116,7 +116,10 @@ function isLightColor(hex) {
   return lum > 0.35;
 }
 
-function applyTheme(themeId) {
+var _themeChangeCallbacks = [];
+export function onThemeChange(cb) { _themeChangeCallbacks.push(cb); }
+
+export function applyTheme(themeId) {
   var theme = getThemeById(themeId);
   if (!theme) return;
   var vars = theme.vars;
@@ -128,6 +131,7 @@ function applyTheme(themeId) {
   if (isLightColor(vars['--bg'])) document.body.classList.add('light');
   localStorage.setItem('tvs:active-theme', themeId);
   updateThemeBtn();
+  _themeChangeCallbacks.forEach(function(cb) { try { cb(themeId); } catch(e) {} });
 }
 
 function updateThemeBtn() {
