@@ -4,6 +4,7 @@ import { undo, redo, clearUndoHistory, updateUndoButtons } from './undo.js';
 import { openZip, exportZip, exportMd, exportHtml } from './ExportManager.js';
 import { convertFocusedBlock, closePreview } from './InlineFormat.js';
 import { closeAllDropdowns, saveDraft, showPreview, openMd, openHtml, setStatus } from './FileOps.js';
+import { rootstock } from './rootstock.js';
 
 export function initToolbarWiring(deps) {
   // ── Toolbar icon upgrade ──────────────────────────────────────────────────
@@ -53,9 +54,14 @@ export function initToolbarWiring(deps) {
   document.getElementById('btn-undo').addEventListener('click', undo);
   document.getElementById('btn-redo').addEventListener('click', redo);
 
-  document.getElementById('btn-new').addEventListener('click', function() {
+  document.getElementById('btn-new').addEventListener('click', async function() {
     closeAllDropdowns();
-    if (deps.getUnsaved() && !confirm('Discard unsaved changes?')) return;
+    if (deps.getUnsaved()) {
+      var discard = await rootstock.dialog.confirm('Discard unsaved changes?', {
+        title: 'New document', okLabel: 'Discard', danger: true,
+      });
+      if (!discard) return;
+    }
     deps.setBlocks([]);
     deps.setSelectedBlockId(null);
     clearUndoHistory();
@@ -65,6 +71,7 @@ export function initToolbarWiring(deps) {
     try { StorageEngine.removeItem('tvs:filename'); } catch(e) {}
     setStatus('New document');
     deps.setUnsaved(false);
+    rootstock.notify.show({ body: 'New document created', level: 'success', timeoutMs: 2500 });
   });
 
   document.getElementById('open-md-item').addEventListener('click', function() { closeAllDropdowns(); document.getElementById('pick-md').click(); });

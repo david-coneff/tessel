@@ -20,6 +20,7 @@
     "vite-plugin-singlefile": "^2.0.1"
   },
   "dependencies": {
+    "@david-coneff/rootstock": "github:david-coneff/rootstock#v0.1.0",
     "@tauri-apps/api": "^2.11.1",
     "lucide": "^1.21.0"
   }
