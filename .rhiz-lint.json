@@ -1,0 +1,11 @@
+{
+  "knowledge_roots": ["rhiz-memory"],
+  "index_names": ["index.md", "lessons-learned-synthesis.md", "README.md", "_instance.md"],
+  "line_warn": 1500,
+  "entry_points": [
+    "rhiz-memory/_instance.md",
+    "ROADMAP.md",
+    "MODULARIZATION_PLAN.md",
+    "ROOTSTOCK_MIGRATION.md"
+  ]
+}

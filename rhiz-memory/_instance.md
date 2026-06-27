@@ -55,3 +55,21 @@ The repository contains:
 | Dependencies | `tools/` |
 | Documentation | `README.md`, `ROADMAP.md` |
 | Oversight | `rhiz-memory/audits/` |
+
+---
+
+## Knowledge map
+
+The knowledge articles maintained under `rhiz-memory/` for this instance:
+
+- [rhizome-kb-storage-approaches.md](rhizome-kb-storage-approaches.md) — KB storage approach comparison
+- [tessel-vs-ux-patterns.md](tessel-vs-ux-patterns.md) — Tessel language/UX pattern study
+
+### State
+
+- [lessons-learned-synthesis.md](state/lessons-learned-synthesis.md) — synthesis index over the failure-path records
+- [cross-project-design-principles.md](state/cross-project-design-principles.md) — design principles carried across projects
+- [github-pages-deployment.md](state/github-pages-deployment.md) — GitHub Pages deployment state
+- [studio-ui-design.md](state/studio-ui-design.md) — studio UI design notes
+- [tauri-pwa-multiplatform-deployment.md](state/tauri-pwa-multiplatform-deployment.md) — Tauri/PWA multiplatform deployment
+- [ui-preferences.md](state/ui-preferences.md) — UI preferences

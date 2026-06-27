@@ -162,7 +162,7 @@ tessel-package.py             — schema and executable package versioning tooli
 
 ### 5.1 Standard Markdown (preserved)
 
-CommonMark subset: ATX headings, fenced code blocks, GitHub tables, ordered/unordered lists (one nesting level), blockquotes, horizontal rules, paragraphs, inline code / **bold** / [links](url).
+CommonMark subset: ATX headings, fenced code blocks, GitHub tables, ordered/unordered lists (one nesting level), blockquotes, horizontal rules, paragraphs, inline code / **bold** / `[links](url)`.
 
 Single `*`/`_` italics are intentionally NOT parsed (they mangle identifiers like `network_topology.ssl_*`). This matches the broodforge reference behavior.
 
