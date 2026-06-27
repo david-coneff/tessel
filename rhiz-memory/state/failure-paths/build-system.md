@@ -68,3 +68,55 @@ must be consistent across all of them.
 # Quick check: find all vite configs
 ls vite.config*.{js,ts} 2>/dev/null
 ```
+
+---
+
+## F-BUILD-03 — esbuild Single-File Studio Build (Vite → esbuild migration)
+
+**Feature scope**: The single-file studio ship build moved from
+`vite build` + `vite-plugin-singlefile` to a self-contained esbuild roll-up
+(`studio/build.mjs`) — an AI-agent-runnable, config-free `npm run build` that
+emits the same `studio/tessel-vs.html`. This is rhiz-Partition modality B /
+[DS-002](https://github.com/david-coneff/rhizome). Vite is retained for the PWA
+build (`build:pwa`, service worker + manifest), for `dev` (HMR), and as the
+`build:studio:vite` fallback.
+
+**The dependency-tree change**: esbuild has no HTML-entry concept and cannot see
+CSS pulled in by the shell's `<link>` tags. A new entry `studio/src/build-entry.js`
+reroutes the four stylesheets (`variables`/`base`/`themes`/`tessel-ui`, in cascade
+order) **into the JS module graph**, then imports `main.js` — so a JS module is
+the single root esbuild walks. `studio/build.mjs` derives its inline-ready shell
+from `studio/src/tessel-vs.html` itself (stripping the `<link>` + `<script src>`
+tags), keeping one shell source of truth shared with the Vite path.
+
+**Gotchas hit and fixed (verify the EMITTED file, not just that it compiled):**
+
+1. **Top-level await breaks `format: 'iife'`.** `StorageEngine.js` uses TLA for
+   OPFS init. esbuild cannot lower TLA into an IIFE — it errors at build time.
+   **Fix**: `format: 'esm'`, inlined as `<script type="module">`. Everything is
+   inlined, so the `file://` "no module fetch" restriction never bites. (Same
+   TLA root cause as F-BUILD-01, different surface.)
+2. **The legacy `dist/tessel.bundle.js` was NOT self-contained under Vite.** The
+   shell's `<script src="../../dist/tessel.bundle.js">` points *outside* the Vite
+   root, so `vite-plugin-singlefile` left it as an external reference — the
+   "single file" actually 404'd that script from a bare `file://` open. The
+   esbuild build **inlines** it as a classic `<script>` before the module
+   (preserving the `window.Tessel` global the produced-forms path expects), so
+   the output is genuinely self-contained. (Studio runtime itself uses the
+   modular `TesselCompiler.js`, not the global — the inlined bundle is vestigial
+   for the studio but kept for parity; dropping it is a possible future ~160 KB
+   saving once produced-forms independence is confirmed.)
+3. **`</script>` / `</style>` escaping.** The inliner escapes both in the emitted
+   artifact so the inline tags can't terminate early.
+
+**Confirmation status**: **Confirmed**. `node tools/rollup.cjs && node studio/build.mjs`
+produces a 513 KB self-contained `studio/tessel-vs.html`; a headless Chromium
+load boots the app (title, `#toolbar`, dock panes, status bar "Ready", pop-out
+buttons present) with **0 console errors and 0 external/network requests**.
+
+**Extracted lesson**: When swapping a single-file bundler, the HTML shell stops
+being the asset root — reroute CSS (and any `<link>`ed asset) into the JS module
+graph so the new bundler can see it. Pick `esm` over `iife` whenever the codebase
+has top-level await. And re-grep the *emitted* file for external `src`/`href`:
+the old "single file" may have been silently leaking an external reference the
+new build can fix.
