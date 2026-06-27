@@ -120,3 +120,55 @@ graph so the new bundler can see it. Pick `esm` over `iife` whenever the codebas
 has top-level await. And re-grep the *emitted* file for external `src`/`href`:
 the old "single file" may have been silently leaking an external reference the
 new build can fix.
+
+---
+
+## F-BUILD-04 — esbuild PWA / Service Worker (no Vite, no Workbox)
+
+**Feature scope**: The PWA build (`build:pwa`, deployed to `/tessel/` by
+`deploy-pwa.yml`) moved from `vite-plugin-pwa` to a hand-rolled esbuild build,
+`studio/build-pwa.mjs` + `studio/tessel-pwa/sw.js`. Vite is retained as a
+`build:pwa:vite` fallback.
+
+**Is a service worker migratable off Vite? Yes — no technical limitation.** A SW
+is just JS that esbuild bundles. `vite-plugin-pwa` automated three things, all of
+which become a few lines of explicit code:
+
+1. **Workbox precache manifest + per-asset revisioning** — replaced by a single
+   `sha256(index.html)` content hash, because the esbuild single-file build
+   inlines the *entire* app into one `index.html`. One shell to precache, one
+   hash to bust the cache. (A multi-asset app would precache a small explicit
+   list with the same per-build hash, or call `workbox-build` from Node — also
+   Vite-independent — if Workbox's revisioning is wanted.)
+2. **Web app manifest emission** — a static `manifest.webmanifest` written from
+   the same config object the Vite plugin took.
+3. **SW registration** — a 3-line `navigator.serviceWorker.register('sw.js')`
+   injected into `index.html`.
+
+**Gotchas (web-platform facts, not esbuild ones):**
+
+- **A SW only registers in a secure context** — `https` or `http://localhost`,
+  **never `file://`**. So unlike the single-file studio build, the PWA can't be
+  smoke-tested by opening the file; it must be *served*. Verification served
+  `dist/` under `/tessel/` on localhost and drove it headless.
+- **A PWA is intentionally multi-file** — the SW caches discrete URLs
+  (`index.html`, `sw.js`, `manifest.webmanifest`, `icons/icon.svg`), the opposite
+  of single-file inlining. The *app* is still one inlined `index.html`; the SW +
+  manifest + icon sit beside it as separately-cacheable resources. This is why
+  the old config noted "the PWA build cannot use vite-plugin-singlefile."
+- **`skipWaiting` + `clients.claim`** reproduce the old `registerType: 'autoUpdate'`
+  so a new deploy takes over immediately.
+- **Add an explicit `<link rel="icon">`** or the browser's default `/favicon.ico`
+  probe 404s (harmless, but it shows up as a console error in tests).
+
+**Confirmation status**: **Confirmed**. `npm run build:pwa` emits
+`studio/tessel-pwa/dist/{index.html,sw.js,manifest.webmanifest,icons/icon.svg}`.
+Served on localhost and driven headless: the SW reaches `activated`, controls the
+page, the manifest is linked and valid, and after `setOffline(true)` a reload
+**still boots the app** (toolbar, status "Ready") with **0 console errors**.
+
+**Extracted lesson**: "Can't run the service worker build without Vite" is false —
+Vite/Workbox were doing precache-manifest bookkeeping, not anything esbuild lacks.
+For a single-file app the whole precache table collapses to one content hash. The
+only genuine constraint is the secure-context rule: test a SW over localhost, not
+`file://`.
