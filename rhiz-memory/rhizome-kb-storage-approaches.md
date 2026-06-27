@@ -61,7 +61,7 @@ rhizome/
 ```python
 # Ingestion:
 memory_add_text("Pattern T-011: FLIP animation requires snapshotting offsetTop BEFORE the DOM move...")
-memory_add_directory('./rhizome/docs/')  # bulk ingest
+memory_add_directory('./protocol/docs/')  # bulk ingest
 
 # Query (via SQL):
 SELECT * FROM memory_search WHERE query = 'animate list reorder smoothly' LIMIT 5;

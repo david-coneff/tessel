@@ -421,6 +421,9 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
+permissions:
+  contents: write   # required for tauri-apps/tauri-action to create GitHub Releases
+
 jobs:
   build:
     strategy:
@@ -440,7 +443,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: '20', cache: 'npm' }
+        with: { node-version: '22', cache: 'npm' }  # use 22+; 20 deprecated on Actions runners
       - uses: dtolnay/rust-toolchain@stable
         with: { targets: '${{ matrix.target }}' }
       - name: Install Linux dependencies
@@ -521,3 +524,212 @@ The storage isolation hierarchy from weakest to strongest:
 - `file://` → localStorage, shared across all local HTML files in Chrome
 - PWA (GitHub Pages) → OPFS, scoped to `username.github.io/appname`
 - Tauri → OPFS, scoped to bundle identifier, isolated from all other apps
+
+---
+
+## Part 9: CI/CD Failure Log — What Went Wrong and How It Was Fixed
+
+This section records every build failure encountered during the initial Tauri CI setup
+so future sessions don't repeat them.
+
+---
+
+### Failure 1 — Top-level await rejected by Vite (`es2020` target)
+
+**Error:**
+```
+[vite] Top-level await is not available in the configured target environment
+```
+
+**Cause:** StorageEngine.js uses top-level await for OPFS init. The default esbuild
+target in Vite is `es2020`, which does not support top-level await.
+
+**Fix:** Set `build.target: 'es2022'` in **both** `vite.config.js` and
+`vite.config.pwa.js`. The PWA config is a separate file — forgetting it caused the
+same error on the second build after the main config was fixed.
+
+```js
+// vite.config.js AND vite.config.pwa.js
+export default defineConfig({
+  build: {
+    target: 'es2022',  // required for top-level await
+    ...
+  }
+})
+```
+
+---
+
+### Failure 2 — Tauri icons missing (`No such file or directory`)
+
+**Error (CI):**
+```
+error: proc macro panicked
+  = help: message: failed to open icon .../src-tauri/icons/32x32.png: No such file or directory
+```
+
+**Cause:** The `src-tauri/icons/` directory was not committed to the repo along
+with the initial Tauri scaffold commit.
+
+**Fix:** Generate placeholder icon files and commit them to `src-tauri/icons/`.
+Required files per `tauri.conf.json` bundle.icon array:
+- `icons/32x32.png` (32×32 RGBA PNG)
+- `icons/128x128.png` (128×128 RGBA PNG)
+- `icons/128x128@2x.png` (256×256 RGBA PNG)
+- `icons/icon.icns` (macOS icon bundle)
+- `icons/icon.ico` (Windows icon, can contain multiple sizes)
+
+**IMPORTANT — see Failure 3**: Icons must be RGBA (color type 6), not RGB.
+
+---
+
+### Failure 3 — Icons not RGBA
+
+**Error (CI, run after Failure 2 fix):**
+```
+error: proc macro panicked
+  = help: message: icon .../src-tauri/icons/32x32.png is not RGBA
+```
+
+**Cause:** The placeholder PNGs were generated as RGB (color type 2) without an
+alpha channel. Tauri's `tauri::generate_context!()` macro requires all PNG icons
+to have color type 6 (RGBA).
+
+**Fix:** Regenerate all placeholder PNGs as RGBA using Python:
+
+```python
+import struct, zlib
+
+def make_rgba_png(width, height, r, g, b, a=255):
+    def chunk(tag, data):
+        c = zlib.crc32(tag + data) & 0xffffffff
+        return struct.pack('>I', len(data)) + tag + data + struct.pack('>I', c)
+    raw = b''
+    for y in range(height):
+        raw += b'\x00'          # filter type none per row
+        for x in range(width):
+            raw += bytes([r, g, b, a])
+    png  = b'\x89PNG\r\n\x1a\n'
+    png += chunk(b'IHDR', struct.pack('>II', width, height) + bytes([8, 6, 0, 0, 0]))
+    # color type 6 ^ = RGBA
+    png += chunk(b'IDAT', zlib.compress(raw))
+    png += chunk(b'IEND', b'')
+    return png
+```
+
+Regenerate with dark background `#1a1b1e` and full alpha, then push to the repo.
+Replace with real app artwork before any public release.
+
+---
+
+### Failure 4 — `tauri_plugin_shell` referenced but not in Cargo.toml
+
+**Error:**
+```
+error[E0433]: cannot find module or crate `tauri_plugin_shell` in this scope
+  --> src/lib.rs:4:17
+```
+
+**Cause:** The initial `lib.rs` scaffold included `.plugin(tauri_plugin_shell::init())`
+but `tauri-plugin-shell` was never added to `Cargo.toml`.
+
+**Fix:** Remove `.plugin(tauri_plugin_shell::init())` from `lib.rs` entirely.
+The app does not need shell access. Keep `lib.rs` minimal:
+
+```rust
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tauri::Builder::default()
+        .run(tauri::generate_context!())
+        .expect("error while running Tessel VS");
+}
+```
+
+---
+
+### Failure 5 — Release creation fails (`Resource not accessible by integration`)
+
+**Error (Windows job, which compiled successfully):**
+```
+##[error]Resource not accessible by integration
+```
+
+**Cause:** `tauri-apps/tauri-action@v0` tries to create a GitHub Release using
+`GITHUB_TOKEN`, but the workflow had no explicit `permissions` block. The default
+GITHUB_TOKEN permissions do not include `contents: write`.
+
+Additionally, when the build is triggered via `workflow_dispatch` (not a `v*` tag),
+`github.ref_name` is `main`, so the action tries to create a release tagged `main`.
+This is not an error per se but the release name is wrong for test runs.
+
+**Fix:** Add `permissions: contents: write` at the top level of the workflow:
+
+```yaml
+permissions:
+  contents: write
+```
+
+Note: The actual compiled binaries (`.msi`, `.exe`, `.dmg`, `.deb`, `.AppImage`)
+are produced before the release step runs — compilation itself succeeded on all
+platforms once Failures 2–4 were resolved.
+
+---
+
+### Failure 6 — GitHub Pages 404 after clearing site data
+
+**Symptom:** PWA was returning 404 at `https://username.github.io/reponame/`
+in both regular and incognito Chrome, even though the deploy-pages workflow had
+completed successfully.
+
+**Cause (most likely):** GitHub Pages CDN entered a stale/stuck state. The
+deployment artifact was correctly built and deployed (`actions/deploy-pages`
+reported success), but the CDN did not propagate it to the edge.
+
+**Fix:** Re-run `workflow_dispatch` on `deploy-pwa.yml` to force a fresh
+deployment. After the new deployment completed, the URL became accessible
+without any other configuration changes.
+
+**Diagnostic steps taken first:**
+1. Confirmed Pages source in repo Settings → Pages = "GitHub Actions" ✓
+2. Confirmed last deploy job showed: `Evaluated environment url: https://...` ✓
+3. Confirmed artifact contained `index.html` at root ✓
+4. Tried `https://username.github.io/reponame/index.html` — also 404 ✓ (confirmed CDN issue, not routing)
+
+**Note:** `index.html` directly also needed to work before the bare path worked.
+Both resolved after the fresh deploy.
+
+---
+
+### Failure 7 — Stale localStorage migrated to OPFS with wrong theme
+
+**Symptom:** After Phase 10 (OPFS migration), the PWA loaded with a wrong/extra-dark
+theme that didn't match what was expected.
+
+**Cause:** The one-time migration in StorageEngine.js read whatever was in localStorage
+on `david-coneff.github.io` and copied it into OPFS. The localStorage on that origin
+contained stale keys from previous sessions (`tvs:theme-a='light'`, `tvs:theme-b='dark'`,
+wrong `tvs:active-theme` value) that were never properly cleaned up.
+
+**Fix (for the user):** Clear site data in Chrome DevTools (Application → Storage →
+Clear site data). This wipes OPFS and forces a clean init on next load.
+
+**Fix (to prevent recurrence):** The migration only runs once (guarded by a
+`tvs:opfs-migrated` flag written to OPFS). If the stored theme state is wrong after
+a migration, the user can reset via Options → Themes or by clearing site data.
+
+---
+
+### Build attempt timeline
+
+| Attempt | Commit | Error | Fixed by |
+|---------|--------|-------|----------|
+| Run 1 attempt 1 | `1a95e95b` | Icons missing (file not found) | Added icons in PR #15 |
+| Run 1 attempt 2 | `25f1fcb0` | Icons missing + plugin_shell (ran on stale commit) | — |
+| Run 2 | `2ea7e239` | Icons not RGBA + plugin_shell still present (wrong commit again) | Re-triggered after noticing commit mismatch |
+| Run 3 | `2ea7e239` | Icons not RGBA (plugin_shell now fixed) | Regenerated icons as RGBA |
+| Run 4 | `ca5ff914` | Windows: release permission error (compilation succeeded) | Added `contents: write` permission |
+| Run 5 | `ca5ff914` | Expected to pass all 4 platforms | Pending |
+
+**Key lesson:** Always verify which commit the workflow ran on before diagnosing
+a failure. If a `workflow_dispatch` is triggered before a fix commit is pushed,
+it runs on the old code. Check the run's "head_sha" against the latest commit on main.
