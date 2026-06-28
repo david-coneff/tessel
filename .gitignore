@@ -2,3 +2,7 @@ node_modules/
 studio/tessel-pwa/dist/
 studio/tessel-pwa/public/tessel.bundle.js
 studio/.build/
+
+# rhiz tooling channel — gitignored: resolved tools cache + generated search index
+.rhiz-tools/
+.rhiz-search/

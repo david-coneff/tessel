@@ -55,6 +55,7 @@ The repository contains:
 | Dependencies | `tools/` |
 | Documentation | `README.md`, `ROADMAP.md` |
 | Oversight | `rhiz-memory/audits/` |
+| Tooling | rhiz tooling (rhiz-lint, rhiz-search, doc-graph) run via `tools/rhiz` against the rhizome `tools-stable` channel — the tools live in rhizome, not copied here |
 
 ---
 
