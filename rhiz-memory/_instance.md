@@ -44,7 +44,7 @@ The repository contains:
 | Governance | `rhiz-memory/_instance.md` (this file) |
 | Decisions | `rhiz-memory/state/decisions.md` (create when needed) |
 | Evidence | Cited inline in audit records and session handoffs |
-| Planning | `rhiz-memory/state/SESSION_HANDOFF.md`, `ROADMAP.md` |
+| Planning | `rhiz-memory/state/SESSION_HANDOFF.md`, `ROADMAP.md`, [`rhiz-memory/roadmap/index.md`](roadmap/index.md) |
 | State | `rhiz-memory/state/SESSION_HANDOFF.md` |
 | Risk | `rhiz-memory/audits/` |
 | Debt | Named inline in audit findings |
